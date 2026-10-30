@@ -26,6 +26,8 @@
     radial-gradient(ellipse at 20% 65%, #176b83 0, transparent 50%),
     linear-gradient(160deg, #072b58, #0c4668 50%, #07253e);
   --ios-wallpaper-text-shadow: 0 1px 3px #0008;
+  --ios-home-app-text-shadow: 0 1px 2px #000a, 0 1px 5px #0005;
+  --ios-navigation-shadow: -8px 0 20px #0002;
   --ios-app-icon-surface: linear-gradient(#323337, #101113);
   --ios-app-icon-ink: #fff;
   --ios-app-icon-shadow: 0 1px 2px #0003;

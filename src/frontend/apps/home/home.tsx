@@ -23,7 +23,6 @@ export function Home({
             aria-label="打开秒表"
           >
             <AppIcon app="stopwatch" />
-            <Text role="caption">秒表</Text>
           </Button>
         </div>
       }

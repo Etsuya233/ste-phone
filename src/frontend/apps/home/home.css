@@ -5,6 +5,9 @@
   gap: 20px 16px;
   padding: 22px;
 }
+:host .home-grid .ios-text--caption {
+  text-shadow: var(--ios-home-app-text-shadow);
+}
 :host .home-page-indicator {
   position: absolute;
   bottom: calc(var(--page-bottom) + 17px);

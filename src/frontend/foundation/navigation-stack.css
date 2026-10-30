@@ -9,6 +9,10 @@
 :host .navigation-entry--current {
   z-index: 2;
 }
+:host .navigation-stack--push .navigation-entry--current,
+:host .navigation-stack--pop .navigation-entry--current {
+  box-shadow: var(--ios-navigation-shadow);
+}
 :host .navigation-stack--push .navigation-entry--current {
   animation: phone-page-in 280ms ease both;
 }
@@ -32,10 +36,8 @@
 @keyframes phone-page-under {
   from {
     transform: translateX(0);
-    opacity: 1;
   }
   to {
     transform: translateX(-25%);
-    opacity: 0.65;
   }
 }
