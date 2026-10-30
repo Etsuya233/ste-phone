@@ -1,7 +1,9 @@
 :host {
   all: initial;
   color-scheme: light;
-  --ios-font: "Helvetica Neue", Helvetica, Arial, "PingFang SC", sans-serif;
+  --ios-font:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue",
+    "PingFang SC", Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
   --ios-ink: #1c1c1e;
   --ios-blue: #007aff;
   --ios-surface: #fafafa;

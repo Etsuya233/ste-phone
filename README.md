@@ -32,7 +32,7 @@ pnpm format:check
 pnpm test              # Junction、同步与本地发版集成验证
 ```
 
-生产入口为 `src/frontend/index.ts`，`host/mount-phone.tsx` 挂载 React 与 Shadow DOM，`phone-app.tsx` 管理窗口开关。`device/` 放机身与会话，`system/` 放状态栏与转场，`foundation/` 放基础视觉组件，`apps/home/`、`apps/stopwatch/`、`apps/foundation/` 分别放主屏、秒表和组件应用，`theme.css` 汇总 CSS 与主题变量。React 随插件打包，无 CDN 依赖。构建产物的 manifest 版本与运行时版本统一读取 `package.json`。
+生产入口为 `src/frontend/index.ts`，`host/mount-phone.tsx` 挂载 React 与 Shadow DOM，`phone-app.tsx` 管理窗口开关。`device/` 放机身与会话，`system/` 放状态栏与转场，`foundation/` 放基础视觉组件，`apps/home/`、`apps/stopwatch/`、`apps/foundation/` 分别放主屏、秒表和组件应用，`theme.css` 汇总 CSS 与主题变量。React 随插件打包。字体优先使用 Apple 平台字体，Inter 西文字体通过 Google Fonts 加载，不进入产物；网络不可用时继续使用本机无衬线字体。构建产物的 manifest 版本与运行时版本统一读取 `package.json`。
 
 公共背景资料位于 `src/features/background/`，包含资料类型、来源读取约定与缓存流程；Memory 连接、协议和字段转换位于 `src/infrastructure/ste-memory/`。入口组装具体实现，App 通过功能公开入口使用资料。代码位置与阅读顺序见 [公共数据源](docs/data-source.md)。
 

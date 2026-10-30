@@ -181,25 +181,26 @@ function DataBrowser({
               </p>
             ) : null}
             {selected && state.data ? (
-              <details className="data-origin">
-                <summary>来源信息</summary>
-                <p>来源：{state.data.sourceId}</p>
-                <p>范围：{state.data.scopeId}</p>
-                <p>条目：{selected.id}</p>
-              </details>
+              <div className="data-origin">
+                <GroupedList title="来源信息">
+                  <ListCell title="来源" value={state.data.sourceId} />
+                  <ListCell title="范围" value={state.data.scopeId} />
+                  <ListCell title="条目" value={selected.id} />
+                </GroupedList>
+              </div>
             ) : null}
           </>
         ) : (
           <>
-            <label className="data-search">
-              <span className="data-search-label">搜索{categoryNames[category]}</span>
+            <div className="data-search">
               <input
                 type="search"
+                aria-label={`搜索${categoryNames[category]}`}
                 placeholder="搜索名称或正文"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
-            </label>
+            </div>
             <GroupedList
               title={`${categoryNames[category]} · ${visible?.length ?? 0}`}
               description={

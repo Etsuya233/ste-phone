@@ -8,6 +8,7 @@
   border: 0;
   background: transparent;
   color: var(--ios-ink);
+  font: inherit;
 }
 :host .phone-panel::backdrop {
   background: #101b2b80;
@@ -16,26 +17,33 @@
 :host .phone-close {
   position: absolute;
   z-index: 20;
-  top: 0;
-  right: 0;
-  height: 44px;
-  min-width: 76px;
-  padding: 0 12px;
-  border: 1px solid #ffffff38;
-  border-radius: 22px;
-  background: #20252de8;
-  color: #fff;
-  font-size: 13px;
-  box-shadow: 0 2px 8px #0003;
+  /* 置于上边框右侧；抵消机身缩放，窄屏仍保留 44px 的实际点击区域。 */
+  top: calc(54px - 22px / var(--device-scale));
+  right: calc(48px - 22px / var(--device-scale));
+  display: grid;
+  place-items: center;
+  width: calc(var(--control-size) / var(--device-scale));
+  height: calc(var(--control-size) / var(--device-scale));
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #d1d1d6;
 }
-:host .phone-close span {
-  margin-left: 6px;
-  font-size: 23px;
-  vertical-align: -2px;
+:host .phone-close svg {
+  width: calc(18px / var(--device-scale));
+  height: calc(18px / var(--device-scale));
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+}
+:host .phone-close:active {
+  opacity: var(--ios-pressed-opacity);
 }
 :host .device-stage {
   position: absolute;
-  top: 52px;
+  top: 0;
   left: 0;
   width: var(--device-width);
   height: var(--device-height);
@@ -180,12 +188,7 @@
   top: auto;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 3px);
   right: 6px;
-  min-width: 68px;
   color: #555;
-  background: #fafafae8;
-  border: 0;
-  border-radius: 8px;
-  box-shadow: none;
 }
 :host .phone-panel--responsive .software-home {
   display: grid;

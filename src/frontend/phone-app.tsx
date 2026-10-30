@@ -5,7 +5,6 @@ import type { PhoneDataSource } from "../features/background/index.ts";
 
 const DEVICE_WIDTH = 430;
 const DEVICE_HEIGHT = 886;
-const CLOSE_HEIGHT = 52;
 const VIEWPORT_GAP = 12;
 
 export function PhoneApp({
@@ -42,10 +41,10 @@ export function PhoneApp({
     : Math.min(
         1,
         (viewport.width - VIEWPORT_GAP * 2) / DEVICE_WIDTH,
-        (viewport.height - VIEWPORT_GAP * 2 - CLOSE_HEIGHT) / DEVICE_HEIGHT,
+        (viewport.height - VIEWPORT_GAP * 2) / DEVICE_HEIGHT,
       );
   const width = fullscreen ? viewport.width : DEVICE_WIDTH * scale;
-  const height = fullscreen ? viewport.height : DEVICE_HEIGHT * scale + CLOSE_HEIGHT;
+  const height = fullscreen ? viewport.height : DEVICE_HEIGHT * scale;
   const horizontalTravel = Math.max(0, (viewport.width - width) / 2 - VIEWPORT_GAP);
   const verticalTravel = Math.max(0, (viewport.height - height) / 2 - VIEWPORT_GAP);
   const x = fullscreen ? 0 : Math.max(-horizontalTravel, Math.min(horizontalTravel, position.x));
@@ -128,15 +127,18 @@ export function PhoneApp({
           launcher.current!.focus();
         }}
       >
-        <button
-          className="phone-close"
-          aria-label="关闭小手机"
-          onClick={() => panel.current!.close()}
-        >
-          关闭 <span aria-hidden="true">×</span>
-        </button>
         {open ? (
           <div className="device-stage">
+            <button
+              type="button"
+              className="phone-close"
+              aria-label="关闭小手机"
+              onClick={() => panel.current!.close()}
+            >
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="m5 5 10 10M15 5 5 15" />
+              </svg>
+            </button>
             <PhoneDevice
               dataSource={dataSource}
               initialApp={initialApp}

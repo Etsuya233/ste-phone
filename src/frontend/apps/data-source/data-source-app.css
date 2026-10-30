@@ -40,12 +40,6 @@
   display: block;
   margin: var(--ios-space-large);
 }
-:host .data-search-label {
-  display: block;
-  margin-bottom: var(--ios-space-small);
-  color: var(--ios-secondary-ink);
-  font-size: var(--ios-caption-size);
-}
 :host .data-search input {
   width: 100%;
   min-height: var(--control-size);
@@ -55,22 +49,17 @@
   background: var(--ios-row-surface);
   color: var(--ios-ink);
   font: inherit;
+  outline: none;
 }
-:host .data-search input:focus-visible {
-  outline: var(--ios-focus-width) solid var(--ios-blue);
-  outline-offset: var(--ios-focus-offset);
+:host .data-origin .ios-cell-copy {
+  flex: 0 0 auto;
 }
-:host .data-origin {
-  margin: var(--ios-space-large);
-  color: var(--ios-secondary-ink);
+:host .data-origin .ios-cell-value {
+  flex: 1;
+  max-width: none;
+  min-width: 0;
   font-size: var(--ios-caption-size);
-  overflow-wrap: anywhere;
-}
-:host .data-origin summary {
-  display: flex;
-  align-items: center;
-  min-height: var(--control-size);
-  cursor: pointer;
+  user-select: text;
 }
 :host .data-app-icon {
   color: var(--ios-on-accent);
