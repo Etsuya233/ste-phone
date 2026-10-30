@@ -1,7 +1,10 @@
 {
   "name": "ste-phone",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.1",
+  "stePhone": {
+    "minimumMemoryVersion": "0.2.4"
+  },
   "type": "module",
   "packageManager": "pnpm@11.17.0",
   "engines": {
@@ -20,10 +23,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test --test-concurrency=1 scripts/*.test.ts src/features/background/*.test.ts src/infrastructure/ste-memory/*.test.ts src/infrastructure/sqlite/*.test.ts"
+    "test": "node --test --test-concurrency=1 scripts/*.test.ts src/features/background/*.test.ts src/infrastructure/ste-memory/*.test.ts"
   },
   "dependencies": {
-    "@sqlite.org/sqlite-wasm": "3.54.1-build1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
@@ -38,6 +40,7 @@
     "globals": "17.9.0",
     "prettier": "^3.0.0",
     "typescript": "6.0.3",
-    "typescript-eslint": "^8.0.0"
+    "typescript-eslint": "^8.0.0",
+    "@sqlite.org/sqlite-wasm": "3.54.1-build1"
   }
 }

@@ -2,7 +2,7 @@ import { context, type Plugin } from "esbuild";
 import { watch } from "node:fs";
 import path from "node:path";
 import {
-  copyDatabaseAssets,
+  removeObsoleteAssets,
   createBuildOptions,
   DIST_DIR,
   PACKAGE_ROOT,
@@ -17,7 +17,7 @@ const sync: Plugin = {
     build.onEnd((result) => {
       if (result.errors.length > 0) return;
       writeManifest();
-      copyDatabaseAssets();
+      removeObsoleteAssets();
       if (target) syncExtension(DIST_DIR, target);
     });
   },

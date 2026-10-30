@@ -1,5 +1,5 @@
-import type { PhoneDataSource, SourceContext } from "../background/index.ts";
-import type { DatabaseEngine, DatabaseSnapshot, QueryResult, SqlValue } from "./database.ts";
+import type { SourceContext } from "../background/index.ts";
+import type { DatabaseProvider, DatabaseSchema, QueryResult, SqlValue } from "./database.ts";
 
 export interface DatabaseEditor {
   readonly tab: "objects" | "sql";
@@ -7,13 +7,14 @@ export interface DatabaseEditor {
   readonly selected: string | null;
   readonly sql: string;
   readonly result: QueryResult | null;
+  readonly resultStale: boolean;
   readonly queryError: string | null;
   readonly running: boolean;
   readonly scroll: Readonly<Record<string, number>>;
 }
 export interface DatabaseState {
   readonly context: SourceContext;
-  readonly snapshot: DatabaseSnapshot | null;
+  readonly schema: DatabaseSchema | null;
   readonly status: "idle" | "loading" | "ready" | "error" | "unavailable";
   readonly stale: boolean;
   readonly error: string | null;
@@ -26,63 +27,62 @@ const emptyEditor = (): DatabaseEditor => ({
   selected: null,
   sql: "SELECT * FROM phone_characters LIMIT 50;",
   result: null,
+  resultStale: false,
   queryError: null,
   running: false,
   scroll: {},
 });
 const binding = (context: SourceContext) => JSON.stringify([context.chatIdentity, context.scopeId]);
 
-/** 共享背景资料的读取与缓存；仅有数据库 App 订阅时持续导入，关闭后保留内存编辑会话。 */
+/** 只持有结构、查询结果与编辑会话；记录变更仅标过期，下一次操作才检查结构。 */
 export class PhoneDatabaseService {
-  readonly #source: PhoneDataSource;
-  readonly #engine: DatabaseEngine;
+  readonly #provider: DatabaseProvider;
   readonly #listeners = new Set<() => void>();
   readonly #editors = new Map<string, DatabaseEditor>();
-  #unsubscribe: (() => void) | undefined;
+  readonly #unsubscribe: () => void;
   #state: DatabaseState;
   #generation = 0;
-  #sourceStale = false;
-  #importing: { snapshot: DatabaseSnapshot; promise: Promise<void> } | undefined;
+  #revision = 0;
+  #dirty = true;
+  #pending: Promise<void> | undefined;
 
-  constructor(source: PhoneDataSource, engine: DatabaseEngine) {
-    this.#source = source;
-    this.#engine = engine;
+  constructor(provider: DatabaseProvider) {
+    this.#provider = provider;
+    const context = provider.getContext();
     this.#state = {
-      context: source.getState().context,
-      snapshot: null,
-      status: "idle",
+      context,
+      schema: null,
+      status: context.available ? "idle" : "unavailable",
       stale: false,
       error: null,
       loadedAt: null,
       editor: emptyEditor(),
     };
+    this.#unsubscribe = provider.subscribe(this.#changed);
   }
   getState = (): DatabaseState => this.#state;
   subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener);
-    if (!this.#unsubscribe) {
-      this.#unsubscribe = this.#source.subscribe(this.#sync);
-      this.#sync();
-    }
-    return () => {
-      this.#listeners.delete(listener);
-      if (!this.#listeners.size) {
-        this.#unsubscribe?.();
-        this.#unsubscribe = undefined;
-      }
-    };
+    return () => this.#listeners.delete(listener);
   };
-  async load(force = false): Promise<void> {
-    const read = this.#source.load({ force });
-    this.#sync();
-    try {
-      await read;
-    } catch (error) {
-      this.#sync();
-      throw error;
-    }
-    this.#sync();
-    await this.#importing?.promise;
+  load(force = false): Promise<void> {
+    const current = this.#provider.getContext();
+    if (
+      binding(current) !== binding(this.#state.context) ||
+      current.available !== this.#state.context.available
+    )
+      this.#changed();
+    if (!current.available) return Promise.reject(new Error(current.message ?? "数据源不可用"));
+    if (this.#pending) return this.#pending;
+    if (!force && !this.#dirty && this.#state.schema) return Promise.resolve();
+    const generation = this.#generation;
+    const revision = this.#revision;
+    this.#publish({ ...this.#state, status: "loading", error: null });
+    const pending = this.#prepare(generation, revision).finally(() => {
+      if (this.#pending === pending) this.#pending = undefined;
+    });
+    this.#pending = pending;
+    return pending;
   }
   edit(patch: Partial<DatabaseEditor>): void {
     const editor = { ...this.#state.editor, ...patch };
@@ -91,13 +91,20 @@ export class PhoneDatabaseService {
   }
   async execute(): Promise<void> {
     const chat = binding(this.#state.context);
-    const sql = this.#state.editor.sql;
     const generation = this.#generation;
+    const revision = this.#revision;
+    const sql = this.#state.editor.sql;
     this.edit({ running: true, queryError: null });
     try {
       const result = await this.query(sql);
-      if (chat !== binding(this.#state.context)) return;
-      this.edit({ result, running: false, queryError: null });
+      if (chat !== binding(this.#state.context) || generation !== this.#generation) return;
+      this.edit({
+        result,
+        resultStale: revision !== this.#revision,
+        running: false,
+        queryError: null,
+      });
+      this.#publish({ ...this.#state, stale: this.#state.editor.resultStale });
     } catch (error) {
       if (chat === binding(this.#state.context) && generation === this.#generation)
         this.edit({
@@ -114,107 +121,81 @@ export class PhoneDatabaseService {
   }
   async query(sql: string, params?: Readonly<Record<string, SqlValue>>): Promise<QueryResult> {
     const loading = this.load();
-    const chat = binding(this.#state.context);
     const generation = this.#generation;
+    const chat = binding(this.#state.context);
     await loading;
-    if (chat !== binding(this.#state.context) || generation !== this.#generation)
-      throw new Error("聊天已变化，本次查询已取消");
-    if (!this.#state.snapshot) throw new Error(this.#state.error ?? "当前聊天数据库未就绪");
-    const result = await this.#engine.query(chat, sql, params);
-    if (chat !== binding(this.#state.context) || generation !== this.#generation)
-      throw new Error("聊天已变化，本次查询已取消");
+    this.#assertBinding(generation, chat);
+    const result = await this.#provider.query(this.#state.schema!, sql, params);
+    this.#assertBinding(generation, chat);
     return result;
   }
   dispose(): void {
     this.#generation++;
-    this.#unsubscribe?.();
-    this.#engine.dispose();
+    this.#unsubscribe();
     this.#listeners.clear();
   }
-
-  #sync = (): void => {
-    const source = this.#source.getState();
-    if (source.stale && !this.#sourceStale) this.#generation++;
-    this.#sourceStale = source.stale;
-    if (binding(source.context) !== binding(this.#state.context)) {
-      this.#generation++;
-      this.#importing = undefined;
-      this.#publish({
-        context: source.context,
-        snapshot: null,
-        status: source.status,
-        stale: false,
-        error: source.error,
-        loadedAt: null,
-        editor: this.#editors.get(binding(source.context)) ?? emptyEditor(),
-      });
-    }
-    const snapshot = source.data?.database;
-    if (source.status !== "ready" || source.stale) {
+  async #prepare(generation: number, revision: number): Promise<void> {
+    const chat = binding(this.#state.context);
+    try {
+      const schema = await this.#provider.describe();
+      this.#assertBinding(generation, chat);
+      // Memory 保证数据 publish 后重建已注册视图；相同 schemaKey 无需重新注册。
+      await this.#provider.register(schema);
+      this.#assertBinding(generation, chat);
+      this.#dirty = revision !== this.#revision;
       this.#publish({
         ...this.#state,
-        context: source.context,
-        status: source.status,
-        stale: this.#state.snapshot !== null,
-        error: source.error,
+        schema,
+        status: "ready",
+        error: null,
+        stale: this.#dirty || this.#state.editor.resultStale,
+        loadedAt: new Date().toISOString(),
       });
-      return;
-    }
-    if (!snapshot) {
-      this.#publish({
-        ...this.#state,
-        status: "error",
-        error: "当前资料来源没有提供结构化数据库快照",
-      });
-      return;
-    }
-    if (snapshot === this.#state.snapshot) {
-      this.#publish({ ...this.#state, status: "ready", stale: false, error: null });
-      return;
-    }
-    if (snapshot === this.#importing?.snapshot) return;
-    this.#publish({
-      ...this.#state,
-      status: "loading",
-      stale: this.#state.snapshot !== null,
-      error: null,
-    });
-    const generation = this.#generation;
-    const contextBinding = binding(source.context);
-    const promise = this.#engine
-      .replace(contextBinding, snapshot)
-      .then(() => {
-        if (
-          generation !== this.#generation ||
-          this.#importing?.snapshot !== snapshot ||
-          this.#source.getState().data?.database !== snapshot ||
-          this.#source.getState().stale
-        )
-          return;
+    } catch (error) {
+      if (generation === this.#generation)
         this.#publish({
           ...this.#state,
-          snapshot,
-          status: "ready",
-          stale: false,
-          error: null,
-          loadedAt: new Date().toISOString(),
+          status: "error",
+          error: error instanceof Error ? error.message : String(error),
+          stale: this.#state.schema !== null,
         });
-      })
-      .catch((error: unknown) => {
-        if (generation === this.#generation && this.#importing?.snapshot === snapshot)
-          this.#publish({
-            ...this.#state,
-            status: "error",
-            stale: this.#state.snapshot !== null,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        throw error;
-      })
-      .finally(() => {
-        if (this.#importing?.promise === promise) this.#importing = undefined;
+      throw error;
+    }
+  }
+  #assertBinding(generation: number, chat: string): void {
+    if (generation !== this.#generation || chat !== binding(this.#provider.getContext()))
+      throw new Error("聊天已变化，本次查询已取消");
+  }
+  #changed = (): void => {
+    const context = this.#provider.getContext();
+    const changed = binding(context) !== binding(this.#state.context) || !context.available;
+    this.#revision++;
+    this.#dirty = true;
+    if (changed) {
+      this.#generation++;
+      this.#pending = undefined;
+      const editor = this.#editors.get(binding(context)) ?? emptyEditor();
+      const restored = { ...editor, resultStale: editor.result !== null };
+      this.#editors.set(binding(context), restored);
+      this.#publish({
+        context,
+        schema: null,
+        status: context.available ? "idle" : "unavailable",
+        stale: restored.resultStale,
+        error: null,
+        loadedAt: null,
+        editor: restored,
       });
-    this.#importing = { snapshot, promise };
-    void promise.catch(() => {});
+    } else {
+      const editor = { ...this.#state.editor, resultStale: this.#state.editor.result !== null };
+      this.#editors.set(binding(context), editor);
+      this.#publish({
+        ...this.#state,
+        context,
+        stale: this.#state.schema !== null || editor.resultStale,
+        editor,
+      });
+    }
   };
   #publish(state: DatabaseState): void {
     this.#state = state;

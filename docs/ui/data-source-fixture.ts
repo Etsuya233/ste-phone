@@ -1,85 +1,111 @@
+import sqlite3InitModule from "@sqlite.org/sqlite-wasm";
 import { memorySnapshotFixture } from "../../tests/fixtures/memory-snapshot.ts";
-import { mapMemoryDatabase } from "../../src/infrastructure/ste-memory/map-database.ts";
+import type { DatabaseObject, SqlValue } from "../../src/features/database/index.ts";
 import type {
-  BackgroundProvider,
-  PhoneBackground,
-  SourceContext,
-} from "../../src/features/background/index.ts";
+  MemoryDatabaseDescription,
+  MemoryReadApi,
+} from "../../src/infrastructure/ste-memory/public-read-contract.ts";
+import { SqliteDatabase } from "./preview-sqlite.ts";
 
-/** Preview-only provider. Never connects to ST or writes real chat data. */
-export function createPreviewProvider(mode: string | null): BackgroundProvider {
-  const context: SourceContext = {
-    sourceName: "预览资料",
+/** 独立预览的 Memory capability；SQLite 和样例 records 仅进入预览 bundle。 */
+export function createPreviewMemory(mode: string | null): MemoryReadApi {
+  const fixture = memorySnapshotFixture(mode === "empty");
+  const tables = fixture.tables;
+  const fields = fixture.fields.filter(
+    (field) => field.enabled && !(mode === "unsupported" && field.key === "details"),
+  );
+  const description: MemoryDatabaseDescription = {
+    databaseKey: "preview-db",
+    space: fixture.space,
+    tables,
+    fields,
+    schemaKey: `preview-v1:${mode}`,
+    columns: Object.fromEntries(
+      tables.map((table) => [
+        table.key,
+        [
+          "$record_id",
+          "$display_text",
+          "$created_at",
+          "$updated_at",
+          ...fields.filter((field) => field.tableId === table.id).map((field) => field.key),
+        ],
+      ]),
+    ),
+  };
+  const context = {
+    revision: 1,
     chatIdentity: "preview:story",
     chatName: "放学之后 · 独立预览",
-    scopeId: "preview-space",
-    spaceName: "示例剧情",
+    spaceId: fixture.space.id,
+    spaceName: fixture.space.name,
     available: mode !== "unavailable",
     message: mode === "unavailable" ? "预览：当前未连接资料来源" : null,
   };
-  const data: PhoneBackground = {
-    sourceId: "ste-memory",
-    scopeId: "preview-space",
-    characters:
-      mode === "empty"
-        ? []
-        : [
-            {
-              id: "red",
-              name: "小红",
-              profileText:
-                "身份：高二学生、文学社成员\n性格：直率，习惯把细小的事情记在本子上。\n经历：上学期加入文学社，与小蓝一起负责校刊。\n近况：正在准备周五的朗读会，放学后留在图书馆整理稿件。",
-            },
-            {
-              id: "blue",
-              name: "小蓝",
-              profileText:
-                "身份：高二学生\n性格：安静，做事认真。\n近况：答应帮助小红校对稿件，明天带来最后一版。",
-            },
-            {
-              id: "another-red",
-              name: "小红",
-              profileText: "身份：另一班的同名同学\n近况：今天没有参与文学社活动。",
-            },
-          ],
-    chronicles:
-      mode === "empty"
-        ? []
-        : [
-            {
-              id: "event-1",
-              title: "图书馆里的约定",
-              content:
-                "开始时间：2026-10-30 16:30:00\n纪要：放学后，小红与小蓝在图书馆讨论朗读会的稿件。小蓝答应明天带来校对后的版本。\n相关人物：小红、小蓝",
-            },
-            {
-              id: "event-2",
-              title: "借出的笔记本",
-              content:
-                "纪要：小红将自己的笔记本借给小蓝，方便对照校刊中的引文。\n相关人物：小红、小蓝\n关键对白：明天记得带来，我还想补上最后一段。",
-            },
-          ],
-    items:
-      mode === "empty"
-        ? []
-        : [
-            {
-              id: "notebook",
-              name: "蓝色笔记本",
-              description:
-                "持有者：小蓝\n描述：小红用来整理引文的笔记本，封面贴着一张星星贴纸。\n近况：借给小蓝用于校对，约定明天归还。",
-            },
-          ],
-  };
+  const engine = sqlite3InitModule().then((sqlite) => new SqliteDatabase(sqlite));
+  const source = tables.map((table): DatabaseObject & { rows: SqlValue[][] } => {
+    const tableFields = fields.filter((field) => field.tableId === table.id);
+    return {
+      name: table.key,
+      kind: "table",
+      description: table.name,
+      columns: description.columns[table.key]!.map((name) => ({
+        name,
+        type: "TEXT",
+        description: name,
+      })),
+      rows: fixture.records
+        .filter((record) => record.tableId === table.id)
+        .map((record) => [
+          record.id,
+          record.displayText,
+          record.createdAt,
+          record.createdAt,
+          ...tableFields.map((field) => {
+            const value = record.payload[field.id];
+            if (value === undefined || value === null) return null;
+            if (Array.isArray(value)) return JSON.stringify(value);
+            if (typeof value === "boolean") return Number(value);
+            return value as SqlValue;
+          }),
+        ]),
+    };
+  });
   return {
+    version: 1,
     getContext: () => context,
     subscribe: () => () => {},
-    async read() {
-      if (mode === "error") throw new Error("预览：纪要表缺少 details 字段，请核对 Memory 结构");
-      return {
-        ...data,
-        database: mapMemoryDatabase(memorySnapshotFixture(mode === "empty"), data),
-      };
+    read: async () => {
+      throw new Error("预览禁止读取完整快照");
+    },
+    database: {
+      version: 1,
+      async describe() {
+        if (mode === "error") throw new Error("预览：Memory 数据库读取失败");
+        return description;
+      },
+      async registerViews({ views }) {
+        const db = await engine;
+        db.replace("preview", {
+          objects: [
+            ...source,
+            ...views.map((view) => ({
+              name: view.name,
+              kind: "view" as const,
+              description: "",
+              select: view.select,
+              columns: view.columns!.map((name) => ({
+                name,
+                type: "TEXT" as const,
+                description: name,
+              })),
+            })),
+          ],
+        });
+      },
+      async query({ sql, params, maxRows, budgetMs }) {
+        return (await engine).query("preview", sql, { params, maxRows, budgetMs });
+      },
     },
   };
 }

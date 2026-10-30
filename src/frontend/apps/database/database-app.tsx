@@ -19,14 +19,14 @@ export function DatabaseApp({
   const { editor } = state;
   const container = useRef<HTMLDivElement>(null);
   const [copy, setCopy] = useState<string | null>(null);
-  const selected = state.snapshot?.objects.find((object) => object.name === editor.selected);
-  const hasSnapshot = state.snapshot !== null;
+  const selected = state.schema?.objects.find((object) => object.name === editor.selected);
+  const hasSchema = state.schema !== null;
   const scrollKey = `${editor.tab}:${editor.tab === "objects" ? (editor.selected ?? "list") : "editor"}`;
   useEffect(() => {
-    void database.load().catch(() => {});
-  }, [database]);
+    if (state.context.available) void database.load().catch(() => {});
+  }, [database, state.context.chatIdentity, state.context.scopeId, state.context.available]);
   useLayoutEffect(() => {
-    if (!hasSnapshot) return;
+    if (!hasSchema) return;
     const content = container.current!.querySelector<HTMLDivElement>(".ios-page-content")!;
     content.scrollTop = editor.scroll[scrollKey] ?? 0;
     const chat = JSON.stringify([state.context.chatIdentity, state.context.scopeId]);
@@ -38,7 +38,7 @@ export function DatabaseApp({
     content.addEventListener("scroll", track, { passive: true });
     return () => content.removeEventListener("scroll", track);
     // editor.scroll 更新不触发页面跳转或重复恢复。
-  }, [database, hasSnapshot, scrollKey, state.context.chatIdentity, state.context.scopeId]);
+  }, [database, hasSchema, scrollKey, state.context.chatIdentity, state.context.scopeId]);
   const status = {
     idle: "待读取",
     loading: "刷新中",
@@ -70,8 +70,8 @@ export function DatabaseApp({
         }
       >
         <div className="database-heading">
-          <div className="database-eyebrow">PHONE DATABASE · SQLITE</div>
-          <h1>{state.snapshot?.name ?? state.context.spaceName ?? "当前数据库"}</h1>
+          <div className="database-eyebrow">PHONE DATABASE · MEMORY</div>
+          <h1>{state.schema?.name ?? state.context.spaceName ?? "当前数据库"}</h1>
           <p>
             {state.context.chatName ?? "尚未选择对话"} <span aria-live="polite">· {status}</span>
           </p>
@@ -94,10 +94,11 @@ export function DatabaseApp({
               {state.error}
             </p>
           ) : null}
-          {state.stale ? <p>当前数据库已过期，保留上次成功缓存；刷新成功后替换。</p> : null}
+          {state.stale ? <p>来源已有更新；现有结果已过期，重新执行可读取当前已提交资料。</p> : null}
           {state.loadedAt ? (
             <p>
-              最近导入 {new Date(state.loadedAt).toLocaleTimeString()} · 标准 schema v1 · 仅内存
+              最近检查视图 {new Date(state.loadedAt).toLocaleTimeString()} · 标准 schema v1 · Memory
+              直连
             </p>
           ) : null}
         </div>
@@ -147,10 +148,10 @@ export function DatabaseApp({
                 />
               </div>
               <GroupedList
-                title={`对象 · ${state.snapshot?.objects.length ?? 0}`}
-                description="src_ 保留源业务表，phone_ 提供标准视图与公开元数据。"
+                title={`对象 · ${state.schema?.objects.length ?? 0}`}
+                description="src_ 映射公开业务表，phone_ 提供标准视图与映射能力。"
               >
-                {state.snapshot?.objects
+                {state.schema?.objects
                   .filter((object) =>
                     `${object.name} ${object.description}`
                       .toLocaleLowerCase()
@@ -165,18 +166,18 @@ export function DatabaseApp({
                       onClick={() => database.edit({ selected: object.name })}
                     />
                   ))}
-                {!state.snapshot ? (
+                {!state.schema ? (
                   <p className="database-empty">
                     {state.status === "loading"
-                      ? "正在读取来源并建立内存数据库…"
+                      ? "正在连接 Memory 并注册查询视图…"
                       : "读取来源后查看数据库结构。"}
                   </p>
                 ) : null}
               </GroupedList>
-              {state.snapshot ? (
+              {state.schema ? (
                 <GroupedList title="持久身份">
-                  <ListCell title="来源" subtitle={state.snapshot.sourceId} />
-                  <ListCell title="范围" subtitle={state.snapshot.scopeId} />
+                  <ListCell title="来源" subtitle={state.schema.sourceId} />
+                  <ListCell title="范围" subtitle={state.schema.scopeId} />
                 </GroupedList>
               ) : null}
             </>
@@ -197,7 +198,7 @@ export function DatabaseApp({
                 <Button
                   variant="filled"
                   disabled={
-                    !state.snapshot ||
+                    !state.schema ||
                     editor.running ||
                     !state.context.available ||
                     state.status === "loading"
@@ -242,7 +243,8 @@ export function DatabaseApp({
                   </Button>
                 </div>
                 <p className="database-result-hint">
-                  结果保留自上次执行；刷新后可重新执行。横向滑动查看全部列。
+                  {editor.resultStale ? "来源已更新，此结果已过期。" : "结果保留自上次执行。"}
+                  重新执行读取当前资料，横向滑动查看全部列。
                 </p>
                 <div
                   className="database-result-scroll"

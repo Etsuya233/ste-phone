@@ -1,6 +1,12 @@
 import type { Database, Sqlite3Static } from "@sqlite.org/sqlite-wasm";
-import { identifierKey, quoteIdentifier } from "../../features/database/index.ts";
-import type { DatabaseSnapshot, QueryResult, SqlValue } from "../../features/database/index.ts";
+import { identifierKey, quoteIdentifier } from "../../src/features/database/index.ts";
+import type { DatabaseObject, QueryResult, SqlValue } from "../../src/features/database/index.ts";
+
+interface PreviewDatabase {
+  readonly objects: readonly (DatabaseObject & {
+    readonly rows?: readonly (readonly SqlValue[])[];
+  })[];
+}
 
 const dangerousFunctions = new Set([
   "load_extension",
@@ -20,7 +26,7 @@ export class SqliteDatabase {
     this.#sqlite = sqlite;
   }
 
-  replace(binding: string, snapshot: DatabaseSnapshot): void {
+  replace(binding: string, snapshot: PreviewDatabase): void {
     const db = new this.#sqlite.oo1.DB(":memory:", "c");
     try {
       const names = new Set<string>();

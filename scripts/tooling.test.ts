@@ -16,7 +16,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { test, type TestContext } from "node:test";
-import { DIST_FILES, PACKAGE_ROOT } from "./build-lib.ts";
+import { DIST_FILES, OBSOLETE_DIST_FILES, PACKAGE_ROOT } from "./build-lib.ts";
 import { linkExtension } from "./extension-link.ts";
 import { resolveExtensionTarget, syncExtension } from "./extension-target.ts";
 
@@ -70,7 +70,12 @@ test("同步只复制发布产物，识别直连并拒绝错误目标", (t) => {
   mkdirSync(dist);
   for (const file of DIST_FILES) writeFileSync(path.join(dist, file), file);
   writeFileSync(path.join(dist, "index.js.map"), "dev-only");
+  mkdirSync(target);
+  for (const file of OBSOLETE_DIST_FILES) writeFileSync(path.join(target, file), "old-managed");
+  writeFileSync(path.join(target, "user-data"), "retained");
   syncExtension(dist, target);
+  for (const file of OBSOLETE_DIST_FILES) assert.equal(existsSync(path.join(target, file)), false);
+  assert.equal(readFileSync(path.join(target, "user-data"), "utf8"), "retained");
   assert.equal(existsSync(path.join(target, "index.js.map")), false);
   for (const file of DIST_FILES) assert.equal(readFileSync(path.join(target, file), "utf8"), file);
   const link = path.join(root, "linked");
@@ -139,6 +144,11 @@ test("发布支持离线、只含产物、重复执行且保留未提交内容",
   const manifest = JSON.parse(readFileSync(path.join(worktree, "manifest.json"), "utf8"));
   const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
   assert.equal(manifest.version, pkg.version);
+  assert.ok(
+    readFileSync(path.join(worktree, "README.md"), "utf8").includes(
+      `STE Memory >= ${pkg.stePhone.minimumMemoryVersion}`,
+    ),
+  );
   release();
   assert.equal(git(["rev-parse", "HEAD"], worktree), firstRelease);
   writeFileSync(path.join(worktree, "README.md"), "user edit");

@@ -1,6 +1,6 @@
 import { copyFileSync, existsSync, lstatSync, mkdirSync, realpathSync } from "node:fs";
 import path from "node:path";
-import { DIST_FILES, PACKAGE_ROOT } from "./build-lib.ts";
+import { DIST_FILES, PACKAGE_ROOT, removeObsoleteAssets } from "./build-lib.ts";
 
 const envPath = path.join(PACKAGE_ROOT, ".env");
 if (existsSync(envPath)) process.loadEnvFile(envPath);
@@ -38,6 +38,7 @@ export function syncExtension(distDir: string, targetDir: string): void {
     if (!existsSync(path.join(dist, file))) throw new Error(`缺少构建产物：${file}`);
   }
   mkdirSync(target, { recursive: true });
+  removeObsoleteAssets(target);
   for (const file of DIST_FILES) copyFileSync(path.join(dist, file), path.join(target, file));
   console.info(`[STE Phone] 已同步至 ${target}`);
 }

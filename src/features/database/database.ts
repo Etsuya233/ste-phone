@@ -1,4 +1,6 @@
-/** 通用 SQLite 导入结构；来源适配器负责业务含义，数据库引擎只处理 SQL。 */
+import type { SourceContext } from "../background/ports/background-provider.ts";
+
+/** Phone 拥有查询结构，来源执行 SQL；这里不保存源记录。 */
 export type SqlValue = string | number | null;
 export interface DatabaseColumn {
   readonly name: string;
@@ -16,14 +18,15 @@ export interface DatabaseObject {
   readonly kind: "table" | "view";
   readonly description: string;
   readonly columns: readonly DatabaseColumn[];
-  readonly rows?: readonly (readonly SqlValue[])[];
   readonly select?: string;
 }
-export interface DatabaseSnapshot {
+export interface DatabaseSchema {
   readonly sourceId: string;
   readonly scopeId: string;
   readonly name: string;
   readonly schemaVersion: 1;
+  readonly schemaKey: string;
+  readonly databaseKey: string;
   readonly objects: readonly DatabaseObject[];
 }
 export interface QueryResult {
@@ -33,14 +36,16 @@ export interface QueryResult {
   readonly truncated: boolean;
   readonly maxRows: number;
 }
-export interface DatabaseEngine {
-  replace(binding: string, snapshot: DatabaseSnapshot): Promise<void>;
+export interface DatabaseProvider {
+  getContext(): SourceContext;
+  subscribe(listener: () => void): () => void;
+  describe(): Promise<DatabaseSchema>;
+  register(schema: DatabaseSchema): Promise<void>;
   query(
-    binding: string,
+    schema: DatabaseSchema,
     sql: string,
     params?: Readonly<Record<string, SqlValue>>,
   ): Promise<QueryResult>;
-  dispose(): void;
 }
 
 /** SQLite 标识符引用。保留来源原始 key，双引号是 key 的一部分时按 SQL 规则转义。 */

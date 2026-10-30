@@ -1,5 +1,7 @@
 # 前端开发与验收
 
+2026-10-30 发版验收：真实 ST 在 1280px、390px、320px 验证魔法棒菜单「小手机」入口可见可点，生产不再显示浮动入口；打开手机收起宿主菜单，X 与 Escape 关闭后焦点回到魔法棒按钮。桌面 Enter 操作通过，窄屏按触控设备配置验证，未修改用户聊天。
+
 运行 `pnpm preview:frontend`，打开 `http://127.0.0.1:18826/`，点击右下角“手机”按钮。服务默认监听 `0.0.0.0`，同一局域网设备使用终端输出的本机 IPv4 地址访问；`HOST` 和 `PORT` 可指定监听地址、端口。桌面与移动端默认显示完整 iPhone 6s 机身，按可用视口等比缩放，不裁掉上下边框或 Home 键。关闭控件为摄像头右侧空闲区域的 X，不额外占用机身外空间；缩放后保持 44px 实际点击区域。关闭按钮与 Escape 均应关闭窗口；关闭后可重新打开，焦点回到入口。修改代码后刷新页面。
 
 预览使用 esbuild 的监听与静态服务，产物放在 `node_modules/.cache/frontend-preview/`，不连接 ST、不读 API 配置、不写入真实对话。
@@ -10,13 +12,13 @@
 
 机身外观参考 [Apple 官方 iPhone 6s 图片](https://cdsassets.apple.com/live/7WUAS350/images/iphone/iphone-6s-colors.jpg)，按 430×886 逻辑机身、375×667 内屏重建深空灰正面，参考图不作为运行时资源加载。
 
-依次执行 `pnpm typecheck`、`pnpm lint`、`pnpm format:check`、`pnpm test` 和 `pnpm build` 验证工程，避免同时运行多个 WASM 或构建任务。`pnpm test` 以 `--test-concurrency=1` 串行检查资料缓存、数据库映射、真实 SQLite WASM 和聊天归属，并使用隔离临时仓库检查 Junction 的创建、解除和错误目标保护，以及同步和离线发布。
+依次执行 `pnpm typecheck`、`pnpm lint`、`pnpm format:check`、`pnpm test` 和 `pnpm build` 验证工程，避免同时运行多个 WASM 或构建任务。`pnpm test` 以 `--test-concurrency=1` 串行检查资料缓存、数据库映射、远端查询、标准视图 SQL 和聊天归属，并使用隔离临时仓库检查 Junction 的创建、解除和错误目标保护，以及同步和离线发布。
 
-真实 ST 接入：配置 `.env` 后运行 `pnpm build`、`pnpm st:link`，刷新 ST 页面，验证入口、窗口开关、样式隔离与窄屏布局。开发监听用 `pnpm watch`。解除直连用 `pnpm st:unlink`。具体命令与发版流程以 README 为准。
+真实 ST 接入：配置 `.env` 后运行 `pnpm build`、`pnpm st:link`，刷新 ST 页面，从输入区魔法棒菜单打开「小手机」（`#ste-phone-wand-entry`，`aria-label="打开小手机"`）。生产界面只提供这个入口，右下角浮动按钮保留在独立预览。检查菜单项沿用 ST 的图标、文字及交互样式，点击后魔法棒菜单收起、手机打开；关闭按钮和 Escape 均应把焦点返回 `#extensionsMenuButton`，再次打开菜单后可以重开手机。桌面键盘覆盖 Enter 与空格，移动端覆盖菜单触控、关闭与重开。验证 Shadow DOM 样式隔离、窄屏完整机身与 Home/关闭入口可达。开发监听用 `pnpm watch`。解除直连用 `pnpm st:unlink`。具体命令与发版流程以 README 为准。
 
 独立预览使用隔离的测试数据，避免向用户真实对话写入。独立预览通过后，ST 入口、宿主样式、聊天切换和持久化仍需在专用测试对话中验证。
 
-数据库可用 `/?database=1` 快捷进入，复用 `data-state=empty`、`error`、`unavailable` 和响应式参数。检查对象搜索、列及引用说明、便捷查询、标准世界日期、JOIN、只读拒绝、200 行截断与超时恢复，以及 Home/关闭后恢复和聊天切换后的草稿、结果、滚动位置。普通主屏使用不应加载 SQLite Worker/WASM，首次数据库请求后再加载。世界日期使用 `date(world_time)`；直接查 `src_story_state` 的源列时引用 `"current_time"`，避免 SQLite 内置时钟关键字。
+数据库可用 `/?database=1` 快捷进入，复用 `data-state=empty`、`error`、`unavailable`、`unsupported` 和响应式参数。检查对象搜索、列及引用说明、便捷查询、标准世界日期、JOIN、只读拒绝、200 行截断与超时恢复，以及 Home/关闭后恢复和聊天切换后的草稿、结果、滚动位置。生产插件通过 Memory 正式数据库 capability 查询，不加载 SQLite Worker/WASM。独立预览的 Fake Memory 仅在预览 bundle 使用 SQLite。世界日期使用 `date(world_time)`；直接查 `src_story_state` 的源列时引用 `"current_time"`，避免 SQLite 内置时钟关键字。
 
 验收报告注明实际执行的检查、结果与未验证范围。截图、日志和本地报告放在忽略目录；已跟踪文件不得引用 tmp 中的资源。
 

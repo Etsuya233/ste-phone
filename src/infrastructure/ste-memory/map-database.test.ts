@@ -1,103 +1,129 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { memorySnapshotFixture } from "../../../tests/fixtures/memory-snapshot.ts";
-import { mapMemoryBackground } from "./map-background.ts";
+import { memoryDatabaseFixture } from "../../../tests/fixtures/memory-database.ts";
 import { mapMemoryDatabase } from "./map-database.ts";
+import { memorySnapshotFixture } from "../../../tests/fixtures/memory-snapshot.ts";
 
-test("source identifier collisions are explicit, including ASCII case and reserved metadata columns", () => {
-  const snapshot = memorySnapshotFixture();
-  const background = mapMemoryBackground(snapshot);
-  assert.throws(
-    () =>
-      mapMemoryDatabase(
-        {
-          ...snapshot,
-          tables: [
-            ...snapshot.tables,
-            { ...snapshot.tables[0]!, id: "duplicate", key: "CHARACTERS" },
-          ],
-        },
-        background,
-      ),
-    /表名碰撞/,
-  );
-  assert.throws(
-    () =>
-      mapMemoryDatabase(
-        {
-          ...snapshot,
-          fields: [...snapshot.fields, { ...snapshot.fields[0]!, id: "duplicate", key: "NAME" }],
-        },
-        background,
-      ),
-    /列名碰撞/,
-  );
-  assert.throws(
-    () =>
-      mapMemoryDatabase(
-        {
-          ...snapshot,
-          fields: [
-            ...snapshot.fields,
-            { ...snapshot.fields[0]!, id: "reserved", key: "_PHONE_record_id" },
-          ],
-        },
-        background,
-      ),
-    /保留前缀/,
-  );
-  const quoted = mapMemoryDatabase(
-    {
-      ...snapshot,
-      tables: snapshot.tables.map((table) =>
-        table.key === "custom_notes" ? { ...table, key: 'custom "notes"' } : table,
-      ),
-    },
-    background,
-  );
-  assert.ok(quoted.objects.some((object) => object.name === 'src_custom "notes"'));
+test("generated views execute directly on source tables, with current references, raw JSON and world date", async () => {
+  const f = memoryDatabaseFixture();
+  try {
+    const schema = mapMemoryDatabase(f.description);
+    assert.equal(
+      schema.objects.every((object) => object.kind === "view" && !("rows" in object)),
+      true,
+    );
+    await f.api.database!.registerViews({
+      chatIdentity: "chat-a",
+      spaceId: schema.scopeId,
+      schemaKey: schema.schemaKey,
+      namespace: "ste_phone",
+      views: schema.objects.map((object) => ({ name: object.name, select: object.select! })),
+    });
+    assert.equal(
+      f.db.prepare("SELECT date(world_time) AS day FROM phone_world_state").get()!.day,
+      "2026-10-30",
+    );
+    assert.equal(
+      f.db.prepare("SELECT count(*) AS count FROM phone_chronicle_characters").get()!.count,
+      4,
+    );
+    assert.equal(f.db.prepare("SELECT tags FROM src_custom_notes").get()!.tags, '["线索","校园"]');
+    assert.match(
+      String(f.db.prepare("SELECT profile_text FROM phone_items").get()!.profile_text),
+      /owner：小蓝/,
+    );
+    f.db.exec("UPDATE characters SET name='蓝同学' WHERE \"$record_id\"='blue'");
+    assert.match(
+      String(f.db.prepare("SELECT profile_text FROM phone_items").get()!.profile_text),
+      /owner：蓝同学/,
+    );
+    assert.equal(
+      schema.objects
+        .flatMap((object) => object.columns)
+        .some((column) => ["_phone_payload_json", "_phone_record_json"].includes(column.name)),
+      false,
+    );
+  } finally {
+    f.dispose();
+  }
 });
 
-test("optional standard fields require compatible types and reference targets, while complete source columns survive", () => {
-  const snapshot = memorySnapshotFixture();
-  const modified = {
-    ...snapshot,
-    fields: snapshot.fields.map((field) =>
-      field.key === "owner"
-        ? { ...field, referenceTableId: "table-items" }
-        : field.key === "related_characters" || field.key === "start_time"
-          ? { ...field, type: "short_text" as const }
-          : field,
-    ),
-    records: snapshot.records.map((record) =>
-      record.id === "notebook"
-        ? { ...record, payload: { ...record.payload, "items.owner": "notebook" } }
-        : record,
-    ),
-  };
-  const model = mapMemoryDatabase(modified, {
-    sourceId: "ste-memory",
-    scopeId: snapshot.space.id,
-    characters: [],
-    chronicles: [],
-    items: [],
-    backgroundError: "具体展示映射错误",
-  });
-  for (const [view, column] of [
-    ["phone_items", "owner_id"],
-    ["phone_chronicles", "related_character_ids"],
-    ["phone_chronicles", "start_time"],
-  ]) {
-    const object = model.objects.find((object) => object.name === view)!;
-    assert.match(object.columns.find((item) => item.name === column)!.description, /返回 NULL/);
-    assert.match(object.select!, new RegExp(`CAST\\(NULL AS TEXT\\) AS "${column}"`));
+test("unsupported mappings retain raw source visibility and explain missing fields without empty placeholder views", () => {
+  const f = memoryDatabaseFixture();
+  try {
+    const schema = mapMemoryDatabase({
+      ...f.description,
+      fields: f.description.fields.filter((field) => field.key !== "details"),
+    });
+    assert.equal(
+      schema.objects.some((object) => object.name === "phone_chronicles"),
+      false,
+    );
+    assert.equal(
+      schema.objects.some((object) => object.name === "src_chronicle"),
+      true,
+    );
+    assert.match(
+      schema.objects.find((object) => object.name === "phone_capabilities")!.select!,
+      /chronicle.details/,
+    );
+  } finally {
+    f.dispose();
   }
-  assert.equal(
-    model.objects
-      .find((object) => object.name === "src_chronicle")!
-      .columns.find((column) => column.name === "start_time")!.sourceFieldId,
-    "chronicle.start_time",
-  );
-  const relation = model.objects.find((object) => object.name === "phone_chronicle_characters")!;
-  assert.match(relation.description, /unsupported/);
+});
+
+test("raw alias collisions fail at schema construction", () => {
+  const f = memoryDatabaseFixture();
+  try {
+    assert.throws(
+      () =>
+        mapMemoryDatabase({
+          ...f.description,
+          tables: [
+            ...f.description.tables,
+            { ...f.description.tables[0]!, id: "collision", key: "src_characters" },
+          ],
+          columns: {
+            ...f.description.columns,
+            src_characters: ["$record_id", "$display_text", "$created_at", "$updated_at"],
+          },
+        }),
+      /碰撞/,
+    );
+  } finally {
+    f.dispose();
+  }
+});
+
+test("raw references to disabled target tables remain queryable with explicit metadata", async () => {
+  const snapshot = memorySnapshotFixture();
+  const f = memoryDatabaseFixture({
+    ...snapshot,
+    tables: snapshot.tables.map((table) =>
+      table.key === "characters" ? { ...table, enabled: false } : table,
+    ),
+  });
+  try {
+    const schema = mapMemoryDatabase(f.description);
+    const owner = schema.objects
+      .find((object) => object.name === "src_items")!
+      .columns.find((column) => column.name === "owner")!;
+    assert.match(owner.description, /目标表未公开/);
+    assert.equal(owner.reference, undefined);
+    assert.equal(
+      schema.objects.some((object) => object.name === "phone_items"),
+      false,
+    );
+    await f.api.database!.registerViews({
+      chatIdentity: "chat-a",
+      spaceId: schema.scopeId,
+      schemaKey: schema.schemaKey,
+      namespace: "ste_phone",
+      views: schema.objects.map((object) => ({ name: object.name, select: object.select! })),
+    });
+    assert.equal(f.db.prepare("SELECT owner FROM src_items").get()!.owner, "blue");
+    assert.throws(() => f.db.prepare("SELECT * FROM characters"), /no such table/);
+  } finally {
+    f.dispose();
+  }
 });

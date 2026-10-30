@@ -47,11 +47,6 @@ export class BackgroundDataSource implements PhoneDataSource {
     };
     this.#unsubscribe = provider.subscribe(() => {
       this.#invalidateCache();
-      // 没有 App 查看时只标记过期，等下一次 load 再读取。
-      if (this.#state.context.available && this.#listeners.size > 0) {
-        // load 已把错误发布到共享状态，事件回调只消费拒绝，避免未处理的 Promise。
-        void this.load().catch(() => {});
-      }
     });
   }
 

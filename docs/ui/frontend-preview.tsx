@@ -1,13 +1,16 @@
 import { mountPhone } from "../../src/frontend/host/mount-phone.tsx";
 import { BackgroundDataSource } from "../../src/features/background/index.ts";
-import { createPreviewProvider } from "./data-source-fixture.ts";
+import { createPreviewMemory } from "./data-source-fixture.ts";
 
 import { PhoneDatabaseService } from "../../src/features/database/index.ts";
-import { DatabaseWorkerClient } from "../../src/infrastructure/sqlite/worker-client.ts";
+import { MemoryDatabaseProvider } from "../../src/infrastructure/ste-memory/memory-database-provider.ts";
+import { MemoryBackgroundProvider } from "../../src/infrastructure/ste-memory/memory-background-provider.ts";
 
 const options = new URLSearchParams(window.location.search);
-const dataSource = new BackgroundDataSource(createPreviewProvider(options.get("data-state")));
-const database = new PhoneDatabaseService(dataSource, new DatabaseWorkerClient());
+globalThis.STE_MEMORY_API = createPreviewMemory(options.get("data-state"));
+const provider = new MemoryDatabaseProvider();
+const database = new PhoneDatabaseService(provider);
+const dataSource = new BackgroundDataSource(new MemoryBackgroundProvider(database, provider));
 mountPhone({
   dataSource,
   database,

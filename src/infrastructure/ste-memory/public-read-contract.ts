@@ -1,3 +1,5 @@
+import type { QueryResult } from "../../features/database/index.ts";
+
 /**
  * STE Memory 公共读取 v1 的最小结构契约，只在该适配器内使用。
  * 两个扩展独立构建，因此不导入相邻仓库源码，也不把来源类型泄漏给手机 App。
@@ -66,7 +68,47 @@ export interface MemoryContext {
 
 export interface MemoryReadApi {
   readonly version: number;
+  readonly database?: MemoryDatabaseApi;
   getContext(): MemoryContext;
   subscribe(listener: () => void): () => void;
   read(): Promise<{ readonly context: MemoryContext; readonly snapshot: MemorySnapshot }>;
+}
+
+/** 数据库 capability v1；describe 不含 records，schemaKey 只随结构语义变化。 */
+export interface MemoryDatabaseDescription {
+  readonly databaseKey: string;
+  readonly space: MemorySnapshot["space"];
+  readonly tables: readonly MemoryTable[];
+  readonly fields: readonly MemoryField[];
+  readonly schemaKey: string;
+  readonly columns: Readonly<Record<string, readonly string[]>>;
+}
+export interface MemoryDatabaseBinding {
+  readonly chatIdentity: string;
+  readonly spaceId: string;
+}
+export interface MemoryDatabaseScope extends MemoryDatabaseBinding {
+  readonly schemaKey: string;
+  readonly namespace: string;
+}
+export interface MemoryDatabaseApi {
+  readonly version: 1;
+  describe(binding: MemoryDatabaseBinding): Promise<MemoryDatabaseDescription>;
+  registerViews(
+    request: MemoryDatabaseScope & {
+      readonly views: readonly {
+        readonly name: string;
+        readonly select: string;
+        readonly columns?: readonly string[];
+      }[];
+    },
+  ): Promise<void>;
+  query(
+    request: MemoryDatabaseScope & {
+      readonly sql: string;
+      readonly params?: Readonly<Record<string, string | number | null>>;
+      readonly maxRows?: number;
+      readonly budgetMs?: number;
+    },
+  ): Promise<QueryResult>;
 }

@@ -19,8 +19,8 @@ const statusNames = {
 export function DataSourceApp({ source, onHome }: { source: PhoneDataSource; onHome: () => void }) {
   const state = useSyncExternalStore(source.subscribe, source.getState);
   useEffect(() => {
-    if (source.getState().context.available) void source.load().catch(() => {});
-  }, [source]);
+    if (state.context.available) void source.load().catch(() => {});
+  }, [source, state.context.chatIdentity, state.context.scopeId, state.context.available]);
   return (
     <DataBrowser
       key={JSON.stringify([state.context.chatIdentity, state.context.scopeId])}

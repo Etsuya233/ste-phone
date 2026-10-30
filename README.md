@@ -1,6 +1,19 @@
 # STE-PHONE
 
-面向 SillyTavern 的小手机插件。使用 React、TypeScript、普通 CSS 和 esbuild，提供 iPhone 6s 风格外壳、主屏幕、秒表、Foundation 组件、只读资料应用和 Fake DBeaver 数据库应用。公共数据源连接 STE Memory，将公开快照导入 Phone 自有的内存 SQLite，供当前人物、纪要、物品和世界状态查询。
+面向 SillyTavern 的小手机插件。使用 React、TypeScript、普通 CSS 和 esbuild，提供 iPhone 6s 风格外壳、主屏幕、秒表、Foundation 组件、只读资料应用和 Fake DBeaver 数据库应用。公共数据源连接 STE Memory，将 Phone 定义的标准视图注册到 Memory 已提交数据库，供当前人物、纪要、物品和世界状态查询。
+
+## 安装与运行要求
+
+当前版本：**0.0.1**。资料与数据库功能需要 **[STE Memory](https://github.com/Etsuya233/ste-memory) 0.2.4 或更新版本**，该版本提供 `STE_MEMORY_API.database v1`。请先安装或升级 Memory，再刷新 ST。未连接 Memory 时，手机外壳、秒表及组件应用仍可使用。
+
+在 SillyTavern「扩展 → 安装扩展」中填写：
+
+| 插件               | 仓库 URL                                  | Branch or tag name           |
+| ------------------ | ----------------------------------------- | ---------------------------- |
+| STE Memory ≥ 0.2.4 | `https://github.com/Etsuya233/ste-memory` | `release/sillytavern-plugin` |
+| STE Phone 0.0.1    | `https://github.com/Etsuya233/ste-phone`  | `release/sillytavern-plugin` |
+
+安装后刷新页面，从聊天输入区的**魔法棒菜单 → 小手机**打开。更新使用 ST 扩展面板的 Update；升级 Phone 前请核对本节所需的 Memory 最低版本。`main` 分支用于源码开发，ST 安装请选择上述构建产物分支。
 
 ## 开始
 
@@ -20,21 +33,21 @@ pnpm preview:frontend
 
 ## 开发命令
 
-主屏「资料」可以查看 STE Memory 的当前背景资料、搜索和复制正文。需要同时安装支持 `STE_MEMORY_API v1` 的 Memory 构建，展示映射支持「剧情记忆」预设；结构不符会明确提示。主屏「数据库」（Fake DBeaver）提供对象搜索、列与关联说明、只读 SQL 和结果复制，保留 `src_*` 源表及 `phone_*` 标准视图。标准世界时间用 `SELECT date(world_time) FROM phone_world_state;` 查询。公共缓存跨 App 保留，刷新 ST 后重读，不写回 Memory；SQL 草稿、结果、搜索和滚动位置按聊天及资料范围保留在内存。独立预览使用示例数据，可用 `/?data-source=1` 或 `/?database=1` 快捷进入，加入 `data-state=empty`、`error`、`unavailable` 检查状态。接口、映射和缓存说明见 [公共数据源](docs/data-source.md)。
+主屏「资料」可以查看 STE Memory 的当前背景资料、搜索和复制正文。需要同时安装支持 `STE_MEMORY_API v1` 和 `database v1` capability 的 Memory 构建，展示映射支持「剧情记忆」预设；结构不符会明确提示。主屏「数据库」（Fake DBeaver）提供对象搜索、列与关联说明、只读 SQL 和结果复制，提供 `src_*` 源别名及 `phone_*` 标准视图。标准世界时间用 `SELECT date(world_time) FROM phone_world_state;` 查询。公共缓存跨 App 保留，刷新 ST 后重建视图连接，不写回 Memory；SQL 草稿、结果、搜索和滚动位置按聊天及资料范围保留在内存。独立预览使用示例数据，可用 `/?data-source=1` 或 `/?database=1` 快捷进入，加入 `data-state=empty`、`error`、`unavailable`、`unsupported` 检查状态。接口、映射和缓存说明见 [公共数据源](docs/data-source.md)。
 
 ```sh
-pnpm build             # JS、CSS、manifest、database-worker.js、sqlite3.wasm
+pnpm build             # JS、CSS、manifest；清理旧 Worker/WASM
 pnpm watch             # 增量构建；配置 .env 后自动同步到 ST
 pnpm preview:frontend  # 独立预览，共用生产组件与 CSS
 pnpm typecheck
 pnpm lint
 pnpm format:check
-pnpm test              # 串行验证工程接入、资料缓存、映射及真实 SQLite WASM
+pnpm test              # 串行验证工程接入、资料缓存、远端查询与标准视图 SQL
 ```
 
 生产入口为 `src/frontend/index.ts`，`host/mount-phone.tsx` 挂载 React 与 Shadow DOM，`phone-app.tsx` 管理窗口开关。`device/` 放机身与会话，`system/` 放状态栏与转场，`foundation/` 放基础视觉组件，`apps/home/`、`apps/stopwatch/`、`apps/foundation/` 分别放主屏、秒表和组件应用，`theme.css` 汇总 CSS 与主题变量。React 随插件打包。字体优先使用 Apple 平台字体，Inter 西文字体通过 Google Fonts 加载，不进入产物；网络不可用时继续使用本机无衬线字体。构建产物的 manifest 版本与运行时版本统一读取 `package.json`。
 
-公共背景资料位于 `src/features/background/`，包含资料类型、来源读取约定与缓存流程；数据库契约和会话服务位于 `src/features/database/`，SQLite Worker 位于 `src/infrastructure/sqlite/`，Memory 连接、协议和字段转换位于 `src/infrastructure/ste-memory/`。入口组装具体实现，App 共用来源缓存。代码位置与阅读顺序见 [公共数据源](docs/data-source.md)。
+公共背景资料位于 `src/features/background/`，包含资料类型、来源读取约定与缓存流程；数据库契约和会话服务位于 `src/features/database/`，Memory 数据库连接、协议和视图定义位于 `src/infrastructure/ste-memory/`。入口组装具体实现，App 共用来源缓存。代码位置与阅读顺序见 [公共数据源](docs/data-source.md)。
 
 ## ST 安装与开发直连
 
@@ -59,7 +72,7 @@ pnpm st:unlink         # 仅解除当前 dist 对应的链接，保留 dist 内�
 也可以使用拷贝部署：
 
 ```sh
-pnpm deploy:st         # 生产构建，再拷贝五个发布文件（含 Worker 与 WASM）
+pnpm deploy:st         # 生产构建，再拷贝三个发布文件并清理旧 Worker/WASM
 pnpm sync              # 单独同步已有构建产物
 ```
 
@@ -79,7 +92,7 @@ pnpm release:st --push    # 生成并推送 origin 的发布分支
 
 发版 worktree 固定在主仓库 `.worktrees/release/sillytavern-plugin/`。命令拒绝未提交的源码、未提交的发布内容，以及发布分支中的非产物文件；推送使用普通 Git push，不强制覆盖远端历史。重复运行相同版本和源提交不会新增提交。
 
-新仓库尚未配置远程地址。需要远程发布时先为本仓库配置 `origin`；用户在 SillyTavern 的扩展安装界面填写该仓库 URL，分支填写 `release/sillytavern-plugin`。后续通过扩展面板的 Update 更新。
+公开仓库为 [Etsuya233/ste-phone](https://github.com/Etsuya233/ste-phone)，ST 安装分支为 `release/sillytavern-plugin`。发布分支 README 同步注明最低 Memory 版本，后续通过扩展面板的 Update 更新。
 
 ## 工作区
 

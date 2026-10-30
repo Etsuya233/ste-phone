@@ -84,7 +84,7 @@ test("late reads cannot cross chats, including chats sharing one memory space", 
   f.source.dispose();
 });
 
-test("invalidation during a same-chat read rejects stale output and reloads for observers", async () => {
+test("invalidation during a same-chat read rejects stale output and waits for the next read", async () => {
   const f = fixture();
   const unsubscribe = f.source.subscribe(() => {});
   const old = f.source.load();
@@ -93,9 +93,10 @@ test("invalidation during a same-chat read rejects stale output and reloads for 
   f.pending[0]!.resolve(data());
   await rejected;
   assert.equal(f.source.getState().data, null);
-  assert.equal(f.source.getState().status, "loading");
+  assert.equal(f.source.getState().status, "idle");
+  const latest = f.source.load();
   f.pending[1]!.resolve(data("space", "更新人物"));
-  await f.source.load();
+  await latest;
   assert.equal(f.source.getState().data!.characters[0]!.name, "更新人物");
   unsubscribe();
   f.source.dispose();

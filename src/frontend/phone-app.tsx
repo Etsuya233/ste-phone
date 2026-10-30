@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
 import { PhoneDevice } from "./device/phone-device.tsx";
+import { StEntry } from "./host/st-entry.tsx";
+import type { StMenuEntry } from "./host/st-entry.tsx";
 import type { PhoneDataSource } from "../features/background/index.ts";
 
 import type { PhoneDatabaseService } from "../features/database/index.ts";
@@ -15,12 +17,14 @@ export function PhoneApp({
   responsive = false,
   draggable = false,
   initialApp = "home",
+  menuEntry,
 }: {
   responsive?: boolean;
   draggable?: boolean;
   initialApp?: "home" | "foundation" | "data-source" | "database";
   dataSource: PhoneDataSource;
   database: PhoneDatabaseService;
+  menuEntry?: StMenuEntry;
 }) {
   const panel = useRef<HTMLDialogElement>(null);
   const launcher = useRef<HTMLButtonElement>(null);
@@ -95,21 +99,29 @@ export function PhoneApp({
       ),
     });
   };
+  const openPhone = () => {
+    setPosition({ x: 0, y: 0 });
+    setOpen(true);
+    panel.current!.showModal();
+  };
   return (
     <>
-      <button
-        ref={launcher}
-        className="phone-launcher"
-        aria-label="打开小手机"
-        aria-controls="ste-phone-panel"
-        onClick={() => {
-          setPosition({ x: 0, y: 0 });
-          setOpen(true);
-          panel.current!.showModal();
-        }}
-      >
-        手机
-      </button>
+      {menuEntry ? (
+        <StEntry {...menuEntry} open={open} onOpen={openPhone} />
+      ) : (
+        <button
+          ref={launcher}
+          type="button"
+          className="phone-launcher"
+          aria-label="打开小手机"
+          aria-controls="ste-phone-panel"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          onClick={openPhone}
+        >
+          手机
+        </button>
+      )}
       <dialog
         ref={panel}
         id="ste-phone-panel"
@@ -128,7 +140,8 @@ export function PhoneApp({
           drag.current = null;
           setOpen(false);
           setPosition({ x: 0, y: 0 });
-          launcher.current!.focus();
+          if (menuEntry) menuEntry.button.focus();
+          else launcher.current!.focus();
         }}
       >
         {open ? (
