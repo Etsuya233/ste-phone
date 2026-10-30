@@ -1,0 +1,3 @@
+# 单包仓库，允许 esbuild 安装平台二进制。
+allowBuilds:
+  esbuild: true

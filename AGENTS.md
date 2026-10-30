@@ -23,7 +23,7 @@
 
 ## 开发详情
 
-本项目开发 SillyTavern 小手机插件。当前工作区仅有约定，功能和技术栈待确定。
+本项目开发 SillyTavern 小手机插件，使用 React、TypeScript、普通 CSS 和 esbuild。开发、部署与发版命令见 README.md。
 修改前端页面、公共组件、工作区状态、ST 接线或样式时，先阅读 [前端开发规范](docs/ui/frontend-development.md)。预览与验收约定见 [前端开发与验收](docs/ui/frontend-preview.md)。
 
 ## Worktree

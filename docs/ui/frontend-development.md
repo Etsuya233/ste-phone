@@ -1,6 +1,10 @@
 # 前端开发规范
 
-本工作区尚无前端实现，技术栈、源码入口和组件目录在工程建立后补充。以下约定沿用原工作区的通用要求。
+使用 React、TypeScript、普通 CSS 和 esbuild。生产入口为 `src/frontend/index.ts`，挂载位于 `src/frontend/host/mount-phone.tsx`，当前窗口在 `src/frontend/phone-app.tsx`，样式在 `src/frontend/theme.css`。不引入 Tailwind 与组件库。
+
+插件在独立 Shadow DOM 内挂载，样式通过 bundle 同目录的 `style.css` 加载。manifest 也声明该样式，所有选择器必须以 `:host` 限定，确保 ST 在全局加载同一文件时不会影响宿主。手机弹层使用原生 dialog，内部内容位于同一 Shadow DOM。新增浮层也保持这条边界。
+
+独立预览入口为 `docs/ui/frontend-preview.tsx`，与生产共用挂载、React 组件和样式，禁止在生产中引用预览或 tmp 资源。
 
 开发前明确状态属于全局设置、ST 当前对话或手机内部会话，以及读取、写入和离开页面的行为。已有公共组件与业务能力优先复用，ST 接线与页面展示保持清晰边界。
 

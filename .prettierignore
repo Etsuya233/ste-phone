@@ -1,0 +1,6 @@
+node_modules/
+dist/
+tmp/
+.worktrees/
+.scratch/
+pnpm-lock.yaml
