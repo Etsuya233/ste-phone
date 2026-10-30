@@ -1,7 +1,8 @@
 import { createRoot } from "react-dom/client";
+import type { ComponentProps } from "react";
 import { PhoneApp } from "../phone-app.tsx";
 
-export function mountPhone(): void {
+export function mountPhone(options: ComponentProps<typeof PhoneApp> = {}): void {
   if (document.getElementById("ste-phone-host")) {
     throw new Error("STE Phone 已挂载，请刷新页面加载新版本");
   }
@@ -15,5 +16,5 @@ export function mountPhone(): void {
   stylesheet.href = new URL("./style.css", import.meta.url).href;
   const container = document.createElement("div");
   shadow.append(stylesheet, container);
-  createRoot(container).render(<PhoneApp />);
+  createRoot(container).render(<PhoneApp {...options} />);
 }

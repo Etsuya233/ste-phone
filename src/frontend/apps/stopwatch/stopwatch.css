@@ -1,0 +1,19 @@
+:host .stopwatch-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 245px;
+  padding: 60px 12px 45px;
+}
+:host .stopwatch-controls {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 28px 32px;
+}
+@media (max-height: 560px) {
+  :host .stopwatch-face {
+    min-height: 175px;
+    padding-top: 35px;
+    padding-bottom: 30px;
+  }
+}

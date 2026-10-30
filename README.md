@@ -1,6 +1,6 @@
 # STE-PHONE
 
-面向 SillyTavern 的小手机插件。当前已接入 React、TypeScript、普通 CSS 和 esbuild，提供可打开、关闭的空手机窗口，具体 App 与剧情联动待开发。
+面向 SillyTavern 的小手机插件。使用 React、TypeScript、普通 CSS 和 esbuild，提供 iPhone 6s 风格外壳、主屏幕与秒表；关闭窗口或退出秒表后清空本次计时，剧情联动待开发。
 
 ## 开始
 
@@ -12,7 +12,9 @@ pnpm install --frozen-lockfile
 pnpm preview:frontend
 ```
 
-预览默认地址为 `http://127.0.0.1:18826/`，修改代码后刷新页面。可通过环境变量 `PORT` 改端口。
+预览默认监听 `0.0.0.0:18826`，本机打开 `http://127.0.0.1:18826/`；同一局域网的设备使用终端输出的本机 IPv4 地址访问，例如 `http://192.168.1.10:18826/`。修改代码后刷新页面。可通过环境变量 `PORT` 改端口，`HOST` 改监听地址；只需本机访问时设置 `HOST=127.0.0.1`。
+
+手机默认保持完整 iPhone 6s 机身比例，桌面和移动端均等比缩放至可用视口。`PhoneApp` 保留可选的全屏响应式模式和拖拽能力，默认关闭，也不显示操作柄。开发预览可通过 `?responsive=1` 开启窄屏全屏模式、`?draggable=1` 开启顶部机身拖拽，两项可组合；生产入口不读取这些参数。
 
 ## 开发命令
 
@@ -26,7 +28,7 @@ pnpm format:check
 pnpm test              # Junction、同步与本地发版集成验证
 ```
 
-生产入口为 `src/frontend/index.ts`，`host/mount-phone.tsx` 挂载 React 与 Shadow DOM，`phone-app.tsx` 提供空手机窗口，`theme.css` 管理普通 CSS。React 随插件打包，无 CDN 依赖。构建产物的 manifest 版本与运行时版本统一读取 `package.json`。
+生产入口为 `src/frontend/index.ts`，`host/mount-phone.tsx` 挂载 React 与 Shadow DOM，`phone-app.tsx` 管理窗口开关。`device/` 放机身与会话，`system/` 放状态栏与转场，`foundation/` 放基础视觉组件，`apps/home/` 与 `apps/stopwatch/` 放主屏和秒表，`theme.css` 汇总 CSS 与主题变量。React 随插件打包，无 CDN 依赖。构建产物的 manifest 版本与运行时版本统一读取 `package.json`。
 
 ## ST 安装与开发直连
 

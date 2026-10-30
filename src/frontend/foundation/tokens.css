@@ -1,0 +1,78 @@
+:host {
+  all: initial;
+  color-scheme: light;
+  --ios-font: "Helvetica Neue", Helvetica, Arial, "PingFang SC", sans-serif;
+  --ios-ink: #1c1c1e;
+  --ios-blue: #007aff;
+  --ios-surface: #fafafa;
+  --ios-bar: #f9f9f9d9;
+  --ios-footer-surface: #ffffff38;
+  --ios-line: #c8c7cc;
+  --ios-green: #4cd964;
+  --ios-red: #ff3b30;
+  --ios-start-ink: #248a3d;
+  --ios-start-fill: #e6f7eb;
+  --ios-stop-fill: #fff0ee;
+  --ios-muted-ink: #666;
+  --ios-muted-fill: #f2f2f2;
+  --ios-caption-size: 12px;
+  --ios-body-size: 17px;
+  --ios-display-size: clamp(48px, 17.5cqw, 68px);
+  --ios-wallpaper-ink: #fff;
+  --ios-wallpaper:
+    radial-gradient(ellipse at 75% 20%, #3898b6 0, transparent 48%),
+    radial-gradient(ellipse at 20% 65%, #176b83 0, transparent 50%),
+    linear-gradient(160deg, #072b58, #0c4668 50%, #07253e);
+  --ios-wallpaper-text-shadow: 0 1px 3px #0008;
+  --ios-app-icon-surface: linear-gradient(#323337, #101113);
+  --ios-app-icon-ink: #fff;
+  --ios-app-icon-shadow: 0 1px 2px #0003;
+  --ios-app-icon-radius: 13px;
+  --ios-page-dot-size: 6px;
+  --stopwatch-icon-accent: #ff9500;
+  --device-width: 430px;
+  --device-height: 886px;
+  --device-bezel-height: 109.5px;
+  --screen-height: 667px;
+  --device-inset: 27.5px;
+  --control-size: 44px;
+  --app-icon-size: 60px;
+  --round-control-size: 76px;
+  --status-height: 20px;
+  --nav-height: 44px;
+  --footer-height: 112px;
+  --safe-bottom: 0px;
+  font: 17px/1.4 var(--ios-font);
+  color: var(--ios-ink);
+}
+:host *,
+:host *::before,
+:host *::after {
+  box-sizing: border-box;
+}
+:host button {
+  font: inherit;
+  cursor: pointer;
+  color: inherit;
+}
+:host button:disabled {
+  cursor: default;
+}
+:host button:focus-visible {
+  outline: 3px solid var(--ios-blue);
+  outline-offset: 3px;
+}
+:host .phone-launcher {
+  position: fixed;
+  z-index: 2000;
+  right: 20px;
+  bottom: 24px;
+  min-width: 56px;
+  min-height: 56px;
+  padding: 12px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ios-blue);
+  color: white;
+  box-shadow: 0 4px 18px #0003;
+}

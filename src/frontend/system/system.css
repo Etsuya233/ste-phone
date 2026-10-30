@@ -1,0 +1,117 @@
+:host .system-workspace,
+:host .home-layer,
+:host .app-layer {
+  position: absolute;
+  inset: 0;
+}
+:host .home-layer {
+  transition:
+    transform 300ms ease,
+    opacity 300ms ease;
+}
+:host .home-layer--covered {
+  transform: scale(1.08);
+  opacity: 0;
+}
+:host .app-layer {
+  z-index: 1;
+  transform-origin: var(--app-origin);
+}
+:host .app-layer--entering {
+  animation: ste-phone-app-open 300ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+:host .app-layer--leaving {
+  animation: ste-phone-app-open 300ms cubic-bezier(0.4, 0, 0.7, 0.3) reverse both;
+}
+@keyframes ste-phone-app-open {
+  from {
+    transform: scale(0.08);
+    opacity: 0;
+    border-radius: 80px;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+    border-radius: 0;
+  }
+}
+:host .status-bar {
+  position: absolute;
+  z-index: 10;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--status-height);
+  padding: 0 7px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--ios-ink);
+  font-size: 12px;
+  line-height: 1;
+  pointer-events: none;
+}
+:host .status-bar--light {
+  color: white;
+}
+:host .status-bar time {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+:host .status-network {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+:host .status-signal {
+  display: flex;
+  gap: 2px;
+}
+:host .status-signal i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+:host .status-wifi {
+  width: 16px;
+  height: 14px;
+  fill: currentColor;
+}
+:host .status-wifi path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+:host .status-battery {
+  position: relative;
+  width: 24px;
+  height: 10px;
+  padding: 1px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  margin-right: 2px;
+}
+:host .status-battery::after {
+  content: "";
+  position: absolute;
+  width: 2px;
+  height: 4px;
+  right: -3px;
+  top: 2px;
+  background: currentColor;
+  border-radius: 0 1px 1px 0;
+}
+:host .status-battery span {
+  display: block;
+  height: 100%;
+  background: currentColor;
+}
+@media (prefers-reduced-motion: reduce) {
+  :host .home-layer {
+    transition: none;
+  }
+}

@@ -1,0 +1,39 @@
+:host .home-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px 16px;
+  padding: 22px;
+  min-height: 100%;
+}
+:host .home-page-indicator {
+  position: absolute;
+  bottom: calc(var(--page-bottom) + 17px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+}
+:host .home-dock {
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  padding: 8px 16px 6px;
+}
+:host .home-app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 0;
+}
+:host .stopwatch-icon svg {
+  width: 54px;
+  height: 54px;
+  stroke-width: 1.8;
+}
+:host .stopwatch-pin {
+  fill: var(--stopwatch-icon-accent);
+  stroke: var(--stopwatch-icon-accent);
+}
