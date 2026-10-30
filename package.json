@@ -20,9 +20,10 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test scripts/*.test.ts src/features/background/*.test.ts src/infrastructure/ste-memory/*.test.ts"
+    "test": "node --test --test-concurrency=1 scripts/*.test.ts src/features/background/*.test.ts src/infrastructure/ste-memory/*.test.ts src/infrastructure/sqlite/*.test.ts"
   },
   "dependencies": {
+    "@sqlite.org/sqlite-wasm": "3.54.1-build1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

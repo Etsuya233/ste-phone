@@ -10,11 +10,13 @@
 
 机身外观参考 [Apple 官方 iPhone 6s 图片](https://cdsassets.apple.com/live/7WUAS350/images/iphone/iphone-6s-colors.jpg)，按 430×886 逻辑机身、375×667 内屏重建深空灰正面，参考图不作为运行时资源加载。
 
-执行 `pnpm typecheck`、`pnpm lint`、`pnpm format:check`、`pnpm test` 和 `pnpm build` 验证工程。`pnpm test` 使用隔离临时仓库检查 Junction 的创建、解除和错误目标保护，以及同步和离线发布。
+依次执行 `pnpm typecheck`、`pnpm lint`、`pnpm format:check`、`pnpm test` 和 `pnpm build` 验证工程，避免同时运行多个 WASM 或构建任务。`pnpm test` 以 `--test-concurrency=1` 串行检查资料缓存、数据库映射、真实 SQLite WASM 和聊天归属，并使用隔离临时仓库检查 Junction 的创建、解除和错误目标保护，以及同步和离线发布。
 
 真实 ST 接入：配置 `.env` 后运行 `pnpm build`、`pnpm st:link`，刷新 ST 页面，验证入口、窗口开关、样式隔离与窄屏布局。开发监听用 `pnpm watch`。解除直连用 `pnpm st:unlink`。具体命令与发版流程以 README 为准。
 
 独立预览使用隔离的测试数据，避免向用户真实对话写入。独立预览通过后，ST 入口、宿主样式、聊天切换和持久化仍需在专用测试对话中验证。
+
+数据库可用 `/?database=1` 快捷进入，复用 `data-state=empty`、`error`、`unavailable` 和响应式参数。检查对象搜索、列及引用说明、便捷查询、标准世界日期、JOIN、只读拒绝、200 行截断与超时恢复，以及 Home/关闭后恢复和聊天切换后的草稿、结果、滚动位置。普通主屏使用不应加载 SQLite Worker/WASM，首次数据库请求后再加载。世界日期使用 `date(world_time)`；直接查 `src_story_state` 的源列时引用 `"current_time"`，避免 SQLite 内置时钟关键字。
 
 验收报告注明实际执行的检查、结果与未验证范围。截图、日志和本地报告放在忽略目录；已跟踪文件不得引用 tmp 中的资源。
 

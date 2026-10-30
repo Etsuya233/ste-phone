@@ -1,0 +1,151 @@
+:host .database-app {
+  height: 100%;
+  min-width: 0;
+}
+:host .database-heading {
+  margin: var(--ios-space-large) var(--ios-space-large) var(--ios-space-medium);
+}
+:host .database-eyebrow {
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+  letter-spacing: 0.08em;
+}
+:host .database-heading h1 {
+  margin: var(--ios-space-small) 0;
+  font-size: 26px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+:host .database-heading p,
+:host .database-notices p {
+  margin: var(--ios-space-small) 0;
+  font-size: var(--ios-caption-size);
+  color: var(--ios-secondary-ink);
+}
+:host .database-tabs,
+:host .database-notices,
+:host .database-search,
+:host .database-query,
+:host .database-results {
+  margin: var(--ios-space-medium) var(--ios-space-large);
+  min-width: 0;
+}
+:host .database-notices .database-error,
+:host .database-query-error {
+  color: var(--ios-red);
+  overflow-wrap: anywhere;
+}
+:host .database-query-error {
+  margin: var(--ios-space-large);
+}
+:host .database-search input {
+  width: 100%;
+  min-height: var(--control-size);
+  background: var(--ios-muted-fill);
+  border: 0;
+  border-radius: var(--ios-control-radius);
+  padding: var(--ios-space-medium);
+  font: inherit;
+  color: var(--ios-ink);
+  outline: none;
+}
+:host .database-query label {
+  display: block;
+  margin-bottom: var(--ios-space-small);
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+}
+:host .database-query textarea {
+  display: block;
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  padding: var(--ios-space-medium);
+  border: var(--ios-hairline) solid var(--ios-line);
+  border-radius: var(--ios-control-radius);
+  background: var(--ios-row-surface);
+  color: var(--ios-ink);
+  font:
+    14px/1.5 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+  tab-size: 2;
+}
+:host .database-query textarea:focus {
+  outline: var(--ios-hairline) solid var(--ios-blue);
+}
+:host .database-query-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ios-space-small);
+  margin-top: var(--ios-space-small);
+}
+:host .database-query-actions span {
+  flex: 1;
+  font-size: var(--ios-caption-size);
+  color: var(--ios-secondary-ink);
+}
+:host .database-result-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ios-space-small);
+}
+:host .database-result-caption p,
+:host .database-result-hint {
+  font-size: var(--ios-caption-size);
+  color: var(--ios-secondary-ink);
+}
+:host .database-result-scroll {
+  max-width: 100%;
+  overflow: auto;
+  border: var(--ios-hairline) solid var(--ios-line);
+  border-radius: var(--ios-control-radius);
+  background: var(--ios-row-surface);
+}
+:host .database-result-scroll table {
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.5;
+}
+:host .database-result-scroll th,
+:host .database-result-scroll td {
+  min-width: 90px;
+  max-width: 260px;
+  padding: var(--ios-space-small) var(--ios-space-medium);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: var(--ios-hairline) solid var(--ios-line);
+  border-right: var(--ios-hairline) solid var(--ios-line);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+:host .database-result-scroll th {
+  background: var(--ios-muted-fill);
+  white-space: nowrap;
+}
+:host .database-null {
+  color: var(--ios-secondary-ink);
+  font-style: italic;
+}
+:host .database-empty {
+  margin: var(--ios-space-large);
+  color: var(--ios-secondary-ink);
+}
+:host .database-definition {
+  margin: 0;
+  padding: var(--ios-space-large);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+:host .database-app-icon {
+  background: var(--database-icon-fill);
+  color: var(--database-icon-ink);
+}
+:host .database-app-icon svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--ios-icon-stroke);
+}

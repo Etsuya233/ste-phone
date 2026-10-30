@@ -1,3 +1,5 @@
+import { memorySnapshotFixture } from "../../tests/fixtures/memory-snapshot.ts";
+import { mapMemoryDatabase } from "../../src/infrastructure/ste-memory/map-database.ts";
 import type {
   BackgroundProvider,
   PhoneBackground,
@@ -16,7 +18,7 @@ export function createPreviewProvider(mode: string | null): BackgroundProvider {
     message: mode === "unavailable" ? "预览：当前未连接资料来源" : null,
   };
   const data: PhoneBackground = {
-    sourceId: "preview",
+    sourceId: "ste-memory",
     scopeId: "preview-space",
     characters:
       mode === "empty"
@@ -74,7 +76,10 @@ export function createPreviewProvider(mode: string | null): BackgroundProvider {
     subscribe: () => () => {},
     async read() {
       if (mode === "error") throw new Error("预览：纪要表缺少 details 字段，请核对 Memory 结构");
-      return data;
+      return {
+        ...data,
+        database: mapMemoryDatabase(memorySnapshotFixture(mode === "empty"), data),
+      };
     },
   };
 }

@@ -8,7 +8,7 @@ export function Home({
 }: {
   onOpen: (
     event: MouseEvent<HTMLButtonElement>,
-    app: "stopwatch" | "foundation" | "data-source",
+    app: "stopwatch" | "foundation" | "data-source" | "database",
   ) => void;
 }) {
   return (
@@ -36,6 +36,20 @@ export function Home({
       }
     >
       <div className="home-grid" aria-label="主屏幕">
+        <Button
+          className="home-app"
+          data-app="database"
+          onClick={(event) => onOpen(event, "database")}
+          aria-label="打开 Fake DBeaver"
+        >
+          <Icon appearance="app" className="database-app-icon">
+            <svg viewBox="0 0 60 60">
+              <ellipse cx="30" cy="15" rx="17" ry="7" />
+              <path d="M13 15v28c0 9 34 9 34 0V15M13 28c0 9 34 9 34 0M13 40c0 9 34 9 34 0" />
+            </svg>
+          </Icon>
+          <Text role="caption">Fake DBeaver</Text>
+        </Button>
         <Button
           className="home-app"
           data-app="data-source"

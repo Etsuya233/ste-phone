@@ -1,7 +1,13 @@
 import { context, type Plugin } from "esbuild";
 import { watch } from "node:fs";
 import path from "node:path";
-import { createBuildOptions, DIST_DIR, PACKAGE_ROOT, writeManifest } from "./build-lib.ts";
+import {
+  copyDatabaseAssets,
+  createBuildOptions,
+  DIST_DIR,
+  PACKAGE_ROOT,
+  writeManifest,
+} from "./build-lib.ts";
 import { resolveExtensionTarget, syncExtension } from "./extension-target.ts";
 
 const target = resolveExtensionTarget(process.env);
@@ -11,6 +17,7 @@ const sync: Plugin = {
     build.onEnd((result) => {
       if (result.errors.length > 0) return;
       writeManifest();
+      copyDatabaseAssets();
       if (target) syncExtension(DIST_DIR, target);
     });
   },

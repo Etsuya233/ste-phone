@@ -1,3 +1,5 @@
+import type { DatabaseSnapshot } from "../database/index.ts";
+
 /** 手机使用的人物资料；身份、经历和当前近况统一保留在描述中。 */
 export interface CharacterProfile {
   readonly id: string;
@@ -25,4 +27,8 @@ export interface PhoneBackground {
   /** 按记录创建时间、记录 ID 排序；此顺序不表示剧情先后。 */
   readonly chronicles: readonly Chronicle[];
   readonly items: readonly ItemProfile[];
+  /** 与展示资料同次读取的完整结构化输入，供手机本地 SQLite 使用。 */
+  readonly database?: DatabaseSnapshot;
+  /** 来源结构可导入，但资料展示映射失败时公开具体原因。 */
+  readonly backgroundError?: string;
 }

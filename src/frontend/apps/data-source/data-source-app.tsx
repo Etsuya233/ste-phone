@@ -134,6 +134,11 @@ function DataBrowser({
               {state.error}
             </p>
           ) : null}
+          {state.data?.backgroundError ? (
+            <p role="alert" className="data-error">
+              {state.data.backgroundError}。完整源表可在 Fake DBeaver 中检查。
+            </p>
+          ) : null}
           {state.stale ? <p>当前显示上次成功读取的资料，等待更新。</p> : null}
         </div>
         {category === null ? (
@@ -150,7 +155,7 @@ function DataBrowser({
                 <ListCell title="最近读取" subtitle={new Date(state.loadedAt).toLocaleString()} />
               ) : null}
             </GroupedList>
-            {state.data ? (
+            {state.data && !state.data.backgroundError ? (
               <GroupedList
                 title="背景资料"
                 description="人物、纪要与物品由 Memory 转换提供。纪要按记录创建顺序排列。"

@@ -3,20 +3,24 @@ import type { CSSProperties, PointerEvent } from "react";
 import { PhoneDevice } from "./device/phone-device.tsx";
 import type { PhoneDataSource } from "../features/background/index.ts";
 
+import type { PhoneDatabaseService } from "../features/database/index.ts";
+
 const DEVICE_WIDTH = 430;
 const DEVICE_HEIGHT = 886;
 const VIEWPORT_GAP = 12;
 
 export function PhoneApp({
   dataSource,
+  database,
   responsive = false,
   draggable = false,
   initialApp = "home",
 }: {
   responsive?: boolean;
   draggable?: boolean;
-  initialApp?: "home" | "foundation" | "data-source";
+  initialApp?: "home" | "foundation" | "data-source" | "database";
   dataSource: PhoneDataSource;
+  database: PhoneDatabaseService;
 }) {
   const panel = useRef<HTMLDialogElement>(null);
   const launcher = useRef<HTMLButtonElement>(null);
@@ -141,6 +145,7 @@ export function PhoneApp({
             </button>
             <PhoneDevice
               dataSource={dataSource}
+              database={database}
               initialApp={initialApp}
               scale={scale}
               draggable={draggable && !fullscreen}

@@ -5,6 +5,7 @@ import type {
 } from "../../features/background/index.ts";
 import type { MemoryReadApi } from "./public-read-contract.ts";
 import { mapMemoryBackground } from "./map-background.ts";
+import { mapMemoryDatabase } from "./map-database.ts";
 
 declare global {
   var STE_MEMORY_API: MemoryReadApi | undefined;
@@ -61,7 +62,21 @@ export class MemoryBackgroundProvider implements BackgroundProvider {
     const { snapshot } = await api.read();
     // await 期间可能换成另一个接口实例，不能接受旧实例返回的结果。
     if (api !== this.#api) throw new Error("Memory 接口已重新连接，请重新读取");
-    return mapMemoryBackground(snapshot);
+    let background: PhoneBackground;
+    try {
+      background = mapMemoryBackground(snapshot);
+    } catch (error) {
+      // 展示映射有独立能力边界；具体错误公开给资料 App，源业务结构仍可供 SQL 检查。
+      background = {
+        sourceId: "ste-memory",
+        scopeId: snapshot.space.id,
+        characters: [],
+        chronicles: [],
+        items: [],
+        backgroundError: error instanceof Error ? error.message : String(error),
+      };
+    }
+    return { ...background, database: mapMemoryDatabase(snapshot, background) };
   }
 
   #connect = (): void => {

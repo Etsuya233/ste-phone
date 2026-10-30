@@ -6,9 +6,13 @@ import { FoundationApp } from "../apps/foundation/foundation-app.tsx";
 import { StatusBar } from "../system/status-bar.tsx";
 import { DataSourceApp } from "../apps/data-source/data-source-app.tsx";
 import type { PhoneDataSource } from "../../features/background/index.ts";
+import type { PhoneDatabaseService } from "../../features/database/index.ts";
+import { DatabaseApp } from "../apps/database/database-app.tsx";
+
 type Transition = "entering" | "leaving" | null;
 export function PhoneDevice({
   dataSource,
+  database,
   scale,
   draggable,
   initialApp = "home",
@@ -19,11 +23,14 @@ export function PhoneDevice({
 > & {
   scale: number;
   draggable: boolean;
-  initialApp?: "home" | "foundation" | "data-source";
+  initialApp?: "home" | "foundation" | "data-source" | "database";
   dataSource: PhoneDataSource;
+  database: PhoneDatabaseService;
 }) {
   const screen = useRef<HTMLDivElement>(null);
-  const [page, setPage] = useState<"home" | "stopwatch" | "foundation" | "data-source">("home");
+  const [page, setPage] = useState<
+    "home" | "stopwatch" | "foundation" | "data-source" | "database"
+  >("home");
   const [transition, setTransition] = useState<Transition>(null);
   const [origin, setOrigin] = useState("50% 90%");
   const lastIcon = useRef<HTMLButtonElement | null>(null);
@@ -51,7 +58,7 @@ export function PhoneDevice({
   }, [transition]);
   const open = (
     event: MouseEvent<HTMLButtonElement>,
-    app: "stopwatch" | "foundation" | "data-source",
+    app: "stopwatch" | "foundation" | "data-source" | "database",
   ) => {
     if (transition) return;
     const icon = event.currentTarget.querySelector(".ios-icon")!.getBoundingClientRect();
@@ -103,6 +110,8 @@ export function PhoneDevice({
             >
               {page === "stopwatch" ? (
                 <Stopwatch active={transition !== "leaving"} onExit={exit} />
+              ) : page === "database" ? (
+                <DatabaseApp database={database} onHome={exit} />
               ) : page === "data-source" ? (
                 <DataSourceApp source={dataSource} onHome={exit} />
               ) : (

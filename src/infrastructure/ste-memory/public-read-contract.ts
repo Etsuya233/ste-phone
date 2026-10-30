@@ -3,6 +3,7 @@
  * 两个扩展独立构建，因此不导入相邻仓库源码，也不把来源类型泄漏给手机 App。
  */
 export interface MemoryField {
+  readonly [key: string]: unknown;
   readonly id: string;
   readonly tableId: string;
   readonly key: string;
@@ -26,6 +27,7 @@ export interface MemoryField {
 }
 
 export interface MemoryTable {
+  readonly [key: string]: unknown;
   readonly id: string;
   readonly key: string;
   readonly name: string;
@@ -37,6 +39,7 @@ export interface MemoryTable {
 }
 
 export interface MemoryRecord {
+  readonly [key: string]: unknown;
   readonly id: string;
   readonly tableId: string;
   readonly payload: Readonly<Record<string, string | number | boolean | null | readonly string[]>>;
@@ -45,7 +48,7 @@ export interface MemoryRecord {
 }
 
 export interface MemorySnapshot {
-  readonly space: { readonly id: string; readonly name: string };
+  readonly space: { readonly id: string; readonly name: string; readonly [key: string]: unknown };
   readonly tables: readonly MemoryTable[];
   readonly fields: readonly MemoryField[];
   readonly records: readonly MemoryRecord[];
