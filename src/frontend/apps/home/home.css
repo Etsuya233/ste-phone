@@ -4,7 +4,6 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px 16px;
   padding: 22px;
-  min-height: 100%;
 }
 :host .home-page-indicator {
   position: absolute;
@@ -45,4 +44,8 @@
   fill: var(--foundation-icon-fill);
   stroke: var(--foundation-icon-ink);
   stroke-width: var(--ios-icon-stroke);
+}
+
+:host .settings-app-icon {
+  background: linear-gradient(#b5bcc7, #6e7888);
 }

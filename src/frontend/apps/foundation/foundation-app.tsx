@@ -1,3 +1,4 @@
+import { NavigationStack } from "../../foundation/navigation-stack.tsx";
 import { useState } from "react";
 import { Button } from "../../foundation/button.tsx";
 import { Page } from "../../foundation/page.tsx";
@@ -7,7 +8,36 @@ import { ListCell } from "../../foundation/list-cell.tsx";
 import { Switch } from "../../foundation/switch.tsx";
 import { SegmentedControl } from "../../foundation/segmented-control.tsx";
 
-export function FoundationApp({ onHome }: { onHome: () => void }) {
+export function FoundationApp({ onHome, active }: { onHome: () => void; active: boolean }) {
+  return (
+    <NavigationStack initialRoutes={["root"]} active={active}>
+      {(route, navigation) =>
+        route === "root" ? (
+          <FoundationRoot onHome={onHome} onDetail={() => navigation.push("detail")} />
+        ) : (
+          <Page
+            navBar={
+              <NavBar
+                title={route === "detail" ? "导航详情" : "下一层"}
+                back={{ label: "返回", onClick: navigation.pop }}
+              />
+            }
+          >
+            <GroupedList title="页面保留" description="返回后，上一页的滚动位置和控件状态保持。">
+              <ListCell title="当前层级" value={route === "detail" ? "第二层" : "第三层"} />
+              {route === "detail" ? (
+                <ListCell title="进入下一层" onClick={() => navigation.push("nested")} />
+              ) : (
+                <ListCell title="返回详情" onClick={navigation.pop} />
+              )}
+            </GroupedList>
+          </Page>
+        )
+      }
+    </NavigationStack>
+  );
+}
+function FoundationRoot({ onHome, onDetail }: { onHome: () => void; onDetail: () => void }) {
   const [enabled, setEnabled] = useState(true);
   const [showNav, setShowNav] = useState(true);
   const [showFooter, setShowFooter] = useState(true);
@@ -37,7 +67,7 @@ export function FoundationApp({ onHome }: { onHome: () => void }) {
     >
       <GroupedList
         title="页面布局"
-        description="顶栏与底栏独立开关。关闭后再次打开可恢复初始演示。"
+        description="顶栏与底栏独立开关。Home 与关闭手机后保留当前状态；在后台退出应用可重新开始。"
       >
         <Switch label="显示导航栏" checked={showNav} onCheckedChange={setShowNav} />
         <Switch label="显示底栏" checked={showFooter} onCheckedChange={setShowFooter} />
@@ -89,7 +119,7 @@ export function FoundationApp({ onHome }: { onHome: () => void }) {
           title="点按查看详情"
           subtitle="副文案描述这行的操作"
           value="可打开"
-          onClick={() => setDetail("已打开列表项目详情")}
+          onClick={onDetail}
         />
         <ListCell
           title="这是一段非常长的单元格主文案，用于检查文字在窄屏中换行且不会挤出右侧的内容"
@@ -113,7 +143,7 @@ export function FoundationApp({ onHome }: { onHome: () => void }) {
         </GroupedList>
       ))}
       <GroupedList title="内容末尾" description="最后一行和返回操作应能完整显示。">
-        <ListCell title="已到达最后一行" />
+        <ListCell title="进入导航详情" subtitle="返回检查此处滚动位置" onClick={onDetail} />
         <ListCell title="返回主屏幕" onClick={onHome} />
       </GroupedList>
     </Page>

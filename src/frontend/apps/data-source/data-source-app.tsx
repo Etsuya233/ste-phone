@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { NavigationStack } from "../../foundation/navigation-stack.tsx";
+import type { Navigation } from "../../foundation/navigation-stack.tsx";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import type { DataSourceState, PhoneDataSource } from "../../../features/background/index.ts";
 import { Button } from "../../foundation/button.tsx";
 import { GroupedList } from "../../foundation/grouped-list.tsx";
@@ -16,18 +18,36 @@ const statusNames = {
   error: "读取失败",
 } as const;
 
-export function DataSourceApp({ source, onHome }: { source: PhoneDataSource; onHome: () => void }) {
+type Route = { category: Category | null; selectedId: string | null };
+export function DataSourceApp({
+  source,
+  onHome,
+  active,
+}: {
+  source: PhoneDataSource;
+  onHome: () => void;
+  active: boolean;
+}) {
   const state = useSyncExternalStore(source.subscribe, source.getState);
   useEffect(() => {
     if (state.context.available) void source.load().catch(() => {});
   }, [source, state.context.chatIdentity, state.context.scopeId, state.context.available]);
   return (
-    <DataBrowser
+    <NavigationStack<Route>
       key={JSON.stringify([state.context.chatIdentity, state.context.scopeId])}
-      source={source}
-      state={state}
-      onHome={onHome}
-    />
+      active={active}
+      initialRoutes={[{ category: null, selectedId: null }]}
+    >
+      {(route, navigation) => (
+        <DataBrowser
+          source={source}
+          state={state}
+          onHome={onHome}
+          route={route}
+          navigation={navigation}
+        />
+      )}
+    </NavigationStack>
   );
 }
 
@@ -35,16 +55,18 @@ function DataBrowser({
   source,
   state,
   onHome,
+  route,
+  navigation,
 }: {
   source: PhoneDataSource;
   state: DataSourceState;
   onHome: () => void;
+  route: Route;
+  navigation: Navigation<Route>;
 }) {
-  const [category, setCategory] = useState<Category | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { category, selectedId } = route;
   const [search, setSearch] = useState("");
   const [copyResult, setCopyResult] = useState<string | null>(null);
-  const container = useRef<HTMLDivElement>(null);
   const entries =
     category === "characters"
       ? state.data?.characters.map((entry) => ({
@@ -71,12 +93,6 @@ function DataBrowser({
     `${entry.title}\n${entry.text}`.toLocaleLowerCase().includes(query),
   );
 
-  useEffect(() => {
-    container
-      .current!.querySelector<HTMLButtonElement>(".ios-nav button")!
-      .focus({ preventScroll: true });
-  }, [category, selectedId]);
-
   async function copyText() {
     setCopyResult(null);
     try {
@@ -89,9 +105,8 @@ function DataBrowser({
 
   const title = selectedId ? "资料详情" : category ? categoryNames[category] : "资料";
   return (
-    <div ref={container} className="data-app">
+    <div className="data-app">
       <Page
-        key={`${category}:${selectedId}`}
         className="data-page"
         navBar={
           <NavBar
@@ -100,13 +115,8 @@ function DataBrowser({
               label:
                 selectedId && category ? categoryNames[category] : category ? "资料" : "主屏幕",
               onClick: () => {
-                if (selectedId) {
-                  setSelectedId(null);
-                  setCopyResult(null);
-                } else if (category) {
-                  setCategory(null);
-                  setSearch("");
-                } else onHome();
+                if (category) navigation.pop();
+                else onHome();
               },
             }}
             right={
@@ -165,7 +175,7 @@ function DataBrowser({
                     key={key}
                     title={categoryNames[key]}
                     value={String(state.data![key].length)}
-                    onClick={() => setCategory(key)}
+                    onClick={() => navigation.push({ category: key, selectedId: null })}
                   />
                 ))}
               </GroupedList>
@@ -218,7 +228,7 @@ function DataBrowser({
                     key={entry.id}
                     title={entry.title}
                     subtitle={entry.text}
-                    onClick={() => setSelectedId(entry.id)}
+                    onClick={() => navigation.push({ category, selectedId: entry.id })}
                   />
                 ))
               ) : (

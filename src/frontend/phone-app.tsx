@@ -1,3 +1,5 @@
+import type { PhoneSettingsService } from "../features/settings/phone-settings.ts";
+import type { AppId } from "./device/app-session.ts";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
 import { PhoneDevice } from "./device/phone-device.tsx";
@@ -14,6 +16,7 @@ const VIEWPORT_GAP = 12;
 export function PhoneApp({
   dataSource,
   database,
+  settings,
   responsive = false,
   draggable = false,
   initialApp = "home",
@@ -21,7 +24,8 @@ export function PhoneApp({
 }: {
   responsive?: boolean;
   draggable?: boolean;
-  initialApp?: "home" | "foundation" | "data-source" | "database";
+  initialApp?: "home" | AppId;
+  settings: PhoneSettingsService;
   dataSource: PhoneDataSource;
   database: PhoneDatabaseService;
   menuEntry?: StMenuEntry;
@@ -36,6 +40,7 @@ export function PhoneApp({
     top: number;
   } | null>(null);
   const [open, setOpen] = useState(false);
+  const [started, setStarted] = useState(false);
   const [viewport, setViewport] = useState(() => ({
     width: window.visualViewport?.width ?? window.innerWidth,
     height: window.visualViewport?.height ?? window.innerHeight,
@@ -101,6 +106,7 @@ export function PhoneApp({
   };
   const openPhone = () => {
     setPosition({ x: 0, y: 0 });
+    setStarted(true);
     setOpen(true);
     panel.current!.showModal();
   };
@@ -144,7 +150,7 @@ export function PhoneApp({
           else launcher.current!.focus();
         }}
       >
-        {open ? (
+        {started ? (
           <div className="device-stage">
             <button
               type="button"
@@ -157,6 +163,8 @@ export function PhoneApp({
               </svg>
             </button>
             <PhoneDevice
+              visible={open}
+              settings={settings}
               dataSource={dataSource}
               database={database}
               initialApp={initialApp}

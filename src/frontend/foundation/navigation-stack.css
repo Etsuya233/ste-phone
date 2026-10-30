@@ -1,0 +1,41 @@
+:host .navigation-stack,
+:host .navigation-entry {
+  position: absolute;
+  inset: 0;
+}
+:host .navigation-entry[hidden] {
+  display: none;
+}
+:host .navigation-entry--current {
+  z-index: 2;
+}
+:host .navigation-stack--push .navigation-entry--current {
+  animation: phone-page-in 280ms ease both;
+}
+:host .navigation-stack--push .navigation-entry--beneath {
+  animation: phone-page-under 280ms ease both;
+}
+:host .navigation-stack--pop .navigation-entry--current {
+  animation: phone-page-in 280ms ease reverse both;
+}
+:host .navigation-stack--pop .navigation-entry--beneath {
+  animation: phone-page-under 280ms ease reverse both;
+}
+@keyframes phone-page-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes phone-page-under {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-25%);
+    opacity: 0.65;
+  }
+}

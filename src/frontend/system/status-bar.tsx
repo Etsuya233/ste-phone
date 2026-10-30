@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-export function StatusBar({ light }: { light: boolean }) {
+export function StatusBar({ light, active }: { light: boolean; active: boolean }) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
+    if (!active) return;
     let timer: ReturnType<typeof setTimeout>;
     const update = () => {
       const date = new Date();
@@ -20,7 +21,7 @@ export function StatusBar({ light }: { light: boolean }) {
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", visible);
     };
-  }, []);
+  }, [active]);
   return (
     <div
       className={`status-bar ${light ? "status-bar--light" : ""}`}

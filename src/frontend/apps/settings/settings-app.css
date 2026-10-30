@@ -1,0 +1,49 @@
+:host .wallpaper-preview {
+  height: 210px;
+  margin: var(--ios-space-large);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-shadow: var(--ios-wallpaper-text-shadow);
+}
+:host .wallpaper-preview span,
+:host .wallpaper-preview small {
+  z-index: 1;
+}
+:host .wallpaper-preview span {
+  font-size: 48px;
+}
+:host .settings-url {
+  padding: var(--ios-space-medium);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ios-space-small);
+}
+:host .settings-url input {
+  min-width: 0;
+  min-height: var(--control-size);
+  font: inherit;
+  border: 1px solid var(--ios-line);
+  border-radius: var(--ios-control-radius);
+  padding: var(--ios-space-small);
+}
+:host .settings-message {
+  margin: var(--ios-space-large);
+  color: var(--ios-secondary-ink);
+  overflow-wrap: anywhere;
+}
+
+:host .settings-feedback {
+  margin: 0;
+  padding: var(--ios-space-medium) var(--ios-space-large);
+  height: 100%;
+  overflow: auto;
+  font-size: var(--ios-caption-size);
+  background: var(--ios-row-surface);
+  overflow-wrap: anywhere;
+}

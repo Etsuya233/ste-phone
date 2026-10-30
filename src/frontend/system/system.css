@@ -15,6 +15,13 @@
 }
 :host .app-layer {
   z-index: 1;
+  transform-origin: top left;
+  transition:
+    transform 300ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    opacity 250ms ease;
+}
+:host .app-layer--entering,
+:host .app-layer--leaving {
   transform-origin: var(--app-origin);
 }
 :host .app-layer--entering {
@@ -112,6 +119,132 @@
 }
 @media (prefers-reduced-motion: reduce) {
   :host .home-layer {
+    transition: none;
+  }
+}
+
+:host .app-layer[hidden] {
+  display: none;
+}
+:host .phone-wallpaper {
+  position: absolute;
+  inset: 0;
+  background: var(--ios-wallpaper);
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
+}
+:host .phone-wallpaper--blur {
+  filter: blur(12px);
+  transform: scale(1.08);
+}
+:host .home-layer .ios-page--wallpaper {
+  background: transparent;
+}
+
+:host .app-content {
+  position: absolute;
+  inset: 0;
+}
+:host .app-layer--preview {
+  overflow: hidden;
+  border-radius: 6px;
+  box-shadow: 0 12px 42px #0007;
+  pointer-events: none;
+}
+:host .app-preview-status {
+  display: none;
+}
+:host .app-layer--preview .app-preview-status {
+  display: block;
+}
+:host .expose-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: #0614234d;
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+:host .system-workspace--expose .expose-shade {
+  opacity: 1;
+}
+:host .system-workspace--expose-home .expose-shade,
+:host .system-workspace--expose-home .app-layer {
+  opacity: 0;
+}
+:host .system-workspace--dragging .app-layer,
+:host .system-workspace--dragging .expose-item {
+  transition: none;
+}
+:host .expose {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  color: white;
+  touch-action: none;
+  user-select: none;
+  text-shadow: var(--ios-wallpaper-text-shadow);
+}
+:host .expose button {
+  color: inherit;
+  font: inherit;
+}
+
+:host .expose-item {
+  position: absolute;
+  transition:
+    left 300ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    top 250ms ease,
+    opacity 250ms ease;
+}
+:host .expose-preview {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+}
+
+:host .expose-preview:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 4px;
+}
+:host .expose-app-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+:host .expose-app-icon span:last-child {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+:host .expose-item--quitting {
+  opacity: 0;
+  pointer-events: none;
+}
+
+:host .expose--leaving {
+  animation: ste-phone-expose-home 250ms ease both;
+}
+@keyframes ste-phone-expose-home {
+  to {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :host .app-layer,
+  :host .expose-item,
+  :host .expose-shade {
     transition: none;
   }
 }

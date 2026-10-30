@@ -23,7 +23,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test --test-concurrency=1 scripts/*.test.ts src/features/background/*.test.ts src/infrastructure/ste-memory/*.test.ts"
+    "test": "node --test --test-concurrency=1 scripts/*.test.ts src/features/background/*.test.ts src/infrastructure/ste-memory/*.test.ts src/features/settings/*.test.ts src/infrastructure/host/*.test.ts src/frontend/device/*.test.ts"
   },
   "dependencies": {
     "react": "19.2.8",

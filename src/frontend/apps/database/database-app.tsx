@@ -1,3 +1,5 @@
+import { NavigationStack } from "../../foundation/navigation-stack.tsx";
+import type { Navigation } from "../../foundation/navigation-stack.tsx";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { PhoneDatabaseService } from "../../../features/database/index.ts";
 import { quoteIdentifier } from "../../../features/database/index.ts";
@@ -8,25 +10,55 @@ import { NavBar } from "../../foundation/nav-bar.tsx";
 import { Page } from "../../foundation/page.tsx";
 import { SegmentedControl } from "../../foundation/segmented-control.tsx";
 
+type DatabaseRoute = { object: string | null };
 export function DatabaseApp({
   database,
   onHome,
+  active,
 }: {
   database: PhoneDatabaseService;
   onHome: () => void;
+  active: boolean;
 }) {
   const state = useSyncExternalStore(database.subscribe, database.getState);
-  const { editor } = state;
-  const container = useRef<HTMLDivElement>(null);
-  const [copy, setCopy] = useState<string | null>(null);
-  const selected = state.schema?.objects.find((object) => object.name === editor.selected);
-  const hasSchema = state.schema !== null;
-  const scrollKey = `${editor.tab}:${editor.tab === "objects" ? (editor.selected ?? "list") : "editor"}`;
   useEffect(() => {
     if (state.context.available) void database.load().catch(() => {});
   }, [database, state.context.chatIdentity, state.context.scopeId, state.context.available]);
+  const routes: DatabaseRoute[] = [{ object: null }];
+  if (state.editor.selected) routes.push({ object: state.editor.selected });
+  return (
+    <NavigationStack
+      key={JSON.stringify([state.context.chatIdentity, state.context.scopeId])}
+      initialRoutes={routes}
+      active={active}
+    >
+      {(route, navigation) => (
+        <DatabasePage database={database} onHome={onHome} route={route} navigation={navigation} />
+      )}
+    </NavigationStack>
+  );
+}
+function DatabasePage({
+  database,
+  onHome,
+  route,
+  navigation,
+}: {
+  database: PhoneDatabaseService;
+  onHome: () => void;
+  route: DatabaseRoute;
+  navigation: Navigation<DatabaseRoute>;
+}) {
+  const state = useSyncExternalStore(database.subscribe, database.getState);
+  const { editor } = state;
+  const tab = route.object ? "objects" : editor.tab;
+  const container = useRef<HTMLDivElement>(null);
+  const [copy, setCopy] = useState<string | null>(null);
+  const selected = state.schema?.objects.find((object) => object.name === route.object);
+  const hasSchema = state.schema !== null;
+  const scrollKey = `${tab}:${tab === "objects" ? (route.object ?? "list") : "editor"}`;
   useLayoutEffect(() => {
-    if (!hasSchema) return;
+    if (!hasSchema || !navigation.current) return;
     const content = container.current!.querySelector<HTMLDivElement>(".ios-page-content")!;
     content.scrollTop = editor.scroll[scrollKey] ?? 0;
     const chat = JSON.stringify([state.context.chatIdentity, state.context.scopeId]);
@@ -38,7 +70,14 @@ export function DatabaseApp({
     content.addEventListener("scroll", track, { passive: true });
     return () => content.removeEventListener("scroll", track);
     // editor.scroll 更新不触发页面跳转或重复恢复。
-  }, [database, hasSchema, scrollKey, state.context.chatIdentity, state.context.scopeId]);
+  }, [
+    database,
+    hasSchema,
+    scrollKey,
+    state.context.chatIdentity,
+    state.context.scopeId,
+    navigation.current,
+  ]);
   const status = {
     idle: "待读取",
     loading: "刷新中",
@@ -54,9 +93,14 @@ export function DatabaseApp({
           <NavBar
             title="Fake DBeaver"
             back={{
-              label: selected && editor.tab === "objects" ? "数据库" : "主屏幕",
+              label: route.object !== null ? "数据库" : "主屏幕",
               onClick: () =>
-                selected && editor.tab === "objects" ? database.edit({ selected: null }) : onHome(),
+                route.object !== null
+                  ? (() => {
+                      database.edit({ selected: null });
+                      navigation.pop();
+                    })()
+                  : onHome(),
             }}
             right={
               <Button
@@ -79,8 +123,11 @@ export function DatabaseApp({
         <div className="database-tabs">
           <SegmentedControl
             label="数据库工作区"
-            value={editor.tab}
-            onValueChange={(tab) => database.edit({ tab: tab as "objects" | "sql" })}
+            value={tab}
+            onValueChange={(tab) => {
+              database.edit({ tab: tab as "objects" | "sql", selected: null });
+              if (route.object) navigation.pop();
+            }}
             options={[
               { value: "objects", label: "数据库" },
               { value: "sql", label: "SQL 查询" },
@@ -102,40 +149,48 @@ export function DatabaseApp({
             </p>
           ) : null}
         </div>
-        {editor.tab === "objects" ? (
-          selected ? (
-            <>
-              <GroupedList title={selected.name} description={selected.description}>
-                <ListCell title="类型" value={selected.kind === "view" ? "标准视图" : "数据表"} />
-                <ListCell title="列数" value={String(selected.columns.length)} />
-                <ListCell
-                  title="查看数据"
-                  subtitle="在 SQL 编辑器打开并执行便捷查询"
-                  onClick={() => {
-                    database.edit({
-                      tab: "sql",
-                      sql: `SELECT * FROM ${quoteIdentifier(selected.name)} LIMIT 50;`,
-                    });
-                    void database.execute();
-                  }}
-                />
-              </GroupedList>
-              <GroupedList title="列与关联">
-                {selected.columns.map((column) => (
+        {tab === "objects" ? (
+          route.object ? (
+            selected ? (
+              <>
+                <GroupedList title={selected.name} description={selected.description}>
+                  <ListCell title="类型" value={selected.kind === "view" ? "标准视图" : "数据表"} />
+                  <ListCell title="列数" value={String(selected.columns.length)} />
                   <ListCell
-                    key={column.name}
-                    title={column.name}
-                    value={column.type}
-                    subtitle={`${column.description}${column.sourceFieldId ? ` · 字段 ID=${column.sourceFieldId}` : ""}${column.reference ? ` · → ${column.reference.table}.${column.reference.column}${column.reference.multiple ? "（多值）" : ""}` : ""}`}
+                    title="查看数据"
+                    subtitle="在 SQL 编辑器打开并执行便捷查询"
+                    onClick={() => {
+                      database.edit({
+                        tab: "sql",
+                        selected: null,
+                        sql: `SELECT * FROM ${quoteIdentifier(selected.name)} LIMIT 50;`,
+                      });
+                      navigation.pop();
+                      void database.execute();
+                    }}
                   />
-                ))}
-              </GroupedList>
-              {selected.select ? (
-                <GroupedList title="视图 SQL">
-                  <pre className="database-definition">{selected.select}</pre>
                 </GroupedList>
-              ) : null}
-            </>
+                <GroupedList title="列与关联">
+                  {selected.columns.map((column) => (
+                    <ListCell
+                      key={column.name}
+                      title={column.name}
+                      value={column.type}
+                      subtitle={`${column.description}${column.sourceFieldId ? ` · 字段 ID=${column.sourceFieldId}` : ""}${column.reference ? ` · → ${column.reference.table}.${column.reference.column}${column.reference.multiple ? "（多值）" : ""}` : ""}`}
+                    />
+                  ))}
+                </GroupedList>
+                {selected.select ? (
+                  <GroupedList title="视图 SQL">
+                    <pre className="database-definition">{selected.select}</pre>
+                  </GroupedList>
+                ) : null}
+              </>
+            ) : (
+              <p className="database-empty">
+                该对象已从当前数据库移除或暂不可用，可返回数据库列表继续浏览。
+              </p>
+            )
           ) : (
             <>
               <div className="database-search">
@@ -163,7 +218,10 @@ export function DatabaseApp({
                       title={object.name}
                       value={object.kind === "view" ? "VIEW" : "TABLE"}
                       subtitle={object.description}
-                      onClick={() => database.edit({ selected: object.name })}
+                      onClick={() => {
+                        database.edit({ selected: object.name });
+                        navigation.push({ object: object.name });
+                      }}
                     />
                   ))}
                 {!state.schema ? (
