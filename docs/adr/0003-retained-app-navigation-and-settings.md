@@ -10,4 +10,4 @@ App 的 `active` 明确控制焦点和显示计时。后台秒表依赖 `perform
 
 Expose 最初采用摘要卡。用户要求 iOS 7 的横向页面预览后，改为保留 App 层自身并进行 CSS 缩放和位移，中央卡片露出两侧邻卡，下方复用主屏图标。真实 DOM 能直接保留当前页面内容和滚动，避免复制组件产生第二份状态，也不依赖截图服务。每个 App 的父节点、内容 wrapper 和 key 始终稳定；内容保持 inert，独立的透明手势/按钮层处理打开、横向选择与上滑退出。退出动画结束才从会话移除，关闭窗口收敛退出动画并清理拖动。当前卡采用 roving Tab，方向键、Enter、Delete 支持键盘操作；减少动态效果时直接完成。按用户参考图进一步移除额外页码、提示、主屏/退出按钮、后台外层状态栏和主屏后台入口，只保留壁纸、预览卡片与应用图标名称。最后一个应用退出后显示壁纸，仍可通过 Home 返回主屏。
 
-全局设置通过注入的 `PhoneSettingsService` 连接存储。生产适配器只使用 ST 公开上下文、`extensionSettings.ste_phone` 和 `saveSettingsDebounced()`，背景目录通过正式 `/api/backgrounds/all` 契约读取。应用成功表示宿主已接受保存请求，不把延迟保存描述为服务端确认。开发预览使用独立 localStorage，示例背景不进入生产。自定义 HTTP/HTTPS 地址先加载验证，验证期间锁定输入与应用；失败可见。壁纸独立层使用 Blur，手机内容保持清晰，不修改宿主背景。
+全局设置通过注入的 `PhoneSettingsService` 连接存储。生产适配器使用 ST 公开上下文、`extensionSettings.ste_phone` 和 `saveSettingsDebounced()`。本决策最初的 ST 背景与外部 URL 壁纸方案由 [0004](0004-uploaded-wallpaper-library.md) 的上传图库、v2 设置和独立预览 Blob 存储取代。壁纸独立层使用 Blur，手机内容保持清晰，不修改宿主背景。

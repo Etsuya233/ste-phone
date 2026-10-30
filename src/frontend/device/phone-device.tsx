@@ -258,7 +258,9 @@ export function PhoneDevice({
             className={`phone-wallpaper ${selectedSettings.blur ? "phone-wallpaper--blur" : ""}`}
             style={
               selectedSettings.wallpaper.kind === "image"
-                ? { backgroundImage: `url(${JSON.stringify(selectedSettings.wallpaper.url)})` }
+                ? {
+                    backgroundImage: `url(${JSON.stringify(settings.imageUrl(selectedSettings.wallpaper))})`,
+                  }
                 : undefined
             }
           />

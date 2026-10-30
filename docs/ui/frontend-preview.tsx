@@ -1,4 +1,4 @@
-import { PhoneSettingsService } from "../../src/features/settings/phone-settings.ts";
+import { createPreviewSettings } from "./preview-wallpapers.ts";
 import { mountPhone } from "../../src/frontend/host/mount-phone.tsx";
 import { BackgroundDataSource } from "../../src/features/background/index.ts";
 import { createPreviewMemory } from "./data-source-fixture.ts";
@@ -12,19 +12,7 @@ globalThis.STE_MEMORY_API = createPreviewMemory(options.get("data-state"));
 const provider = new MemoryDatabaseProvider();
 const database = new PhoneDatabaseService(provider);
 const dataSource = new BackgroundDataSource(new MemoryBackgroundProvider(database, provider));
-const settings = new PhoneSettingsService({
-  read: () => {
-    const stored = localStorage.getItem("ste-phone-preview-settings-v1");
-    return stored ? JSON.parse(stored) : undefined;
-  },
-  save: (value) => localStorage.setItem("ste-phone-preview-settings-v1", JSON.stringify(value)),
-  backgrounds: async () => [
-    {
-      label: "预览天空",
-      url: "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=800",
-    },
-  ],
-});
+const settings = await createPreviewSettings();
 mountPhone({
   settings,
   dataSource,

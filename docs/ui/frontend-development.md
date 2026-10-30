@@ -28,7 +28,11 @@ Foundation 组件应用位于 `src/frontend/apps/foundation/`，可从主屏打�
 
 物理与软件 Home 共用 280ms 单双击判断，双击进入 Expose，单击返回主屏。Expose 只显示壁纸、横向露边卡片、共享 AppIcon 图标与应用名称，不显示独立状态栏、提示、页码、切换箭头或主屏/退出按钮；主屏也不额外提供后台入口。左右拖动或方向键选择，点按或 Enter 打开，上滑 90 个逻辑像素或 Delete 退出。只有当前卡参与 Tab，删除后聚焦邻卡，全部退出后只保留壁纸并聚焦后台区域，Home 仍可返回主屏。关闭、卸载与页面变更取消待处理的单击。关闭发生于动画期间时收敛到动画目标，清除拖动，并完成正在退出的应用，避免重开卡在转场。减少动态效果关闭卡片与轨道的补间动画。
 
-全局壁纸由 `PhoneSettingsService` 持有，页面只消费注入的服务。生产接线使用 ST 的公开 `getContext()`、`extensionSettings.ste_phone`、`saveSettingsDebounced()` 和 `/api/backgrounds/all`；预览独立使用 localStorage 与示例背景。自定义地址仅接受 HTTP/HTTPS，图片验证期间锁定输入与应用，加载失败显式展示；背景读取失败可重试。应用反馈只说明已应用并交给宿主保存，不声称已确认服务端持久化。壁纸位于独立背景层，Blur 只作用于该层。
+全局壁纸由 `PhoneSettingsService` 持有，页面只消费注入的服务。图库只包含默认渐变和 Phone 上传的图片，三列 9:16 竖向缩略图，不显示文件名、说明或成功提示。「+」选择图片，实际解码通过后上传，成功进入独立全幅预览页；Blur 只修改预览，点「设定」保存并返回图库。导航栈保留图库滚动与页面状态，上传完成时页面退到后台则等待它回到前台再进入预览；离开已卸载的图库不发布迟到响应。
+
+生产接线使用 ST 的公开 `getContext()`、`extensionSettings.ste_phone`、`saveSettingsDebounced()`，图片通过 `POST /api/images/upload` 和 `POST /api/images/list`。固定 `ch_name` / `folder` 为 `ste-phone-wallpapers`，文件名使用 `crypto.getRandomValues()` 生成 128 位唯一值，原文件名和用户路径不进入请求。浏览器实际解码图片，核心服务限定 PNG、JPEG、WebP 与 10 MB；读取/上传失败显示简短错误，读取可重试，默认渐变始终可选。设置只保存 v2 所选图片路径和 Blur，v1 旧地址列表与背景选择显式迁移为默认渐变，Blur 保留。
+
+独立预览在 `docs/ui/preview-wallpapers.ts` 使用 IndexedDB 的 Blob 存储和自增 ID，localStorage 只保存稳定 ID 与设置。启动时从 Blob 重建会话 object URL，图片 URL 不写入持久配置，不使用安全上下文限定的 randomUUID。对象 URL 生命周期覆盖 Home、Expose 和 dialog 关闭，页面真正卸载时统一回收；BFCache 暂存时保持可用。预览资源和生产接线互相隔离。壁纸位于独立背景层，Blur 只作用于该层。
 
 ## 状态与验收
 

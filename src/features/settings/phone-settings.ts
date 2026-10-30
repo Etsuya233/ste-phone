@@ -1,32 +1,50 @@
-export type Wallpaper = { kind: "gradient" } | { kind: "image"; url: string; label: string };
+export type Wallpaper = { kind: "gradient" } | { kind: "image"; path: string };
 export interface PhoneSettings {
-  version: 1;
+  version: 2;
   wallpaper: Wallpaper;
+  blur: boolean;
+}
+export interface LegacyPhoneSettings {
+  version: 1;
+  wallpaper: { kind: string; url?: string; label?: string };
   blur: boolean;
   savedUrls: string[];
 }
-export interface BackgroundImage {
+export interface WallpaperImage {
+  path: string;
   url: string;
-  label: string;
 }
 export interface SettingsStorage {
-  read: () => PhoneSettings | undefined;
+  read: () => PhoneSettings | LegacyPhoneSettings | undefined;
   save: (settings: PhoneSettings) => void;
-  backgrounds: () => Promise<BackgroundImage[]>;
+  listWallpapers: () => Promise<WallpaperImage[]>;
+  uploadWallpaper: (image: Blob) => Promise<WallpaperImage>;
+  imageUrl: (path: string) => string;
 }
 export const defaultSettings: PhoneSettings = {
-  version: 1,
+  version: 2,
   wallpaper: { kind: "gradient" },
   blur: false,
-  savedUrls: [],
 };
+export const wallpaperFormats = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+} as const;
 export class PhoneSettingsService {
   private state: PhoneSettings;
   private listeners = new Set<() => void>();
   private storage: SettingsStorage;
   constructor(storage: SettingsStorage) {
     this.storage = storage;
-    this.state = storage.read() ?? defaultSettings;
+    const stored = storage.read();
+    if (!stored) this.state = defaultSettings;
+    else if (stored.version === 1) {
+      // Version 1 selected host backgrounds and external URLs; neither belongs to the Phone library.
+      this.state = { version: 2, wallpaper: { kind: "gradient" }, blur: stored.blur };
+      storage.save(this.state);
+    } else if (stored.version === 2) this.state = stored;
+    else throw new Error("不支持的手机设置版本");
   }
   getState = () => this.state;
   subscribe = (listener: () => void) => {
@@ -35,16 +53,20 @@ export class PhoneSettingsService {
       this.listeners.delete(listener);
     };
   };
-  backgrounds = () => this.storage.backgrounds();
+  listWallpapers = () => this.storage.listWallpapers();
+  async uploadWallpaper(image: Blob): Promise<WallpaperImage> {
+    if (!Object.hasOwn(wallpaperFormats, image.type))
+      throw new Error("请选择 PNG、JPEG 或 WebP 图片");
+    if (image.size === 0 || image.size > 10 * 1024 * 1024)
+      throw new Error("图片大小需在 10 MB 以内");
+    return this.storage.uploadWallpaper(image);
+  }
+  imageUrl(wallpaper: Wallpaper): string | undefined {
+    return wallpaper.kind === "image" ? this.storage.imageUrl(wallpaper.path) : undefined;
+  }
   apply(settings: PhoneSettings) {
     this.storage.save(settings);
     this.state = settings;
     this.listeners.forEach((listener) => listener());
   }
-}
-export function wallpaperUrl(value: string): string {
-  const url = new URL(value);
-  if (url.protocol !== "http:" && url.protocol !== "https:")
-    throw new Error("壁纸地址需要使用 HTTP 或 HTTPS");
-  return url.href;
 }

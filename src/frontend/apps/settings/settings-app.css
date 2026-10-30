@@ -1,49 +1,85 @@
-:host .wallpaper-preview {
-  height: 210px;
-  margin: var(--ios-space-large);
-  border-radius: 12px;
-  position: relative;
-  overflow: hidden;
-  color: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-shadow: var(--ios-wallpaper-text-shadow);
+:host .wallpaper-file {
+  display: none;
 }
-:host .wallpaper-preview span,
-:host .wallpaper-preview small {
-  z-index: 1;
+:host .wallpaper-add svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
 }
-:host .wallpaper-preview span {
-  font-size: 48px;
-}
-:host .settings-url {
+:host .wallpaper-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
   padding: var(--ios-space-medium);
+}
+:host .wallpaper-thumbnail {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--ios-muted-fill);
+}
+:host .wallpaper-thumbnail img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+:host .wallpaper-selection {
+  display: none;
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ios-blue);
+  color: var(--ios-on-accent);
+  font-size: 16px;
+  line-height: 24px;
+  text-align: center;
+}
+:host .wallpaper-thumbnail[aria-pressed="true"] .wallpaper-selection {
+  display: block;
+}
+:host .wallpaper-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ios-space-small);
+  margin: var(--ios-space-medium);
+  color: var(--ios-red);
+  font-size: 14px;
+}
+:host .wallpaper-error p {
+  margin: 0;
+}
+:host .wallpaper-preview-page .ios-page-content {
+  overflow: hidden;
+}
+:host .wallpaper-preview-page .ios-page-content::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  height: var(--status-height);
+  background: var(--ios-bar);
+}
+:host .wallpaper-preview-page .ios-footer {
+  background: var(--ios-bar);
+}
+:host .wallpaper-preview-controls {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--ios-space-small);
+  justify-content: center;
 }
-:host .settings-url input {
-  min-width: 0;
-  min-height: var(--control-size);
-  font: inherit;
-  border: 1px solid var(--ios-line);
-  border-radius: var(--ios-control-radius);
-  padding: var(--ios-space-small);
-}
-:host .settings-message {
-  margin: var(--ios-space-large);
-  color: var(--ios-secondary-ink);
-  overflow-wrap: anywhere;
-}
-
-:host .settings-feedback {
-  margin: 0;
-  padding: var(--ios-space-medium) var(--ios-space-large);
-  height: 100%;
-  overflow: auto;
-  font-size: var(--ios-caption-size);
-  background: var(--ios-row-surface);
-  overflow-wrap: anywhere;
+:host .wallpaper-save-error {
+  margin: 0 var(--ios-space-large);
+  color: var(--ios-red);
+  font-size: 13px;
 }

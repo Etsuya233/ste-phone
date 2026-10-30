@@ -33,7 +33,9 @@ pnpm preview:frontend
 
 Home 单击返回主屏，双击进入 Expose。已打开的五个 App 保留页面与状态，后台以 iOS 7 风格的横向页面预览显示，中央卡片与相邻卡片沿用各 App 的真实页面，下面是主屏同款图标和应用名称。界面只保留壁纸、卡片和图标，不显示额外入口、页码或提示。左右拖动或按方向键选卡，点击卡片/图标或 Enter 打开；上滑或 Delete 关闭应用，退出动画完成后卸载页面。关闭手机后重新打开回到原前台页，刷新 ST 会结束内存会话。秒表退到后台继续计时，仅在前台刷新显示。资料按聊天与范围重置导航栈，数据库工作区继续按聊天保留。
 
-「设置 → 壁纸」可选择 ST 已有背景、验证并保存 HTTP/HTTPS 图片地址、开启模糊，或恢复默认渐变。选择后点「应用」保存；返回放弃未应用修改。图片仅作为小手机背景，文字和图标保持清晰，也不修改 ST 背景。生产设置存入 ST 的 `extensionSettings.ste_phone` 并交给宿主延迟保存，「已应用」表示已交给宿主保存。独立预览使用隔离的 `ste-phone-preview-settings-v1` localStorage，`/?settings=1` 可快捷进入设置。
+「设置 → 壁纸」显示默认渐变和 Phone 上传的图片，使用三列 9:16 缩略图。右上角「+」上传 PNG、JPEG 或 WebP（最大 10 MB），上传后进入全幅预览；选择 Blur 后点「设定」保存并返回图库。上传图片通过 ST 原生图片接口保存到 `data/<账号>/user/images/ste-phone-wallpapers/`，配置只保存所选路径与 Blur，图片内容留在账号目录，不改变 ST 背景。全局设置通过 `extensionSettings.ste_phone` 交给宿主延迟保存。
+
+设置 schema 升为 v2：首次读取 v1 时移除旧 URL 列表与旧背景选择，恢复默认渐变并保留 Blur。独立预览使用自己的 IndexedDB 保存 Blob、localStorage 保存配置，刷新时重新生成图片 URL；不连接真实 ST。`/?settings=1` 可快捷进入设置，同一局域网 HTTP 预览也支持上传。
 
 ## 开发命令
 
@@ -51,7 +53,7 @@ pnpm test              # 串行验证工程接入、资料缓存、远端查询�
 
 生产入口为 `src/frontend/index.ts`，`host/mount-phone.tsx` 挂载 React 与 Shadow DOM，`phone-app.tsx` 管理窗口开关。`device/` 放机身与会话，`system/` 放状态栏与转场，`foundation/` 放基础视觉组件，`apps/` 放主屏与各应用，`foundation/NavigationStack` 提供保留 DOM 的页内导航，`theme.css` 汇总 CSS 与主题变量。React 随插件打包。字体优先使用 Apple 平台字体，Inter 西文字体通过 Google Fonts 加载，不进入产物；网络不可用时继续使用本机无衬线字体。构建产物的 manifest 版本与运行时版本统一读取 `package.json`。
 
-全局设置与存储约定位于 `src/features/settings/`，ST 设置与背景 API 接线位于 `src/infrastructure/host/`。公共背景资料位于 `src/features/background/`，包含资料类型、来源读取约定与缓存流程；数据库契约和会话服务位于 `src/features/database/`，Memory 数据库连接、协议和视图定义位于 `src/infrastructure/ste-memory/`。入口组装具体实现，App 共用来源缓存。代码位置与阅读顺序见 [公共数据源](docs/data-source.md)。
+全局设置与存储约定位于 `src/features/settings/`，ST 设置与原生图片 API 接线位于 `src/infrastructure/host/`。公共背景资料位于 `src/features/background/`，包含资料类型、来源读取约定与缓存流程；数据库契约和会话服务位于 `src/features/database/`，Memory 数据库连接、协议和视图定义位于 `src/infrastructure/ste-memory/`。入口组装具体实现，App 共用来源缓存。代码位置与阅读顺序见 [公共数据源](docs/data-source.md)。
 
 ## ST 安装与开发直连
 
