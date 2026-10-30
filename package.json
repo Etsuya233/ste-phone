@@ -20,7 +20,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test scripts/*.test.ts src/data/*.test.ts"
+    "test": "node --test scripts/*.test.ts src/features/background/*.test.ts src/infrastructure/ste-memory/*.test.ts"
   },
   "dependencies": {
     "react": "19.2.8",

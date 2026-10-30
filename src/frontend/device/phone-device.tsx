@@ -5,7 +5,7 @@ import { Stopwatch } from "../apps/stopwatch/stopwatch.tsx";
 import { FoundationApp } from "../apps/foundation/foundation-app.tsx";
 import { StatusBar } from "../system/status-bar.tsx";
 import { DataSourceApp } from "../apps/data-source/data-source-app.tsx";
-import type { PhoneDataSource } from "../../data/background.ts";
+import type { PhoneDataSource } from "../../features/background/index.ts";
 type Transition = "entering" | "leaving" | null;
 export function PhoneDevice({
   dataSource,

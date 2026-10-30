@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
 import { PhoneDevice } from "./device/phone-device.tsx";
-import type { PhoneDataSource } from "../data/background.ts";
+import type { PhoneDataSource } from "../features/background/index.ts";
 
 const DEVICE_WIDTH = 430;
 const DEVICE_HEIGHT = 886;

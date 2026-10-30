@@ -4,13 +4,35 @@
 
 ## 契约与归属
 
-`src/data/background.ts` 定义 `CharacterProfile`（id/name/profileText）、`Chronicle`（id/title/content）、`ItemProfile`（id/name/description）与 `PhoneBackground`。人物描述包含来源当前提供的身份、性格、经历和近况，不承诺信息完整或角色知情。
+`src/features/background/background.ts` 定义 `CharacterProfile`（id/name/profileText）、`Chronicle`（id/title/content）、`ItemProfile`（id/name/description）与 `PhoneBackground`。人物描述包含来源当前提供的身份、性格、经历和近况，不承诺信息完整或角色知情。
 
 `sourceId` 表示提供者，`scopeId` 表示记忆空间，条目 ID 表示该空间中的源记录。改名不改变关联身份；克隆空间按新范围处理。聊天身份由数据源上下文单独跟踪，即使两个聊天共享空间，切换后也使旧读取失效。
 
 `BackgroundDataSource` 提供 `getState()`、`subscribe()` 和 `load({ force? })`。同次读取去重，成功结果固定为不可修改的快照；来源变化使缓存失效，存在页面订阅时自动重读，无订阅时等下次使用。缓存属于插件挂载生命周期，退出 App、关闭手机仍保留，刷新 ST 页面后重建。不同对话不保留旧画面。
 
 刷新失败保留同范围旧快照并标记过期，错误独立显示。旧请求的成功、失败和清理均不得影响新请求；读取过程中再次失效会放弃旧结果。调用失败时 App 不应继续生成内容。
+
+## 代码组织与阅读顺序
+
+```text
+src/
+├── features/background/
+│   ├── index.ts                       # 对 App 与适配器公开的入口
+│   ├── background.ts                  # 手机理解的资料类型
+│   ├── data-source.ts                 # 读取、缓存与状态发布
+│   ├── data-source.test.ts            # 公共读取行为验证
+│   └── ports/background-provider.ts   # 外部来源需要实现的读取约定
+├── infrastructure/ste-memory/
+│   ├── memory-background-provider.ts # 连接 Memory 并转发变更通知
+│   ├── public-read-contract.ts        # 外部协议类型，仅适配器内部使用
+│   ├── map-background.ts              # 剧情记忆预设到手机资料的转换
+│   └── map-background.test.ts         # 结构校验与文本转换验证
+└── frontend/index.ts                  # 组装来源、共享数据源与手机
+```
+
+了解手机需要什么资料时先读 `background.ts`；了解读取和缓存行为时读 `data-source.ts`；修改 Memory 接入时再读 `infrastructure/ste-memory`。核心不依赖 ST、浏览器全局或具体适配器；预览与生产通过不同来源实现同一个读取约定。App 与适配器均从 `features/background/index.ts` 使用功能，ESLint 检查依赖方向。
+
+读取流程在 `load` 中按“核对绑定、复用请求或缓存、发起读取”组织，异步结果在 `readAndPublish` 中完成归属检查、固定快照和状态发布。变更版本同时覆盖聊天切换和同聊天内更新；旧请求的结果、错误与清理不能影响新请求。
 
 ## Memory 接入
 

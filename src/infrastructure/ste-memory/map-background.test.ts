@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mapMemoryBackground } from "./memory-mapping.ts";
-import type { MemoryField, MemorySnapshot } from "./memory-contract.ts";
+import { mapMemoryBackground } from "./map-background.ts";
+import type { MemoryField, MemorySnapshot } from "./public-read-contract.ts";
 
 function fixture(): MemorySnapshot {
   const definitions = {

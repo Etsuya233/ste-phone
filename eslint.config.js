@@ -12,5 +12,41 @@ export default tseslint.config(
     files: ["**/*.{ts,tsx}"],
     rules: { "@typescript-eslint/consistent-type-imports": "error" },
   },
+  {
+    files: ["src/features/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/infrastructure/**", "**/frontend/**"],
+              message: "功能核心只依赖自身类型与读取约定，外部实现由入口注入。",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/frontend/**/*.{ts,tsx}", "src/infrastructure/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/features/background/background.ts",
+                "**/features/background/data-source.ts",
+                "**/features/background/ports/**",
+              ],
+              message: "通过 features/background/index.ts 使用背景资料功能。",
+            },
+          ],
+        },
+      ],
+    },
+  },
   prettier,
 );

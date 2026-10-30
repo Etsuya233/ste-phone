@@ -1,4 +1,7 @@
-/** Structural copy of STE Memory public-read v1; no imports from another extension's source. */
+/**
+ * STE Memory 公共读取 v1 的最小结构契约，只在该适配器内使用。
+ * 两个扩展独立构建，因此不导入相邻仓库源码，也不把来源类型泄漏给手机 App。
+ */
 export interface MemoryField {
   readonly id: string;
   readonly tableId: string;

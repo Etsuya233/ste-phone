@@ -1,5 +1,5 @@
 import { mountPhone } from "../../src/frontend/host/mount-phone.tsx";
-import { BackgroundDataSource } from "../../src/data/data-source.ts";
+import { BackgroundDataSource } from "../../src/features/background/index.ts";
 import { createPreviewProvider } from "./data-source-fixture.ts";
 
 const options = new URLSearchParams(window.location.search);

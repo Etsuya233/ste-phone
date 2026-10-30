@@ -1,31 +1,26 @@
-import type { BackgroundProvider, PhoneBackground, SourceContext } from "./background.ts";
-import type { MemoryReadApi } from "./memory-contract.ts";
-import { mapMemoryBackground } from "./memory-mapping.ts";
+import type {
+  BackgroundProvider,
+  PhoneBackground,
+  SourceContext,
+} from "../../features/background/index.ts";
+import type { MemoryReadApi } from "./public-read-contract.ts";
+import { mapMemoryBackground } from "./map-background.ts";
 
 declare global {
   var STE_MEMORY_API: MemoryReadApi | undefined;
 }
 
+/** 负责 Memory 连接和协议转换；缓存、读取去重与页面状态由背景资料功能管理。 */
 export class MemoryBackgroundProvider implements BackgroundProvider {
   readonly #listeners = new Set<() => void>();
   #api: MemoryReadApi | undefined;
   #unsubscribe: (() => void) | undefined;
 
   constructor() {
+    // Memory 可能先加载，也可能后加载；已有接口和 ready 通知都需要处理。
     this.#connect();
     window.addEventListener("ste-memory:ready", this.#connect);
   }
-
-  #connect = (): void => {
-    this.#unsubscribe?.();
-    this.#api = globalThis.STE_MEMORY_API;
-    this.#unsubscribe = this.#api?.version === 1 ? this.#api.subscribe(this.#changed) : undefined;
-    this.#changed();
-  };
-
-  #changed = (): void => {
-    for (const listener of this.#listeners) listener();
-  };
 
   getContext(): SourceContext {
     const base = {
@@ -64,7 +59,20 @@ export class MemoryBackgroundProvider implements BackgroundProvider {
     const api = this.#api;
     if (!api || api.version !== 1) throw new Error(this.getContext().message!);
     const { snapshot } = await api.read();
+    // await 期间可能换成另一个接口实例，不能接受旧实例返回的结果。
     if (api !== this.#api) throw new Error("Memory 接口已重新连接，请重新读取");
     return mapMemoryBackground(snapshot);
   }
+
+  #connect = (): void => {
+    // 重连时先解除旧接口订阅，防止一次提交触发重复刷新。
+    this.#unsubscribe?.();
+    this.#api = globalThis.STE_MEMORY_API;
+    this.#unsubscribe = this.#api?.version === 1 ? this.#api.subscribe(this.#changed) : undefined;
+    this.#changed();
+  };
+
+  #changed = (): void => {
+    for (const listener of this.#listeners) listener();
+  };
 }

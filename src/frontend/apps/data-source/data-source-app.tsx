@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { DataSourceState, PhoneDataSource } from "../../../data/background.ts";
+import type { DataSourceState, PhoneDataSource } from "../../../features/background/index.ts";
 import { Button } from "../../foundation/button.tsx";
 import { GroupedList } from "../../foundation/grouped-list.tsx";
 import { ListCell } from "../../foundation/list-cell.tsx";

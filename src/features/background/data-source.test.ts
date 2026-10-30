@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { BackgroundDataSource } from "./data-source.ts";
-import type { BackgroundProvider, PhoneBackground, SourceContext } from "./background.ts";
+import { BackgroundDataSource } from "./index.ts";
+import type { BackgroundProvider, PhoneBackground, SourceContext } from "./index.ts";
 
 const data = (scopeId = "space", name = "小红"): PhoneBackground => ({
   sourceId: "test",

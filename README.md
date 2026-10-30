@@ -34,6 +34,8 @@ pnpm test              # Junction、同步与本地发版集成验证
 
 生产入口为 `src/frontend/index.ts`，`host/mount-phone.tsx` 挂载 React 与 Shadow DOM，`phone-app.tsx` 管理窗口开关。`device/` 放机身与会话，`system/` 放状态栏与转场，`foundation/` 放基础视觉组件，`apps/home/`、`apps/stopwatch/`、`apps/foundation/` 分别放主屏、秒表和组件应用，`theme.css` 汇总 CSS 与主题变量。React 随插件打包，无 CDN 依赖。构建产物的 manifest 版本与运行时版本统一读取 `package.json`。
 
+公共背景资料位于 `src/features/background/`，包含资料类型、来源读取约定与缓存流程；Memory 连接、协议和字段转换位于 `src/infrastructure/ste-memory/`。入口组装具体实现，App 通过功能公开入口使用资料。代码位置与阅读顺序见 [公共数据源](docs/data-source.md)。
+
 ## ST 安装与开发直连
 
 将 `.env.example` 复制为 `.env`，配置 `STE_ST_INSTALL` 或 `STE_ST_EXTENSION_DIR`，两者选一。相对路径以本仓库为基准。`.env` 不进入 Git。

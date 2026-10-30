@@ -2,7 +2,7 @@ import type {
   BackgroundProvider,
   PhoneBackground,
   SourceContext,
-} from "../../src/data/background.ts";
+} from "../../src/features/background/index.ts";
 
 /** Preview-only provider. Never connects to ST or writes real chat data. */
 export function createPreviewProvider(mode: string | null): BackgroundProvider {
