@@ -1,0 +1,50 @@
+:host .ios-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--ios-space-medium);
+  min-height: var(--control-size);
+  width: 100%;
+  padding: var(--ios-space-medium) var(--ios-space-large);
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: var(--ios-ink);
+  font-size: var(--ios-body-size);
+}
+:host .ios-cell + .ios-cell {
+  border-top: var(--ios-hairline) solid var(--ios-line);
+}
+:host .ios-cell-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ios-space-tiny);
+  overflow-wrap: anywhere;
+}
+:host .ios-cell-subtitle {
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+}
+:host .ios-cell-value {
+  max-width: 35%;
+  overflow-wrap: anywhere;
+  color: var(--ios-secondary-ink);
+  text-align: right;
+}
+:host .ios-cell-accessory {
+  display: flex;
+  flex-shrink: 0;
+  max-width: 55%;
+}
+:host .ios-cell-chevron {
+  color: var(--ios-accessory-ink);
+  font-size: var(--ios-chevron-size);
+}
+:host .ios-cell--action:active {
+  background: var(--ios-row-active);
+}
+:host .ios-cell--action:disabled {
+  opacity: var(--ios-disabled-opacity);
+  cursor: default;
+}

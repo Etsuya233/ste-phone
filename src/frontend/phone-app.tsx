@@ -10,7 +10,12 @@ const VIEWPORT_GAP = 12;
 export function PhoneApp({
   responsive = false,
   draggable = false,
-}: { responsive?: boolean; draggable?: boolean } = {}) {
+  initialApp = "home",
+}: {
+  responsive?: boolean;
+  draggable?: boolean;
+  initialApp?: "home" | "foundation";
+} = {}) {
   const panel = useRef<HTMLDialogElement>(null);
   const launcher = useRef<HTMLButtonElement>(null);
   const drag = useRef<{
@@ -130,6 +135,7 @@ export function PhoneApp({
         {open ? (
           <div className="device-stage">
             <PhoneDevice
+              initialApp={initialApp}
               scale={scale}
               draggable={draggable && !fullscreen}
               onPointerDown={startDrag}

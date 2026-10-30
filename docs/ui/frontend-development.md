@@ -6,6 +6,18 @@
 
 独立预览入口为 `docs/ui/frontend-preview.tsx`，与生产共用挂载、React 组件和样式，禁止在生产中引用预览或 tmp 资源。
 
+## Foundation
+
+基础组件位于 `src/frontend/foundation/`，每个组件的 TSX 与 CSS 分文件存放，`foundation.tsx` 仅显式导出，`foundation.css` 汇总样式。页面使用组件提供的视觉，自己的 CSS 只调整布局；颜色、字体、间距、控件尺寸统一读取 `tokens.css`。
+
+`Page` 使用 `navBar` 和 `footer` 插槽。导航栏独立使用 `NavBar`，返回文案及行为由调用方传入，右侧操作使用 `right` 插槽。提供底栏时必须指定逻辑像素高度 `footerHeight`，页面据此同步内容 padding、scroll-padding 与底栏高度。`SafeArea` 在 Page 内统一消费底部安全区，业务页面不重复预留。内容层为唯一滚动容器，顶栏、底栏和系统状态栏固定叠放。
+
+`Switch` 使用受控 `checked` / `onCheckedChange`，`SegmentedControl` 使用受控 `value` / `onValueChange`；状态属于调用页面，不在组件内部复制或持久化。分段控件使用同组原生 radio 的键盘行为。`ListCell` 的点击行与带尾部交互控件的静态行分开使用，避免嵌套按钮。按钮默认 `type="button"`，用于表单提交时显式指定 `type="submit"`。
+
+Foundation 组件应用位于 `src/frontend/apps/foundation/`，可从主屏打开，也可通过独立预览的 `?foundation=1` 快捷进入。应用共用生产组件和 CSS，自有样式只调整布局；开发预览入口仍位于 `docs/ui/`，生产代码不引用该入口。新增组件需有实际页面或明确的组件应用验收场景。
+
+## 状态与验收
+
 开发前明确状态属于全局设置、ST 当前对话或手机内部会话，以及读取、写入和离开页面的行为。已有公共组件与业务能力优先复用，ST 接线与页面展示保持清晰边界。
 
 先完成窄屏的完整操作流程，再适配桌面。处理宿主全局样式对插件控件、浮层和文字的影响，插件样式也不得污染宿主。

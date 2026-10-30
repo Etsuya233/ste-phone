@@ -177,7 +177,8 @@
   display: none;
 }
 :host .phone-panel--responsive .phone-close {
-  top: 20px;
+  top: auto;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 3px);
   right: 6px;
   min-width: 68px;
   color: #555;

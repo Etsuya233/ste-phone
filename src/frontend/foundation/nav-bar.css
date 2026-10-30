@@ -1,0 +1,53 @@
+:host .ios-nav {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--status-height) + var(--nav-height));
+  padding-top: var(--status-height);
+  background: var(--ios-bar);
+  backdrop-filter: blur(var(--ios-bar-blur));
+  border-bottom: var(--ios-hairline) solid var(--ios-line);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  align-items: center;
+}
+:host .ios-nav h1 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+  font-size: var(--ios-body-size);
+  font-weight: 600;
+  text-align: center;
+}
+:host .ios-nav-side {
+  min-width: 0;
+  overflow: hidden;
+}
+:host .ios-nav-side--right {
+  display: flex;
+  justify-content: flex-end;
+}
+:host .ios-nav .ios-button {
+  display: flex;
+  align-items: center;
+  gap: var(--ios-space-small);
+  max-width: 100%;
+  padding-inline: var(--ios-space-small);
+}
+:host .ios-nav .ios-button:focus-visible {
+  outline-offset: calc(-1 * var(--ios-focus-offset));
+}
+:host .ios-nav .ios-button > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:host .ios-nav .ios-icon {
+  width: var(--ios-back-icon-width);
+  height: var(--ios-back-icon-height);
+}

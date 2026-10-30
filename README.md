@@ -1,6 +1,6 @@
 # STE-PHONE
 
-面向 SillyTavern 的小手机插件。使用 React、TypeScript、普通 CSS 和 esbuild，提供 iPhone 6s 风格外壳、主屏幕与秒表；关闭窗口或退出秒表后清空本次计时，剧情联动待开发。
+面向 SillyTavern 的小手机插件。使用 React、TypeScript、普通 CSS 和 esbuild，提供 iPhone 6s 风格外壳、主屏幕、秒表与 Foundation 组件应用；关闭窗口或退出应用后清空本次应用状态，剧情联动待开发。
 
 ## 开始
 
@@ -16,6 +16,8 @@ pnpm preview:frontend
 
 手机默认保持完整 iPhone 6s 机身比例，桌面和移动端均等比缩放至可用视口。`PhoneApp` 保留可选的全屏响应式模式和拖拽能力，默认关闭，也不显示操作柄。开发预览可通过 `?responsive=1` 开启窄屏全屏模式、`?draggable=1` 开启顶部机身拖拽，两项可组合；生产入口不读取这些参数。
 
+打开手机后，点击主屏的「组件」（Foundation）图标进入组件应用，可操作导航栏、按钮、分组列表、开关、分段控件和页面滚动示例；不连接或保存 ST 数据。开发预览也可用 `/?foundation=1` 快捷进入，可与上述参数组合；普通入口默认进入主屏。
+
 ## 开发命令
 
 ```sh
@@ -28,7 +30,7 @@ pnpm format:check
 pnpm test              # Junction、同步与本地发版集成验证
 ```
 
-生产入口为 `src/frontend/index.ts`，`host/mount-phone.tsx` 挂载 React 与 Shadow DOM，`phone-app.tsx` 管理窗口开关。`device/` 放机身与会话，`system/` 放状态栏与转场，`foundation/` 放基础视觉组件，`apps/home/` 与 `apps/stopwatch/` 放主屏和秒表，`theme.css` 汇总 CSS 与主题变量。React 随插件打包，无 CDN 依赖。构建产物的 manifest 版本与运行时版本统一读取 `package.json`。
+生产入口为 `src/frontend/index.ts`，`host/mount-phone.tsx` 挂载 React 与 Shadow DOM，`phone-app.tsx` 管理窗口开关。`device/` 放机身与会话，`system/` 放状态栏与转场，`foundation/` 放基础视觉组件，`apps/home/`、`apps/stopwatch/`、`apps/foundation/` 分别放主屏、秒表和组件应用，`theme.css` 汇总 CSS 与主题变量。React 随插件打包，无 CDN 依赖。构建产物的 manifest 版本与运行时版本统一读取 `package.json`。
 
 ## ST 安装与开发直连
 

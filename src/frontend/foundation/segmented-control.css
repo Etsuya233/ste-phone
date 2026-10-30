@@ -1,0 +1,67 @@
+:host .ios-segmented {
+  min-width: 0;
+  margin: 0;
+  padding: var(--ios-space-medium) var(--ios-space-large);
+  border: 0;
+}
+:host .ios-segmented legend {
+  padding: 0;
+  font-size: var(--ios-caption-size);
+  color: var(--ios-secondary-ink);
+}
+:host .ios-segmented-options {
+  display: flex;
+  border: var(--ios-hairline) solid var(--ios-blue);
+  border-radius: var(--ios-control-radius);
+}
+:host .ios-segment {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+:host .ios-segment + .ios-segment {
+  border-left: var(--ios-hairline) solid var(--ios-blue);
+}
+:host .ios-segment input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+:host .ios-segment span {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-size);
+  padding: var(--ios-space-small);
+  overflow-wrap: anywhere;
+  text-align: center;
+  color: var(--ios-blue);
+  font-size: var(--ios-caption-size);
+  pointer-events: none;
+}
+:host .ios-segment input:checked + span {
+  background: var(--ios-blue);
+  color: var(--ios-on-accent);
+}
+:host .ios-segment:first-child span {
+  border-radius: var(--ios-control-radius) 0 0 var(--ios-control-radius);
+}
+:host .ios-segment:last-child span {
+  border-radius: 0 var(--ios-control-radius) var(--ios-control-radius) 0;
+}
+:host .ios-segment input:disabled {
+  cursor: default;
+}
+:host .ios-segment input:disabled + span {
+  opacity: var(--ios-disabled-opacity);
+}
+:host .ios-segment input:focus-visible + span {
+  outline: var(--ios-focus-width) solid var(--ios-blue);
+  outline-offset: var(--ios-focus-offset);
+}

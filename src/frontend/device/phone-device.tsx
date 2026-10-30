@@ -1,25 +1,39 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent, HTMLAttributes } from "react";
 import { Home } from "../apps/home/home.tsx";
 import { Stopwatch } from "../apps/stopwatch/stopwatch.tsx";
+import { FoundationApp } from "../apps/foundation/foundation-app.tsx";
 import { StatusBar } from "../system/status-bar.tsx";
 type Transition = "entering" | "leaving" | null;
 export function PhoneDevice({
   scale,
   draggable,
+  initialApp = "home",
   ...dragEvents
 }: Pick<
   HTMLAttributes<HTMLDivElement>,
   "onPointerDown" | "onPointerMove" | "onPointerUp" | "onLostPointerCapture"
-> & { scale: number; draggable: boolean }) {
+> & {
+  scale: number;
+  draggable: boolean;
+  initialApp?: "home" | "foundation";
+}) {
   const screen = useRef<HTMLDivElement>(null);
-  const [page, setPage] = useState<"home" | "stopwatch">("home");
+  const [page, setPage] = useState<"home" | "stopwatch" | "foundation">("home");
   const [transition, setTransition] = useState<Transition>(null);
   const [origin, setOrigin] = useState("50% 90%");
+  const lastIcon = useRef<HTMLButtonElement | null>(null);
+  useLayoutEffect(() => {
+    if (initialApp === "foundation")
+      screen.current!.querySelector<HTMLButtonElement>('button[data-app="foundation"]')!.click();
+  }, [initialApp]);
   useEffect(() => {
     if (transition) return;
-    const target = page === "home" ? ".home-app" : ".ios-nav button";
-    screen.current!.querySelector<HTMLButtonElement>(target)!.focus({ preventScroll: true });
+    const target =
+      page === "home"
+        ? (lastIcon.current ?? screen.current!.querySelector<HTMLButtonElement>(".home-app")!)
+        : screen.current!.querySelector<HTMLButtonElement>(".ios-nav button")!;
+    target.focus({ preventScroll: true });
   }, [page, transition]);
   useEffect(() => {
     const preference = matchMedia("(prefers-reduced-motion: reduce)");
@@ -31,14 +45,15 @@ export function PhoneDevice({
     preference.addEventListener("change", finish);
     return () => preference.removeEventListener("change", finish);
   }, [transition]);
-  const open = (event: MouseEvent<HTMLButtonElement>) => {
+  const open = (event: MouseEvent<HTMLButtonElement>, app: "stopwatch" | "foundation") => {
     if (transition) return;
     const icon = event.currentTarget.querySelector(".ios-icon")!.getBoundingClientRect();
     const bounds = screen.current!.getBoundingClientRect();
     setOrigin(
       `${(icon.left + icon.width / 2 - bounds.left) / scale}px ${(icon.top + icon.height / 2 - bounds.top) / scale}px`,
     );
-    setPage("stopwatch");
+    lastIcon.current = event.currentTarget;
+    setPage(app);
     setTransition(matchMedia("(prefers-reduced-motion: reduce)").matches ? null : "entering");
   };
   const exit = () => {
@@ -63,12 +78,12 @@ export function PhoneDevice({
       <div ref={screen} className="phone-screen">
         <div className="system-workspace">
           <div
-            className={`home-layer ${page === "stopwatch" ? "home-layer--covered" : ""}`}
+            className={`home-layer ${page !== "home" ? "home-layer--covered" : ""}`}
             inert={page !== "home"}
           >
             <Home onOpen={open} />
           </div>
-          {page === "stopwatch" ? (
+          {page !== "home" ? (
             <div
               className={`app-layer ${transition ? `app-layer--${transition}` : ""}`}
               style={{ "--app-origin": origin } as CSSProperties}
@@ -79,7 +94,11 @@ export function PhoneDevice({
               }}
               inert={transition !== null}
             >
-              <Stopwatch active={transition !== "leaving"} onExit={exit} />
+              {page === "stopwatch" ? (
+                <Stopwatch active={transition !== "leaving"} onExit={exit} />
+              ) : (
+                <FoundationApp onHome={exit} />
+              )}
             </div>
           ) : null}
         </div>

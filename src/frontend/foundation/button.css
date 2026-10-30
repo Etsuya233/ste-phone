@@ -1,0 +1,46 @@
+:host .ios-button {
+  min-height: var(--control-size);
+  min-width: var(--control-size);
+  padding: 0 var(--ios-space-medium);
+  border: 0;
+  background: transparent;
+  color: var(--ios-blue);
+  -webkit-tap-highlight-color: transparent;
+}
+:host .ios-button:active {
+  opacity: var(--ios-pressed-opacity);
+}
+:host .ios-button--start,
+:host .ios-button--stop,
+:host .ios-button--reset {
+  width: var(--round-control-size);
+  height: var(--round-control-size);
+  padding: 0;
+  border: var(--ios-hairline) solid currentColor;
+  border-radius: 50%;
+  font-size: var(--ios-body-size);
+}
+:host .ios-button--start {
+  color: var(--ios-start-ink);
+  background: var(--ios-start-fill);
+}
+:host .ios-button--stop {
+  color: var(--ios-red);
+  background: var(--ios-stop-fill);
+}
+:host .ios-button--reset {
+  color: var(--ios-muted-ink);
+  background: var(--ios-muted-fill);
+}
+:host .ios-button:disabled {
+  opacity: var(--ios-disabled-opacity);
+}
+
+:host .ios-button--filled {
+  background: var(--ios-blue);
+  color: var(--ios-on-accent);
+  border-radius: var(--ios-control-radius);
+}
+:host .ios-button--danger {
+  color: var(--ios-red);
+}

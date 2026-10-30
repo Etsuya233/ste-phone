@@ -1,0 +1,13 @@
+:host .foundation-app-footer {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: var(--ios-space-medium);
+}
+:host .foundation-app-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ios-space-small);
+  padding: var(--ios-space-medium);
+}

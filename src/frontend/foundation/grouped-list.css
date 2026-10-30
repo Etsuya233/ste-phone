@@ -1,0 +1,16 @@
+:host .ios-group {
+  margin: var(--ios-group-gap) 0;
+}
+:host .ios-group-title,
+:host .ios-group-description {
+  margin: var(--ios-space-small) var(--ios-space-large);
+  font-size: var(--ios-caption-size);
+  line-height: var(--ios-copy-line-height);
+  font-weight: 400;
+  color: var(--ios-secondary-ink);
+  overflow-wrap: anywhere;
+}
+:host .ios-group-rows {
+  background: var(--ios-row-surface);
+  border-block: var(--ios-hairline) solid var(--ios-line);
+}

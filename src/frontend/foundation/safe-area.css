@@ -1,0 +1,9 @@
+:host .ios-safe-area {
+  position: absolute;
+  z-index: 2;
+  bottom: 0;
+  inset-inline: 0;
+  height: var(--safe-bottom);
+  background: var(--ios-bar);
+  pointer-events: none;
+}

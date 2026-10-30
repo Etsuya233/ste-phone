@@ -1,0 +1,39 @@
+:host .ios-page {
+  background: var(--ios-surface);
+  position: absolute;
+  inset: 0;
+  --page-top: var(--status-height);
+  --page-bottom: calc(var(--page-footer-height) + var(--safe-bottom));
+}
+:host .ios-page--nav {
+  --page-top: calc(var(--status-height) + var(--nav-height));
+}
+:host .ios-page-content {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-top: var(--page-top);
+  padding-bottom: var(--page-bottom);
+  scroll-padding-top: var(--page-top);
+  scroll-padding-bottom: var(--page-bottom);
+}
+:host .ios-footer {
+  position: absolute;
+  z-index: 2;
+  bottom: var(--safe-bottom);
+  inset-inline: 0;
+  height: var(--page-footer-height);
+  background: var(--ios-footer-surface);
+  backdrop-filter: blur(var(--ios-footer-blur));
+}
+:host .ios-page--wallpaper {
+  color: var(--ios-wallpaper-ink);
+  background: var(--ios-wallpaper);
+}
+:host .ios-page--wallpaper .ios-button {
+  color: inherit;
+}
+:host .ios-page--wallpaper .ios-text--caption {
+  text-shadow: var(--ios-wallpaper-text-shadow);
+}

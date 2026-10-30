@@ -1,0 +1,29 @@
+:host .ios-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+:host .ios-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--ios-icon-stroke);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+:host .ios-icon--app {
+  width: var(--app-icon-size);
+  height: var(--app-icon-size);
+  border-radius: var(--ios-app-icon-radius);
+  background: var(--ios-app-icon-surface);
+  color: var(--ios-app-icon-ink);
+  box-shadow: var(--ios-app-icon-shadow);
+}
+:host .ios-icon--page-dot {
+  width: var(--ios-page-dot-size);
+  height: var(--ios-page-dot-size);
+  border-radius: 50%;
+  background: currentColor;
+}

@@ -1,0 +1,14 @@
+:host .ios-text {
+  font-family: var(--ios-font);
+}
+:host .ios-text--caption {
+  font-size: var(--ios-caption-size);
+}
+:host .ios-text--display {
+  font-size: var(--ios-display-size);
+  font-weight: 200;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ios-display-tracking);
+  line-height: var(--ios-display-line-height);
+  white-space: nowrap;
+}

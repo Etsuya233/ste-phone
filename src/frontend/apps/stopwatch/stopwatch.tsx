@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Page, Text } from "../../foundation/foundation.tsx";
+import { Button } from "../../foundation/button.tsx";
+import { Page } from "../../foundation/page.tsx";
+import { Text } from "../../foundation/text.tsx";
+import { NavBar } from "../../foundation/nav-bar.tsx";
 export function Stopwatch({ onExit, active }: { onExit: () => void; active: boolean }) {
   const accumulated = useRef(0);
   const started = useRef(0);
@@ -26,7 +29,10 @@ export function Stopwatch({ onExit, active }: { onExit: () => void; active: bool
   const centiseconds = Math.floor(elapsed / 10);
   const display = `${String(Math.floor(centiseconds / 6000)).padStart(2, "0")}:${String(Math.floor(centiseconds / 100) % 60).padStart(2, "0")}.${String(centiseconds % 100).padStart(2, "0")}`;
   return (
-    <Page title="秒表" onBack={onExit} className="stopwatch-page">
+    <Page
+      navBar={<NavBar title="秒表" back={{ label: "返回", onClick: onExit }} />}
+      className="stopwatch-page"
+    >
       <div className="stopwatch-face">
         <Text role="display">{display}</Text>
       </div>

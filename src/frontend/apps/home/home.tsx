@@ -1,12 +1,24 @@
 import type { MouseEvent } from "react";
-import { Button, Icon, Page, Text } from "../../foundation/foundation.tsx";
-export function Home({ onOpen }: { onOpen: (event: MouseEvent<HTMLButtonElement>) => void }) {
+import { Button } from "../../foundation/button.tsx";
+import { Icon } from "../../foundation/icon.tsx";
+import { Page } from "../../foundation/page.tsx";
+import { Text } from "../../foundation/text.tsx";
+export function Home({
+  onOpen,
+}: {
+  onOpen: (event: MouseEvent<HTMLButtonElement>, app: "stopwatch" | "foundation") => void;
+}) {
   return (
     <Page
       appearance="wallpaper"
+      footerHeight={112}
       footer={
         <div className="home-dock">
-          <Button className="home-app" onClick={onOpen} aria-label="打开秒表">
+          <Button
+            className="home-app"
+            onClick={(event) => onOpen(event, "stopwatch")}
+            aria-label="打开秒表"
+          >
             <Icon appearance="app" className="stopwatch-icon">
               <svg viewBox="0 0 60 60">
                 <path d="M25 8h10M30 8v6M43 15l4 4" />
@@ -20,7 +32,24 @@ export function Home({ onOpen }: { onOpen: (event: MouseEvent<HTMLButtonElement>
         </div>
       }
     >
-      <div className="home-grid" aria-label="主屏幕" />
+      <div className="home-grid" aria-label="主屏幕">
+        <Button
+          className="home-app"
+          data-app="foundation"
+          onClick={(event) => onOpen(event, "foundation")}
+          aria-label="打开 Foundation 组件"
+        >
+          <Icon appearance="app" className="foundation-app-icon">
+            <svg viewBox="0 0 60 60">
+              <rect x="12" y="12" width="15" height="15" rx="3" />
+              <rect x="33" y="12" width="15" height="15" rx="3" />
+              <rect x="12" y="33" width="15" height="15" rx="3" />
+              <rect x="33" y="33" width="15" height="15" rx="3" />
+            </svg>
+          </Icon>
+          <Text role="caption">组件</Text>
+        </Button>
+      </div>
       <div className="home-page-indicator" aria-label="第 1 页，共 1 页">
         <Icon appearance="page-dot" />
       </div>

@@ -1,5 +1,6 @@
 :host .home-grid {
   display: grid;
+  align-content: start;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px 16px;
   padding: 22px;
@@ -36,4 +37,12 @@
 :host .stopwatch-pin {
   fill: var(--stopwatch-icon-accent);
   stroke: var(--stopwatch-icon-accent);
+}
+:host .foundation-app-icon {
+  color: var(--foundation-icon-ink);
+}
+:host .foundation-app-icon svg {
+  fill: var(--foundation-icon-fill);
+  stroke: var(--foundation-icon-ink);
+  stroke-width: var(--ios-icon-stroke);
 }
