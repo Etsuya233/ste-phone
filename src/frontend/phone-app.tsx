@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
 import { PhoneDevice } from "./device/phone-device.tsx";
+import type { PhoneDataSource } from "../data/background.ts";
 
 const DEVICE_WIDTH = 430;
 const DEVICE_HEIGHT = 886;
@@ -8,14 +9,16 @@ const CLOSE_HEIGHT = 52;
 const VIEWPORT_GAP = 12;
 
 export function PhoneApp({
+  dataSource,
   responsive = false,
   draggable = false,
   initialApp = "home",
 }: {
   responsive?: boolean;
   draggable?: boolean;
-  initialApp?: "home" | "foundation";
-} = {}) {
+  initialApp?: "home" | "foundation" | "data-source";
+  dataSource: PhoneDataSource;
+}) {
   const panel = useRef<HTMLDialogElement>(null);
   const launcher = useRef<HTMLButtonElement>(null);
   const drag = useRef<{
@@ -135,6 +138,7 @@ export function PhoneApp({
         {open ? (
           <div className="device-stage">
             <PhoneDevice
+              dataSource={dataSource}
               initialApp={initialApp}
               scale={scale}
               draggable={draggable && !fullscreen}

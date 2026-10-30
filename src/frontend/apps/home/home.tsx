@@ -6,7 +6,10 @@ import { Text } from "../../foundation/text.tsx";
 export function Home({
   onOpen,
 }: {
-  onOpen: (event: MouseEvent<HTMLButtonElement>, app: "stopwatch" | "foundation") => void;
+  onOpen: (
+    event: MouseEvent<HTMLButtonElement>,
+    app: "stopwatch" | "foundation" | "data-source",
+  ) => void;
 }) {
   return (
     <Page
@@ -33,6 +36,20 @@ export function Home({
       }
     >
       <div className="home-grid" aria-label="主屏幕">
+        <Button
+          className="home-app"
+          data-app="data-source"
+          onClick={(event) => onOpen(event, "data-source")}
+          aria-label="打开资料"
+        >
+          <Icon appearance="app" className="data-app-icon">
+            <svg viewBox="0 0 60 60">
+              <rect x="13" y="10" width="34" height="40" rx="4" />
+              <path d="M21 21h18M21 30h18M21 39h12" />
+            </svg>
+          </Icon>
+          <Text role="caption">资料</Text>
+        </Button>
         <Button
           className="home-app"
           data-app="foundation"

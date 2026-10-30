@@ -2,7 +2,7 @@ import { createRoot } from "react-dom/client";
 import type { ComponentProps } from "react";
 import { PhoneApp } from "../phone-app.tsx";
 
-export function mountPhone(options: ComponentProps<typeof PhoneApp> = {}): void {
+export function mountPhone(options: ComponentProps<typeof PhoneApp>): void {
   if (document.getElementById("ste-phone-host")) {
     throw new Error("STE Phone 已挂载，请刷新页面加载新版本");
   }

@@ -1,6 +1,6 @@
 # STE-PHONE
 
-面向 SillyTavern 的小手机插件。使用 React、TypeScript、普通 CSS 和 esbuild，提供 iPhone 6s 风格外壳、主屏幕、秒表与 Foundation 组件应用；关闭窗口或退出应用后清空本次应用状态，剧情联动待开发。
+面向 SillyTavern 的小手机插件。使用 React、TypeScript、普通 CSS 和 esbuild，提供 iPhone 6s 风格外壳、主屏幕、秒表、Foundation 组件与只读资料应用。公共数据源连接 STE Memory，为后续手机应用提供当前人物、纪要和物品。
 
 ## 开始
 
@@ -19,6 +19,8 @@ pnpm preview:frontend
 打开手机后，点击主屏的「组件」（Foundation）图标进入组件应用，可操作导航栏、按钮、分组列表、开关、分段控件和页面滚动示例；不连接或保存 ST 数据。开发预览也可用 `/?foundation=1` 快捷进入，可与上述参数组合；普通入口默认进入主屏。
 
 ## 开发命令
+
+主屏「资料」可以查看 STE Memory 的当前背景资料、搜索和复制正文。需要同时安装本轮支持 `STE_MEMORY_API v1` 的 Memory 构建，首版支持「剧情记忆」预设；结构不符会明确提示。公共缓存跨 App 保留，刷新 ST 后重读，不写回 Memory。独立预览使用示例数据，可用 `/?data-source=1` 快捷进入，加入 `data-state=empty`、`error`、`unavailable` 检查状态。接口、映射和缓存说明见 [公共数据源](docs/data-source.md)。
 
 ```sh
 pnpm build             # dist/index.js、style.css、manifest.json

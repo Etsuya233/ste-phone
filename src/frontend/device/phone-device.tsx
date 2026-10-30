@@ -4,8 +4,11 @@ import { Home } from "../apps/home/home.tsx";
 import { Stopwatch } from "../apps/stopwatch/stopwatch.tsx";
 import { FoundationApp } from "../apps/foundation/foundation-app.tsx";
 import { StatusBar } from "../system/status-bar.tsx";
+import { DataSourceApp } from "../apps/data-source/data-source-app.tsx";
+import type { PhoneDataSource } from "../../data/background.ts";
 type Transition = "entering" | "leaving" | null;
 export function PhoneDevice({
+  dataSource,
   scale,
   draggable,
   initialApp = "home",
@@ -16,16 +19,17 @@ export function PhoneDevice({
 > & {
   scale: number;
   draggable: boolean;
-  initialApp?: "home" | "foundation";
+  initialApp?: "home" | "foundation" | "data-source";
+  dataSource: PhoneDataSource;
 }) {
   const screen = useRef<HTMLDivElement>(null);
-  const [page, setPage] = useState<"home" | "stopwatch" | "foundation">("home");
+  const [page, setPage] = useState<"home" | "stopwatch" | "foundation" | "data-source">("home");
   const [transition, setTransition] = useState<Transition>(null);
   const [origin, setOrigin] = useState("50% 90%");
   const lastIcon = useRef<HTMLButtonElement | null>(null);
   useLayoutEffect(() => {
-    if (initialApp === "foundation")
-      screen.current!.querySelector<HTMLButtonElement>('button[data-app="foundation"]')!.click();
+    if (initialApp !== "home")
+      screen.current!.querySelector<HTMLButtonElement>(`button[data-app="${initialApp}"]`)!.click();
   }, [initialApp]);
   useEffect(() => {
     if (transition) return;
@@ -45,7 +49,10 @@ export function PhoneDevice({
     preference.addEventListener("change", finish);
     return () => preference.removeEventListener("change", finish);
   }, [transition]);
-  const open = (event: MouseEvent<HTMLButtonElement>, app: "stopwatch" | "foundation") => {
+  const open = (
+    event: MouseEvent<HTMLButtonElement>,
+    app: "stopwatch" | "foundation" | "data-source",
+  ) => {
     if (transition) return;
     const icon = event.currentTarget.querySelector(".ios-icon")!.getBoundingClientRect();
     const bounds = screen.current!.getBoundingClientRect();
@@ -96,6 +103,8 @@ export function PhoneDevice({
             >
               {page === "stopwatch" ? (
                 <Stopwatch active={transition !== "leaving"} onExit={exit} />
+              ) : page === "data-source" ? (
+                <DataSourceApp source={dataSource} onHome={exit} />
               ) : (
                 <FoundationApp onHome={exit} />
               )}
