@@ -3,11 +3,14 @@ import type { StDiaryContext } from "./diary-storage.ts";
 import type {
   PhoneSettings,
   PhoneSettingsV2,
+  PhoneSettingsV3,
   LegacyPhoneSettings,
   SettingsStorage,
 } from "../../apps/settings/ports/settings-storage.ts";
 interface StContext extends StDiaryContext {
-  extensionSettings: { ste_phone?: PhoneSettings | PhoneSettingsV2 | LegacyPhoneSettings };
+  extensionSettings: {
+    ste_phone?: PhoneSettings | PhoneSettingsV3 | PhoneSettingsV2 | LegacyPhoneSettings;
+  };
   saveSettingsDebounced: () => void;
   getRequestHeaders: () => Record<string, string>;
 }

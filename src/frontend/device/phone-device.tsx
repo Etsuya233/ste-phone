@@ -14,7 +14,7 @@ import { StatusBar } from "../system/status-bar.tsx";
 import { appSession } from "./app-session.ts";
 import type { AppId } from "./app-session.ts";
 import type { AppDefinition } from "./app-lifecycle.ts";
-import type { WallpaperReader } from "../../apps/settings/public.ts";
+import type { WallpaperReader, HomeScreenSettings } from "../../apps/settings/public.ts";
 import { Expose } from "./expose.tsx";
 import type { ExposeDrag } from "./expose.tsx";
 
@@ -26,20 +26,23 @@ const RunningApp = memo(function RunningApp({
   foreground,
   windowVisible,
   onHome,
+  onOpen,
 }: {
   definition: AppDefinition;
   active: boolean;
   foreground: boolean;
   windowVisible: boolean;
   onHome: () => void;
+  onOpen: (app: AppId) => void;
 }) {
   useEffect(() => {
     definition.onVisibilityChange?.({ foreground, windowVisible });
   }, [definition, foreground, windowVisible]);
-  return definition.render({ active, onHome, visibility: { foreground, windowVisible } });
+  return definition.render({ active, onHome, onOpen, visibility: { foreground, windowVisible } });
 });
 export function PhoneDevice({
   wallpaper,
+  homeScreen,
   apps,
   visible,
   scale,
@@ -55,9 +58,11 @@ export function PhoneDevice({
   visible: boolean;
   initialApp?: AppId | "home";
   wallpaper: WallpaperReader;
+  homeScreen: HomeScreenSettings;
   apps: Record<AppId, AppDefinition>;
 }) {
   const screen = useRef<HTMLDivElement>(null);
+  const [editingHome, setEditingHome] = useState(false);
   const [session, dispatch] = useReducer(appSession, {
     foreground: initialApp,
     recent: initialApp === "home" ? [] : [initialApp],
@@ -144,26 +149,33 @@ export function PhoneDevice({
     preference.addEventListener("change", finish);
     return () => preference.removeEventListener("change", finish);
   }, [transition, quittingApp]);
-  const open = (event: MouseEvent<HTMLButtonElement> | undefined, app: AppId) => {
-    if (transition || quittingApp) return;
-    if (event) {
-      const icon = event.currentTarget.getBoundingClientRect();
-      const bounds = screen.current!.getBoundingClientRect();
-      setOrigin(
-        `${(icon.left + icon.width / 2 - bounds.left) / scale}px ${(icon.top + icon.height / 2 - bounds.top) / scale}px`,
+  const open = useCallback(
+    (event: MouseEvent<HTMLButtonElement> | undefined, app: AppId) => {
+      if (transition || quittingApp) return;
+      const layout = homeScreen.getSnapshot();
+      if (![...layout.grid, ...layout.dock].includes(app)) throw new Error("应用未安装");
+      setEditingHome(false);
+      if (event) {
+        const icon = event.currentTarget.getBoundingClientRect();
+        const bounds = screen.current!.getBoundingClientRect();
+        setOrigin(
+          `${(icon.left + icon.width / 2 - bounds.left) / scale}px ${(icon.top + icon.height / 2 - bounds.top) / scale}px`,
+        );
+      }
+      lastApp.current = app;
+      dispatch({ type: "open", app });
+      setExposeDrag(emptyDrag);
+      setTransition(
+        matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? null
+          : page === "expose"
+            ? "resuming"
+            : "entering",
       );
-    }
-    lastApp.current = app;
-    dispatch({ type: "open", app });
-    setExposeDrag(emptyDrag);
-    setTransition(
-      matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? null
-        : page === "expose"
-          ? "resuming"
-          : "entering",
-    );
-  };
+    },
+    [transition, quittingApp, homeScreen, scale, page],
+  );
+  const openApp = useCallback((app: AppId) => open(undefined, app), [open]);
   const home = useCallback(() => {
     if (page === "home") return;
     if (quittingApp) {
@@ -224,6 +236,10 @@ export function PhoneDevice({
   );
   const stride = previewWidth + 28;
   const homePress = () => {
+    if (editingHome) {
+      setEditingHome(false);
+      return;
+    }
     if (homeTimer.current !== null) {
       clearTimeout(homeTimer.current);
       homeTimer.current = null;
@@ -267,7 +283,20 @@ export function PhoneDevice({
             className={`home-layer ${page !== "home" && transition !== "expose-home" ? "home-layer--covered" : ""}`}
             inert={page !== "home" || !visible}
           >
-            <Home onOpen={open} />
+            <Home
+              onOpen={open}
+              homeScreen={homeScreen}
+              active={visible && page === "home"}
+              editing={editingHome}
+              onEditingChange={setEditingHome}
+              onUninstall={(app) => {
+                homeScreen.uninstall(app);
+                if (session.recent.includes(app)) {
+                  apps[app].onQuit?.();
+                  dispatch({ type: "quit", app });
+                }
+              }}
+            />
           </div>
           {session.recent.map((app, index) => {
             const foreground = page === app;
@@ -314,6 +343,7 @@ export function PhoneDevice({
                     foreground={foreground}
                     windowVisible={visible}
                     onHome={home}
+                    onOpen={openApp}
                   />
                 </div>
               </div>
@@ -338,7 +368,7 @@ export function PhoneDevice({
               leaving={transition === "expose-home"}
               onDrag={setExposeDrag}
               onSelect={setExposeIndex}
-              onOpen={(app) => open(undefined, app)}
+              onOpen={openApp}
               onQuit={quit}
               onLeaveEnd={() => {
                 dispatch({ type: "home" });

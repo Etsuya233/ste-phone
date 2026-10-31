@@ -1,12 +1,9 @@
-export const appNames = {
-  stopwatch: "秒表",
-  foundation: "组件",
-  "data-source": "资料",
-  database: "Fake DBeaver",
-  diary: "日记",
-  settings: "设置",
-} as const;
-export type AppId = keyof typeof appNames;
+import { appCatalog } from "../../core/launcher/catalog.ts";
+import type { AppId } from "../../core/launcher/catalog.ts";
+export type { AppId } from "../../core/launcher/catalog.ts";
+export const appNames = Object.fromEntries(
+  Object.entries(appCatalog).map(([id, app]) => [id, app.name]),
+) as Record<AppId, string>;
 export interface AppSession {
   foreground: AppId | "home" | "expose";
   recent: AppId[];

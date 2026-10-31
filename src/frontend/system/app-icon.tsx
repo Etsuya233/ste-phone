@@ -2,6 +2,15 @@ import type { AppId } from "../device/app-session.ts";
 import { Icon } from "../foundation/icon.tsx";
 
 export function AppIcon({ app }: { app: AppId }) {
+  if (app === "app-store")
+    return (
+      <Icon appearance="app" className="app-store-icon">
+        <svg viewBox="0 0 60 60">
+          <circle cx="30" cy="30" r="24" />
+          <path d="m20 43 16-28M24 15l16 28M13 35h34" />
+        </svg>
+      </Icon>
+    );
   if (app === "diary")
     return (
       <Icon appearance="app" className="diary-app-icon">

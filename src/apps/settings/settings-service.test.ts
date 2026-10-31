@@ -57,7 +57,7 @@ test("version 1 migration discards host backgrounds and external URLs while pres
       },
     });
     assert.deepEqual(service.getState(), {
-      version: 3,
+      ...defaultSettings,
       wallpaper: { kind: "gradient" },
       blur: true,
       modelConnections: [],

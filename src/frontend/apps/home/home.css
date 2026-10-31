@@ -52,3 +52,94 @@
 :host .settings-app-icon {
   background: linear-gradient(#b5bcc7, #6e7888);
 }
+:host .app-store-icon {
+  background: linear-gradient(var(--store-icon-top), var(--ios-blue));
+}
+:host .app-store-icon svg {
+  stroke-width: 3;
+}
+:host .home-screen {
+  position: absolute;
+  inset: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+:host .home-grid {
+  min-height: 100%;
+}
+:host .home-slot {
+  position: relative;
+  min-width: 0;
+}
+:host .home-app {
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+:host .home-app .ios-text--caption {
+  white-space: nowrap;
+  max-width: calc(100% + 16px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:host .home-remove {
+  position: absolute;
+  top: -12px;
+  left: calc(50% - 42px);
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  isolation: isolate;
+  color: var(--ios-wallpaper-ink);
+  font-size: 24px;
+  line-height: 1;
+}
+:host .home-remove::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--home-remove-disc);
+  backdrop-filter: blur(var(--ios-bar-blur));
+}
+:host .home-screen--editing .home-slot {
+  animation: home-wiggle 180ms ease-in-out infinite alternate;
+}
+:host .home-screen--editing .home-slot:nth-child(even) {
+  animation-direction: alternate-reverse;
+}
+:host .home-slot--dragging {
+  opacity: 0.25;
+}
+:host .home-floating {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.12);
+  filter: drop-shadow(0 6px 8px #0005);
+}
+:host .home-edit-help {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+@keyframes home-wiggle {
+  from {
+    transform: rotate(-1.5deg);
+  }
+  to {
+    transform: rotate(1.5deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :host .home-screen--editing .home-slot {
+    animation: none;
+  }
+}

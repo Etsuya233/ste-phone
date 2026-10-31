@@ -14,14 +14,20 @@ import type { ChatContext } from "../core/chat/public.ts";
 import type { AppDefinition } from "../frontend/device/app-lifecycle.ts";
 import type { AppId } from "../frontend/device/app-session.ts";
 import type { DataAppPublic } from "../apps/data-source/public.ts";
-import type { ModelConnectionsReader, WallpaperReader } from "../apps/settings/public.ts";
 import { DiaryService } from "../apps/diary/diary-service.ts";
 import type { DiaryStorage } from "../apps/diary/ports/diary-storage.ts";
 import { DiaryApp } from "../apps/diary/ui/diary-app.tsx";
+import type {
+  ModelConnectionsReader,
+  WallpaperReader,
+  HomeScreenSettings,
+} from "../apps/settings/public.ts";
+import { AppStore } from "../apps/app-store/ui/app-store.tsx";
 
 export interface PhoneRuntime {
   readonly apps: Record<AppId, AppDefinition>;
   readonly wallpaper: WallpaperReader;
+  readonly homeScreen: HomeScreenSettings;
   readonly modelConnections: ModelConnectionsReader;
   readonly data: DataAppPublic;
   readonly chat: ChatContext;
@@ -51,6 +57,16 @@ export function createPhone(dependencies: {
     diary: {
       render: ({ active, onHome }) => <DiaryApp active={active} diary={diary} onHome={onHome} />,
       onQuit: () => diary.quit(),
+    },
+    "app-store": {
+      render: ({ active, onHome, onOpen }) => (
+        <AppStore
+          active={active}
+          homeScreen={settings.homeScreen}
+          onHome={onHome}
+          onOpen={onOpen}
+        />
+      ),
     },
     settings: {
       render: ({ active, onHome }) => (
@@ -82,6 +98,7 @@ export function createPhone(dependencies: {
   return {
     apps,
     wallpaper: settings.wallpaper,
+    homeScreen: settings.homeScreen,
     modelConnections: settings.modelConnections,
     data,
     chat: dependencies.chat,

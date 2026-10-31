@@ -1,3 +1,11 @@
+import type { AppId, HomeLayout } from "../../core/launcher/catalog.ts";
+export interface HomeScreenSettings {
+  getSnapshot(): HomeLayout;
+  subscribe(listener: () => void): () => void;
+  install(app: AppId): void;
+  uninstall(app: AppId): void;
+  move(app: AppId, area: "grid" | "dock", index: number): void;
+}
 export type Wallpaper =
   { readonly kind: "gradient" } | { readonly kind: "image"; readonly path: string };
 export interface WallpaperSnapshot {
