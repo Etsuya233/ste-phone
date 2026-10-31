@@ -189,6 +189,27 @@ test("diary selects recent finished author chronicles, cleaned chat and explicit
   }
 });
 
+test("diary saves the final answer from a reasoning model without storing its thoughts", async () => {
+  const app = fixture(
+    async () =>
+      new Response(
+        'data: {"choices":[{"delta":{"reasoning_content":"private-thought"}}]}\n\n' +
+          event("今天的海风让人安心。") +
+          end(),
+      ),
+  );
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    await app.service.generate();
+    assert.equal(app.service.getSnapshot().status, "complete");
+    assert.equal(app.saved.get("phone-A")!.entries[0]!.body, "今天的海风让人安心。");
+    assert.ok(!JSON.stringify(app.saved.get("phone-A")).includes("private-thought"));
+  } finally {
+    app.close();
+  }
+});
+
 test("truncated diary is rejected without saving partial text", async () => {
   const app = fixture(async () => reply("length"));
   try {
@@ -198,6 +219,26 @@ test("truncated diary is rejected without saving partial text", async () => {
     assert.match(app.service.getSnapshot().error!, /输出上限/);
     assert.equal(app.service.getSnapshot().data.entries.length, 0);
     assert.equal(app.service.getSnapshot().text, "");
+  } finally {
+    app.close();
+  }
+});
+
+test("diary owns the policy for an unexpected tool call and saves no entry", async () => {
+  let requests = 0;
+  const app = fixture(async () => {
+    requests++;
+    return new Response(
+      'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call","function":{"name":"unregistered","arguments":"{}"}}]},"finish_reason":"tool_calls"}]}\n\ndata: [DONE]\n\n',
+    );
+  });
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    await app.service.generate();
+    assert.match(app.service.getSnapshot().error!, /日记生成未注册工具.*unregistered/);
+    assert.equal(app.service.getSnapshot().data.entries.length, 0);
+    assert.equal(requests, 1);
   } finally {
     app.close();
   }

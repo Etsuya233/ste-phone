@@ -135,7 +135,7 @@ test("empty authentication is explicit and length completion is reported", async
   });
 });
 
-test("test errors redact credentials, reject HTTP-200 errors, and never retry", async () => {
+test("test errors retain original response details and credentials without retrying", async () => {
   const secretError = `failure ${connection().apiKey} custom-auth-secret custom-provider`;
   const responses = [
     new Response("private raw response", { status: 401 }),
@@ -153,9 +153,9 @@ test("test errors redact credentials, reject HTTP-200 errors, and never retry", 
       },
     });
     await assert.rejects(run(connection(), new AbortController().signal), (error: Error) => {
-      assert.doesNotMatch(
+      assert.match(
         error.message,
-        /test-api-secret|custom-auth-secret|custom-provider|private raw/,
+        /test-api-secret|custom-auth-secret|custom-provider|private raw|缺少结束原因/,
       );
       return true;
     });
@@ -176,6 +176,36 @@ test("invalid input and already canceled tests fail without issuing a request", 
   controller.abort();
   await assert.rejects(run(connection(), controller.signal), { name: "AbortError" });
   assert.equal(requests, 0);
+});
+
+test("connection test accepts thinking blocks and rejects unexpected tools in its own application", async () => {
+  const thought = 'data: {"choices":[{"delta":{"reasoning_content":"thought"}}]}\n\n';
+  const successful = createStModelConnectionTest(() => ({}), {
+    fetchImpl: async () => sse(thought + event("Hello") + end()),
+  });
+  assert.deepEqual(await successful(connection(), new AbortController().signal), {
+    text: "Hello",
+    truncated: false,
+  });
+  let requests = 0;
+  const unexpected = createStModelConnectionTest(() => ({}), {
+    fetchImpl: async () => {
+      requests++;
+      return sse(
+        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call","function":{"name":"unregistered","arguments":"{}"}}]},"finish_reason":"tool_calls"}]}\n\ndata: [DONE]\n\n',
+      );
+    },
+  });
+  await assert.rejects(unexpected(connection(), new AbortController().signal), (error: Error) => {
+    assert.match(error.message, /连接测试未注册工具.*unregistered/);
+    assert.ok(error.cause);
+    return true;
+  });
+  assert.equal(requests, 1);
+  const empty = createStModelConnectionTest(() => ({}), {
+    fetchImpl: async () => sse(thought + end()),
+  });
+  await assert.rejects(empty(connection(), new AbortController().signal), /空回复/);
 });
 
 test("total timeout and user cancel stop a pending stream and settle the Pi run", async () => {

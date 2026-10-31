@@ -42,7 +42,7 @@ export async function generateDiaryText(input: {
     maxTokens: 0,
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   };
-  const stream = input.transport.createStream(input.connection);
+  const stream = input.transport.createStream(input.connection, { operation: "日记生成" });
   const agent = new Agent({
     initialState: { model, tools: [], systemPrompt: diarySystemPrompt },
     streamFn: (model, context, options) =>
@@ -51,7 +51,18 @@ export async function generateDiaryText(input: {
   const abortAgent = () => agent.abort();
   controller.signal.addEventListener("abort", abortAgent, { once: true });
   let text = "";
+  let toolFailure: Error | undefined;
   const unsubscribe = agent.subscribe((event) => {
+    if (event.type === "message_end" && event.message.role === "assistant") {
+      const calls = event.message.content.filter((block) => block.type === "toolCall");
+      if (calls.length) {
+        toolFailure = new Error(
+          `日记生成未注册工具，收到工具调用：${calls.map((call) => call.name).join("、")}`,
+          { cause: event.message },
+        );
+        agent.abort();
+      }
+    }
     if (
       event.type === "message_update" &&
       event.message.role === "assistant" &&
@@ -63,18 +74,22 @@ export async function generateDiaryText(input: {
   });
   try {
     await agent.prompt(input.prompt);
-    if (timedOut) throw new Error(`日记生成超时（${input.settings.timeoutSeconds} 秒）`);
+    if (toolFailure) throw toolFailure;
     input.signal.throwIfAborted();
     const reply = agent.state.messages.at(-1);
     if (reply?.role !== "assistant") throw new Error("日记生成未收到模型回复");
+    if (timedOut)
+      throw new Error(
+        `日记生成超时（${input.settings.timeoutSeconds} 秒）：${reply.errorMessage}`,
+        { cause: reply.diagnostics },
+      );
     if (reply.stopReason === "length")
-      throw new Error("日记达到输出上限，正文未保存，请增加输出上限后重试");
-    if (reply.stopReason !== "stop") throw new Error(reply.errorMessage || "日记生成未正常完成");
+      throw new Error("日记达到输出上限，正文未保存，请增加输出上限后重试", { cause: reply });
+    if (reply.stopReason !== "stop")
+      throw new Error(reply.errorMessage || "日记生成未正常完成", { cause: reply.diagnostics });
     const body = reply.content
-      .map((block) => {
-        if (block.type !== "text") throw new Error("日记生成收到非文本内容");
-        return block.text;
-      })
+      .filter((block) => block.type === "text")
+      .map((block) => block.text)
       .join("")
       .trim();
     if (!body) throw new Error("模型返回了空日记");

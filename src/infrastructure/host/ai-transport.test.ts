@@ -16,6 +16,66 @@ const model: Model<"openai-completions"> = {
 };
 const wire =
   'data: {"choices":[{"delta":{"content":"Hi"},"finish_reason":null}]}\n\ndata: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n';
+
+test("request logs retain the exact malformed response and its original cause", async () => {
+  const logs: Readonly<Record<string, unknown>>[] = [];
+  const connection = {
+    baseUrl: "https://example.com/v1",
+    apiKey: "private-key",
+    customHeaders: { "X-Private": "private-header" },
+  };
+  const stream = createStAiTransport(() => ({}), {
+    log: (entry) => logs.push(entry),
+    fetchImpl: async () =>
+      new Response(
+        'data: {"choices":[{"delta":{"tool_calls":{},"reasoning_content":"private-thought","content":"private-reply"}}]}\n\n',
+      ),
+  }).createStream(connection, { operation: "日记生成" });
+  const result = await (
+    await stream(
+      model,
+      { messages: [{ role: "user", content: "private-prompt", timestamp: 0 }] },
+      { maxTokens: 10240 },
+    )
+  ).result();
+  assert.equal(result.stopReason, "error");
+  assert.match(result.errorMessage!, /tool_calls/);
+  assert.deepEqual(
+    logs.map((entry) => entry.event),
+    ["request", "response", "error"],
+  );
+  assert.equal(logs[0]!.operation, "日记生成");
+  assert.equal(logs[0]!.maxTokens, 10240);
+  assert.equal(logs[1]!.status, 200);
+  assert.equal(logs[0]!.requestId, logs[2]!.requestId);
+  const details = logs[2]!.streamEvent as { delta: Record<string, unknown> };
+  assert.deepEqual(details.delta.tool_calls, { type: "object" });
+  const serialized = JSON.stringify(logs);
+  for (const secret of ["private-key", "private-header", "private-prompt"])
+    assert.ok(!serialized.includes(secret));
+  assert.ok(serialized.includes("private-reply"));
+  assert.ok(serialized.includes("private-thought"));
+});
+
+test("completed request logs share an id and report output size and finish reason", async () => {
+  const logs: Readonly<Record<string, unknown>>[] = [];
+  const stream = createStAiTransport(() => ({}), {
+    log: (entry) => logs.push(entry),
+    fetchImpl: async () => new Response(wire),
+  }).createStream(
+    { baseUrl: "https://example.com", apiKey: "", customHeaders: {} },
+    { operation: "连接测试" },
+  );
+  const result = await (await stream(model, { messages: [] })).result();
+  assert.equal(result.stopReason, "stop");
+  assert.deepEqual(
+    logs.map((entry) => entry.event),
+    ["request", "response", "complete"],
+  );
+  assert.equal(new Set(logs.map((entry) => entry.requestId)).size, 1);
+  assert.equal(logs[2]!.textCharacters, 2);
+  assert.equal(logs[2]!.stopReason, "stop");
+});
 test("transport binds credentials at creation and isolates simultaneous streams and application parameters", async () => {
   const requests: Record<string, unknown>[] = [];
   const transport = createStAiTransport(() => ({}), {
@@ -60,7 +120,7 @@ test("transport binds credentials at creation and isolates simultaneous streams 
     "X-Account": "first",
   });
 });
-test("unsupported tools and reasoning finish with a Pi error before any request", async () => {
+test("tools and reasoning options reach the ST protocol without application restrictions", async () => {
   let requests = 0;
   const stream = createStAiTransport(() => ({}), {
     fetchImpl: async () => {
@@ -74,10 +134,10 @@ test("unsupported tools and reasoning finish with a Pi error before any request"
       { name: "unsupported", description: "", parameters: { type: "object", properties: {} } },
     ],
   });
-  assert.equal((await toolRun.result()).stopReason, "error");
+  assert.equal((await toolRun.result()).stopReason, "stop");
   const reasoningRun = await stream(model, { messages: [] }, { reasoning: "low" });
-  assert.equal((await reasoningRun.result()).stopReason, "error");
-  assert.equal(requests, 0);
+  assert.equal((await reasoningRun.result()).stopReason, "stop");
+  assert.equal(requests, 2);
 });
 
 test("transport sends explicit authentication and custom Authorization overrides case-insensitively", async () => {

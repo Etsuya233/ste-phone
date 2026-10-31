@@ -6,5 +6,5 @@ export interface AiConnection {
   readonly customHeaders: Readonly<Record<string, string>>;
 }
 export interface AiTransport {
-  createStream(connection: AiConnection): StreamFn;
+  createStream(connection: AiConnection, diagnostics?: { readonly operation: string }): StreamFn;
 }

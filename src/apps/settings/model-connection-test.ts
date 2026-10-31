@@ -47,7 +47,7 @@ export function createModelConnectionTest(
       maxTokens: 0,
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     };
-    const stream = transport.createStream(connection);
+    const stream = transport.createStream(connection, { operation: "连接测试" });
     const agent = new Agent({
       initialState: { model, tools: [], systemPrompt: "Reply with a short greeting." },
       streamFn: (model, context, options) =>
@@ -56,7 +56,18 @@ export function createModelConnectionTest(
     const abortAgent = () => agent.abort();
     controller.signal.addEventListener("abort", abortAgent, { once: true });
     let streamedText = "";
+    let toolFailure: Error | undefined;
     const unsubscribe = agent.subscribe((event) => {
+      if (event.type === "message_end" && event.message.role === "assistant") {
+        const calls = event.message.content.filter((block) => block.type === "toolCall");
+        if (calls.length) {
+          toolFailure = new Error(
+            `连接测试未注册工具，收到工具调用：${calls.map((call) => call.name).join("、")}`,
+            { cause: event.message },
+          );
+          agent.abort();
+        }
+      }
       if (
         event.type === "message_update" &&
         event.message.role === "assistant" &&
@@ -68,16 +79,21 @@ export function createModelConnectionTest(
     });
     try {
       await agent.prompt("Hello.");
+      if (toolFailure) throw toolFailure;
       const reply = agent.state.messages.at(-1);
       if (reply?.role !== "assistant") throw new Error("连接测试未收到模型回复");
       if (reply.stopReason === "error" || reply.stopReason === "aborted")
-        throw new Error(timedOut ? "连接测试超时（60 秒）" : reply.errorMessage);
+        throw new Error(
+          timedOut
+            ? `连接测试超时（${timeoutMs / 1000} 秒）：${reply.errorMessage}`
+            : reply.errorMessage,
+          { cause: reply.diagnostics },
+        );
       const text = reply.content
-        .map((block) => {
-          if (block.type !== "text") throw new Error("连接测试收到非文本回复");
-          return block.text;
-        })
+        .filter((block) => block.type === "text")
+        .map((block) => block.text)
         .join("");
+      if (!text.trim()) throw new Error("连接测试收到空回复", { cause: reply });
       return { text, truncated: reply.stopReason === "length" };
     } finally {
       clearTimeout(timer);
