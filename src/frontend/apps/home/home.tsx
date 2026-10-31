@@ -68,7 +68,6 @@ export function Home({
   );
   function start(event: PointerEvent<HTMLButtonElement>, app: AppId) {
     if (event.button !== 0 || !event.isPrimary) return;
-    suppressClick.current = false;
     event.currentTarget.setPointerCapture(event.pointerId);
     gesture.current = {
       app,
@@ -245,6 +244,20 @@ export function Home({
     <div
       ref={root}
       className={`home-screen ${editing ? "home-screen--editing" : ""}`}
+      onPointerDownCapture={() => {
+        suppressClick.current = false;
+      }}
+      onClick={(event) => {
+        // 松手后的合成 click 仍属于拖动；下一次独立点按空白才结束编辑。
+        if (
+          editing &&
+          deleting === null &&
+          error === null &&
+          !suppressClick.current &&
+          !(event.target as Element).closest("[data-home-app], .ios-alert-overlay")
+        )
+          onEditingChange(false);
+      }}
       onPointerMove={move}
       onPointerUp={finish}
       onPointerCancel={clearGesture}
@@ -269,11 +282,6 @@ export function Home({
           </div>
         }
       >
-        {editing ? (
-          <div className="home-edit-toolbar">
-            <Button onClick={() => onEditingChange(false)}>完成</Button>
-          </div>
-        ) : null}
         <div className="home-grid" data-home-area="grid" aria-label="主屏幕">
           {icons("grid")}
         </div>
@@ -307,10 +315,11 @@ export function Home({
                 try {
                   onUninstall(deleting);
                   setDeleting(null);
+                  // 三个系统应用始终保留；卸载后将焦点交回可操作的图标。
                   requestAnimationFrame(() =>
                     root
-                      .current!.querySelector<HTMLButtonElement>(".home-edit-toolbar button")!
-                      .focus(),
+                      .current!.querySelector<HTMLButtonElement>(".home-app")!
+                      .focus({ preventScroll: true }),
                   );
                 } catch (cause) {
                   setDeleting(null);

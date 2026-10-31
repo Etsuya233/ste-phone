@@ -92,10 +92,20 @@
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--home-remove-disc) 0 12px, transparent 13px);
+  background: transparent;
+  isolation: isolate;
   color: var(--ios-wallpaper-ink);
   font-size: 24px;
   line-height: 1;
+}
+:host .home-remove::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--home-remove-disc);
+  backdrop-filter: blur(var(--ios-bar-blur));
 }
 :host .home-screen--editing .home-slot {
   animation: home-wiggle 180ms ease-in-out infinite alternate;
@@ -112,19 +122,6 @@
   pointer-events: none;
   transform: translate(-50%, -50%) scale(1.12);
   filter: drop-shadow(0 6px 8px #0005);
-}
-:host .home-edit-toolbar {
-  position: absolute;
-  top: var(--status-height);
-  right: var(--ios-space-large);
-  z-index: 3;
-}
-:host .home-edit-toolbar .ios-button {
-  min-height: 36px;
-  font-weight: 600;
-}
-:host .home-screen--editing .home-grid {
-  padding-top: 48px;
 }
 :host .home-edit-help {
   position: absolute;
