@@ -7,6 +7,12 @@
   --ios-ink: #1c1c1e;
   --ios-blue: #007aff;
   --ios-surface: #fafafa;
+  --ios-alert-surface: #f8f8f8ed;
+  --ios-alert-scrim: #0006;
+  --ios-alert-width: 270px;
+  --ios-alert-radius: 14px;
+  --ios-alert-padding: 20px;
+  --ios-alert-message-size: 13px;
   --ios-bar: #f9f9f9d9;
   --ios-footer-surface: #ffffff38;
   --ios-line: #c8c7cc;

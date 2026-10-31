@@ -7,7 +7,7 @@ export function ListCell({
   onClick,
   disabled = false,
 }: {
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   value?: string;
 } & (

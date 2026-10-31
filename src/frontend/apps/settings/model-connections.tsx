@@ -12,6 +12,7 @@ import { ListCell } from "../../foundation/list-cell.tsx";
 import { NavBar } from "../../foundation/nav-bar.tsx";
 import { Page } from "../../foundation/page.tsx";
 import { TextField } from "../../foundation/text-field.tsx";
+import { Alert } from "../../foundation/alert.tsx";
 
 export function ModelConnections({
   settings,
@@ -57,8 +58,7 @@ export function ModelConnections({
       ) : null}
       <GroupedList title="默认连接" description="选择一个连接供手机 AI 调用使用。">
         <ListCell
-          title="无默认"
-          accessory={
+          title={
             <label className="model-connection-choice">
               <input
                 className="model-connection-radio"
@@ -68,30 +68,47 @@ export function ModelConnections({
                 checked={saved.defaultModelConnectionId === null}
                 onChange={() => selectDefault(null)}
               />
+              <span className="model-connection-check" aria-hidden="true">
+                ✓
+              </span>
+              <span>无默认</span>
             </label>
           }
         />
         {saved.modelConnections.map((connection) => (
           <ListCell
             key={connection.id}
-            title={connection.name}
-            subtitle={connection.model}
+            title={
+              <label className="model-connection-choice">
+                <input
+                  className="model-connection-radio"
+                  type="radio"
+                  name={groupName}
+                  aria-label={`将 ${connection.name} 设为默认`}
+                  checked={saved.defaultModelConnectionId === connection.id}
+                  onChange={() => selectDefault(connection.id)}
+                />
+                <span className="model-connection-check" aria-hidden="true">
+                  ✓
+                </span>
+                <span className="ios-cell-copy">
+                  <span>{connection.name}</span>
+                  <span className="ios-cell-subtitle">{connection.model}</span>
+                </span>
+              </label>
+            }
             accessory={
-              <div className="model-connection-row-actions">
-                <label className="model-connection-choice">
-                  <input
-                    className="model-connection-radio"
-                    type="radio"
-                    name={groupName}
-                    aria-label={`将 ${connection.name} 设为默认`}
-                    checked={saved.defaultModelConnectionId === connection.id}
-                    onChange={() => selectDefault(connection.id)}
-                  />
-                </label>
-                <Button aria-label={`编辑 ${connection.name}`} onClick={() => onEdit(connection)}>
-                  编辑
-                </Button>
-              </div>
+              <Button
+                className="model-connection-info"
+                aria-label={`编辑 ${connection.name}`}
+                onClick={() => onEdit(connection)}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9.5" />
+                  <path d="M12 10.5v7" />
+                  <circle className="model-connection-info-dot" cx="12" cy="7" r="1" />
+                </svg>
+              </Button>
             }
           />
         ))}
@@ -105,7 +122,6 @@ export function ModelConnections({
 
 type TestState =
   | { status: "idle" }
-  | { status: "cancelled" }
   | { status: "running"; text: string }
   | { status: "success"; text: string; truncated: boolean }
   | { status: "error"; message: string };
@@ -154,6 +170,7 @@ export function ModelConnectionEditor({
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState<"discard" | "delete" | null>(null);
   const [test, setTest] = useState<TestState>({ status: "idle" });
+  const [testPresented, setTestPresented] = useState(false);
   const dirty = draftValue !== initialValue.current;
   const running = test.status === "running";
 
@@ -176,6 +193,7 @@ export function ModelConnectionEditor({
     currentTest.current?.abort();
     currentTest.current = null;
     setTest({ status: "idle" });
+    setTestPresented(false);
     setError("");
   }
   function updateRequest(field: "baseUrl" | "apiKey" | "model", value: string) {
@@ -207,7 +225,12 @@ export function ModelConnectionEditor({
   function cancelTest() {
     currentTest.current?.abort();
     currentTest.current = null;
-    setTest({ status: "cancelled" });
+    setTest({ status: "idle" });
+    setTestPresented(false);
+  }
+  function dismissTest() {
+    if (running) cancelTest();
+    setTestPresented(false);
   }
   function leave() {
     if (running) cancelTest();
@@ -235,6 +258,7 @@ export function ModelConnectionEditor({
     setError("");
     const controller = new AbortController();
     currentTest.current = controller;
+    setTestPresented(true);
     setTest({ status: "running", text: "" });
     try {
       const result = await testModelConnection(candidate, controller.signal, (text) => {
@@ -248,14 +272,10 @@ export function ModelConnectionEditor({
     } catch (failure) {
       if (currentTest.current !== controller) return;
       currentTest.current = null;
-      setTest(
-        controller.signal.aborted
-          ? { status: "cancelled" }
-          : {
-              status: "error",
-              message: failure instanceof Error ? failure.message : String(failure),
-            },
-      );
+      setTest({
+        status: "error",
+        message: failure instanceof Error ? failure.message : String(failure),
+      });
     }
   }
   function remove() {
@@ -270,218 +290,228 @@ export function ModelConnectionEditor({
     }
   }
   return (
-    <Page
-      className="model-connection-editor"
-      navBar={
-        <NavBar
-          title={connection ? "编辑连接" : "添加连接"}
-          back={{ label: "模型连接", onClick: leave }}
-          right={
-            <Button type="submit" form={formId}>
-              保存
-            </Button>
-          }
-        />
-      }
-    >
-      {confirmation ? (
-        <GroupedList
-          title={confirmation === "discard" ? "舍弃未保存的修改？" : "删除这个连接？"}
-          description={
-            confirmation === "delete" ? "删除默认连接后，需要重新选择默认连接。" : undefined
-          }
-        >
-          <div
-            className="model-connection-confirmation"
-            role="alertdialog"
-            aria-label={confirmation === "discard" ? "舍弃未保存的修改？" : "删除这个连接？"}
-          >
-            <Button ref={confirmationButton} onClick={() => setConfirmation(null)}>
-              继续编辑
-            </Button>
-            <Button variant="danger" onClick={confirmation === "discard" ? onBack : remove}>
-              {confirmation === "discard" ? "舍弃修改" : "删除连接"}
-            </Button>
-          </div>
-        </GroupedList>
-      ) : null}
-      {error ? (
-        <p ref={errorElement} tabIndex={-1} className="model-connection-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-      <form
-        id={formId}
-        onSubmit={(event) => {
-          event.preventDefault();
-          save();
-        }}
-        noValidate
-        autoComplete="off"
-      >
-        <GroupedList title="OpenAI Chat Completions">
-          <TextField
-            label="名称"
-            value={draft.name}
-            placeholder="连接名称"
-            onChange={(event) => {
-              const name = event.target.value;
-              setError("");
-              setDraft((previous) => ({ ...previous, name }));
-            }}
-          />
-          <TextField
-            label="Base URL"
-            value={draft.baseUrl}
-            placeholder="https://example.com/v1"
-            type="url"
-            autoCapitalize="none"
-            spellCheck={false}
-            onChange={(event) => updateRequest("baseUrl", event.target.value)}
-          />
-          <TextField
-            label="API Key"
-            value={draft.apiKey}
-            placeholder="可留空"
-            type={keyVisible ? "text" : "password"}
-            autoCapitalize="none"
-            spellCheck={false}
-            onChange={(event) => updateRequest("apiKey", event.target.value)}
-            accessory={
-              <Button
-                aria-label={keyVisible ? "隐藏 API Key" : "显示 API Key"}
-                aria-pressed={keyVisible}
-                onClick={() => setKeyVisible((visible) => !visible)}
-              >
-                {keyVisible ? "隐藏" : "显示"}
+    <>
+      <Page
+        className="model-connection-editor"
+        inert={testPresented}
+        navBar={
+          <NavBar
+            title={connection ? "编辑连接" : "添加连接"}
+            back={{ label: "模型连接", onClick: leave }}
+            right={
+              <Button type="submit" form={formId}>
+                保存
               </Button>
             }
           />
-          <TextField
-            label="模型"
-            value={draft.model}
-            placeholder="模型 ID"
-            autoCapitalize="none"
-            spellCheck={false}
-            onChange={(event) => updateRequest("model", event.target.value)}
-          />
-        </GroupedList>
-        <GroupedList
-          title="自定义请求头"
-          description="API Key 和请求头值会明文保存在插件设置中。自定义 Authorization 优先于 API Key。"
-        >
-          {draft.headers.map((header, index) => (
-            <div className="model-connection-header" key={header.id}>
-              <TextField
-                label={`请求头 ${index + 1} 名称`}
-                value={header.name}
-                placeholder="X-Header"
-                autoCapitalize="none"
-                spellCheck={false}
-                onChange={(event) => updateHeader(header.id, "name", event.target.value)}
-                accessory={
-                  <Button
-                    variant="danger"
-                    aria-label={`删除请求头 ${index + 1}`}
-                    onClick={() => {
-                      invalidateTest();
-                      setDraft((previous) => ({
-                        ...previous,
-                        headers: previous.headers.filter((row) => row.id !== header.id),
-                      }));
-                    }}
-                  >
-                    删除
-                  </Button>
-                }
-              />
-              <TextField
-                label={`请求头 ${index + 1} 值`}
-                value={header.value}
-                placeholder="可留空"
-                type={visibleHeaders.has(header.id) ? "text" : "password"}
-                autoCapitalize="none"
-                spellCheck={false}
-                onChange={(event) => updateHeader(header.id, "value", event.target.value)}
-                accessory={
-                  <Button
-                    aria-label={`${visibleHeaders.has(header.id) ? "隐藏" : "显示"}请求头 ${index + 1} 值`}
-                    aria-pressed={visibleHeaders.has(header.id)}
-                    onClick={() =>
-                      setVisibleHeaders((previous) => {
-                        const next = new Set(previous);
-                        if (next.has(header.id)) next.delete(header.id);
-                        else next.add(header.id);
-                        return next;
-                      })
-                    }
-                  >
-                    {visibleHeaders.has(header.id) ? "隐藏" : "显示"}
-                  </Button>
-                }
-              />
-            </div>
-          ))}
-          <Button
-            className="model-connection-wide-action"
-            onClick={() => {
-              invalidateTest();
-              const id = nextHeader.current++;
-              setDraft((previous) => ({
-                ...previous,
-                headers: [...previous.headers, { id, name: "", value: "" }],
-              }));
-            }}
-          >
-            添加请求头
-          </Button>
-        </GroupedList>
-      </form>
-      <GroupedList
-        title="测试连接"
-        description="使用当前填写的配置发送简短提示，可能产生少量用量。"
+        }
       >
-        <Button
-          className="model-connection-wide-action"
-          onClick={running ? cancelTest : () => void startTest()}
-          aria-busy={running}
-        >
-          {running ? "取消测试" : "测试连接"}
-        </Button>
-        {test.status === "error" ? (
-          <p className="model-connection-error" role="alert">
-            {test.message}
+        {confirmation ? (
+          <GroupedList
+            title={confirmation === "discard" ? "舍弃未保存的修改？" : "删除这个连接？"}
+            description={
+              confirmation === "delete" ? "删除默认连接后，需要重新选择默认连接。" : undefined
+            }
+          >
+            <div
+              className="model-connection-confirmation"
+              role="alertdialog"
+              aria-label={confirmation === "discard" ? "舍弃未保存的修改？" : "删除这个连接？"}
+            >
+              <Button ref={confirmationButton} onClick={() => setConfirmation(null)}>
+                继续编辑
+              </Button>
+              <Button variant="danger" onClick={confirmation === "discard" ? onBack : remove}>
+                {confirmation === "discard" ? "舍弃修改" : "删除连接"}
+              </Button>
+            </div>
+          </GroupedList>
+        ) : null}
+        {error ? (
+          <p ref={errorElement} tabIndex={-1} className="model-connection-error" role="alert">
+            {error}
           </p>
         ) : null}
-        {test.status !== "idle" && test.status !== "error" ? (
-          <div className="model-connection-test-result" role="status" aria-live="polite">
-            <p>
-              {test.status === "running"
-                ? "测试中…"
-                : test.status === "cancelled"
-                  ? "测试已取消"
-                  : test.truncated
-                    ? "已连通，达到测试输出上限"
-                    : "连接成功"}
-            </p>
-            {test.status === "running" || test.status === "success" ? <p>{test.text}</p> : null}
-          </div>
-        ) : null}
-      </GroupedList>
-      {connection ? (
-        <GroupedList>
-          <Button
-            className="model-connection-wide-action"
-            variant="danger"
-            onClick={() => {
-              if (running) cancelTest();
-              setConfirmation("delete");
-            }}
+        <form
+          id={formId}
+          onSubmit={(event) => {
+            event.preventDefault();
+            save();
+          }}
+          noValidate
+          autoComplete="off"
+        >
+          <GroupedList title="OpenAI Chat Completions">
+            <TextField
+              label="名称"
+              value={draft.name}
+              placeholder="连接名称"
+              onChange={(event) => {
+                const name = event.target.value;
+                setError("");
+                setDraft((previous) => ({ ...previous, name }));
+              }}
+            />
+            <TextField
+              label="Base URL"
+              value={draft.baseUrl}
+              placeholder="https://example.com/v1"
+              type="url"
+              autoCapitalize="none"
+              spellCheck={false}
+              onChange={(event) => updateRequest("baseUrl", event.target.value)}
+            />
+            <TextField
+              label="API Key"
+              value={draft.apiKey}
+              placeholder="可留空"
+              type={keyVisible ? "text" : "password"}
+              autoCapitalize="none"
+              spellCheck={false}
+              onChange={(event) => updateRequest("apiKey", event.target.value)}
+              accessory={
+                <Button
+                  aria-label={keyVisible ? "隐藏 API Key" : "显示 API Key"}
+                  aria-pressed={keyVisible}
+                  onClick={() => setKeyVisible((visible) => !visible)}
+                >
+                  {keyVisible ? "隐藏" : "显示"}
+                </Button>
+              }
+            />
+            <TextField
+              label="模型"
+              value={draft.model}
+              placeholder="模型 ID"
+              autoCapitalize="none"
+              spellCheck={false}
+              onChange={(event) => updateRequest("model", event.target.value)}
+            />
+          </GroupedList>
+          <GroupedList
+            title="自定义请求头"
+            description="API Key 和请求头值会明文保存在插件设置中。自定义 Authorization 优先于 API Key。"
           >
-            删除连接
+            {draft.headers.map((header, index) => (
+              <div className="model-connection-header" key={header.id}>
+                <TextField
+                  label={`请求头 ${index + 1} 名称`}
+                  value={header.name}
+                  placeholder="X-Header"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  onChange={(event) => updateHeader(header.id, "name", event.target.value)}
+                  accessory={
+                    <Button
+                      variant="danger"
+                      aria-label={`删除请求头 ${index + 1}`}
+                      onClick={() => {
+                        invalidateTest();
+                        setDraft((previous) => ({
+                          ...previous,
+                          headers: previous.headers.filter((row) => row.id !== header.id),
+                        }));
+                      }}
+                    >
+                      删除
+                    </Button>
+                  }
+                />
+                <TextField
+                  label={`请求头 ${index + 1} 值`}
+                  value={header.value}
+                  placeholder="可留空"
+                  type={visibleHeaders.has(header.id) ? "text" : "password"}
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  onChange={(event) => updateHeader(header.id, "value", event.target.value)}
+                  accessory={
+                    <Button
+                      aria-label={`${visibleHeaders.has(header.id) ? "隐藏" : "显示"}请求头 ${index + 1} 值`}
+                      aria-pressed={visibleHeaders.has(header.id)}
+                      onClick={() =>
+                        setVisibleHeaders((previous) => {
+                          const next = new Set(previous);
+                          if (next.has(header.id)) next.delete(header.id);
+                          else next.add(header.id);
+                          return next;
+                        })
+                      }
+                    >
+                      {visibleHeaders.has(header.id) ? "隐藏" : "显示"}
+                    </Button>
+                  }
+                />
+              </div>
+            ))}
+            <Button
+              className="model-connection-wide-action"
+              onClick={() => {
+                invalidateTest();
+                const id = nextHeader.current++;
+                setDraft((previous) => ({
+                  ...previous,
+                  headers: [...previous.headers, { id, name: "", value: "" }],
+                }));
+              }}
+            >
+              添加请求头
+            </Button>
+          </GroupedList>
+        </form>
+        <GroupedList
+          title="测试连接"
+          description="使用当前填写的配置发送简短提示，可能产生少量用量。"
+        >
+          <Button className="model-connection-wide-action" onClick={() => void startTest()}>
+            测试连接
           </Button>
         </GroupedList>
+        {connection ? (
+          <GroupedList>
+            <Button
+              className="model-connection-wide-action"
+              variant="danger"
+              onClick={() => {
+                if (running) cancelTest();
+                setConfirmation("delete");
+              }}
+            >
+              删除连接
+            </Button>
+          </GroupedList>
+        ) : null}
+      </Page>
+      {testPresented && test.status !== "idle" ? (
+        <Alert
+          active={current}
+          busy={running}
+          title={
+            test.status === "running"
+              ? "正在测试连接"
+              : test.status === "error"
+                ? "连接失败"
+                : test.truncated
+                  ? "已连通，达到输出上限"
+                  : "连接成功"
+          }
+          onDismiss={dismissTest}
+          actions={
+            test.status === "error"
+              ? [
+                  { label: "取消", onClick: dismissTest },
+                  { label: "重试", onClick: () => void startTest(), primary: true },
+                ]
+              : [{ label: running ? "取消测试" : "好", onClick: dismissTest, primary: !running }]
+          }
+        >
+          {test.status === "error"
+            ? test.message
+            : test.status === "running"
+              ? test.text || "正在等待模型回复…"
+              : test.text}
+        </Alert>
       ) : null}
-    </Page>
+    </>
   );
 }

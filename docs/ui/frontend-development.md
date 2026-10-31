@@ -34,7 +34,9 @@ Foundation 组件应用位于 `src/frontend/apps/foundation/`，可从主屏打�
 
 生产接线使用 ST 的公开 `getContext()`、`extensionSettings.ste_phone`、`saveSettingsDebounced()`，图片通过 `POST /api/images/upload` 和 `POST /api/images/list`。固定 `ch_name` / `folder` 为 `ste-phone-wallpapers`，文件名使用 `crypto.getRandomValues()` 生成 128 位唯一值，原文件名和用户路径不进入请求。浏览器实际解码图片，核心服务限定 PNG、JPEG、WebP 与 10 MB；读取/上传失败显示简短错误，读取可重试，默认渐变始终可选。v3 设置保存所选图片路径、Blur、模型连接与默认连接；v1 旧地址列表与背景选择显式迁移为默认渐变，Blur 保留；v2 保留已有壁纸并补空连接。壁纸和连接使用服务的语义方法更新当前设置，页面不提交全量设置快照。
 
-模型连接列表与编辑页使用相同 NavigationStack，TextField 提供带标签的输入及尾部显隐操作。连接以稳定 ID 关联默认选择，支持无默认；编辑页按草稿显式保存，未保存返回显示页内舍弃确认并滚入可见区域。连接测试能力由入口注入，当前草稿创建 Pi Agent，通过宿主 Custom 代理处理文本流；不读取 ST 当前模型或生成参数。修改请求字段、页内返回与卸载取消当前测试，Home、Expose 预览及关闭手机保留运行。迟到结果只由发起它的控制器接收，后台不抢焦点或导航；确认和配置错误仅当前页聚焦。生产请求的 CSRF 等宿主头与上游自定义头分开处理，错误信息脱敏且不输出完整请求。独立预览注入可控模拟测试，不请求真实模型服务。
+模型连接列表与编辑页使用相同 NavigationStack，TextField 提供带标签的输入及尾部显隐操作。连接以稳定 ID 关联默认选择，支持无默认；整行用原生 radio 选择，左侧显示蓝色勾，右侧圆圈 i 按钮独立进入编辑，不嵌套交互控件。编辑页按草稿显式保存，未保存返回显示页内舍弃确认并滚入可见区域。连接测试能力由入口注入，当前草稿创建 Pi Agent，通过宿主 Custom 代理处理文本流；不读取 ST 当前模型或生成参数。修改请求字段、页内返回与卸载取消当前测试，Home、Expose 预览及关闭手机保留运行。迟到结果只由发起它的控制器接收，后台不抢焦点或导航；确认和配置错误仅当前页聚焦。生产请求的 CSRF 等宿主头与上游自定义头分开处理，错误信息脱敏且不输出完整请求。独立预览注入可控模拟测试，不请求真实模型服务。
+
+Foundation Alert 在当前 App 的页面坐标内绘制遮罩、圆角半透明面板与底部分隔操作，不使用跨出手机屏幕的顶层 dialog。连接测试用 Alert 展示流式进度、成功回复及失败重试，底层 Page 设为 inert；仅前台 Alert 获取焦点，Tab/Shift+Tab 留在操作区，Escape 关闭弹窗且不关闭外层手机。关闭后恢复测试按钮焦点；Home 与关闭手机保留弹窗和调用，回前台再聚焦。正文超长时面板内滚动，操作按钮始终可达，减少动态效果时停用加载动画。
 
 独立预览在 `docs/ui/preview-wallpapers.ts` 使用 IndexedDB 的 Blob 存储和自增 ID，localStorage 只保存稳定 ID 与设置。启动时从 Blob 重建会话 object URL，图片 URL 不写入持久配置，不使用安全上下文限定的 randomUUID。对象 URL 生命周期覆盖 Home、Expose 和 dialog 关闭，页面真正卸载时统一回收；BFCache 暂存时保持可用。预览资源和生产接线互相隔离。壁纸位于独立背景层，Blur 只作用于该层。
 

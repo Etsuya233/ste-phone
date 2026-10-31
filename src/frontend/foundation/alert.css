@@ -1,0 +1,87 @@
+:host .ios-alert-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: var(--ios-space-large);
+  background: var(--ios-alert-scrim);
+}
+:host .ios-alert {
+  display: flex;
+  flex-direction: column;
+  width: var(--ios-alert-width);
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  border-radius: var(--ios-alert-radius);
+  background: var(--ios-alert-surface);
+  backdrop-filter: blur(var(--ios-bar-blur));
+  color: var(--ios-ink);
+  text-align: center;
+}
+:host .ios-alert-body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--ios-alert-padding);
+}
+:host .ios-alert-title {
+  margin: 0 0 var(--ios-space-small);
+  font-size: var(--ios-body-size);
+  line-height: var(--ios-copy-line-height);
+  font-weight: 600;
+}
+:host .ios-alert-message {
+  font-size: var(--ios-alert-message-size);
+  line-height: var(--ios-copy-line-height);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+:host .ios-alert-message p {
+  margin: 0;
+}
+:host .ios-alert-actions {
+  display: flex;
+  flex-shrink: 0;
+  border-top: var(--ios-hairline) solid var(--ios-line);
+}
+:host .ios-alert-action {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--control-size);
+  padding: var(--ios-space-small) var(--ios-space-medium);
+  border: 0;
+  background: transparent;
+  color: var(--ios-blue);
+  font-size: var(--ios-body-size);
+}
+:host .ios-alert-action + .ios-alert-action {
+  border-inline-start: var(--ios-hairline) solid var(--ios-line);
+}
+:host .ios-alert-action--primary {
+  font-weight: 600;
+}
+:host .ios-alert-action:active {
+  background: var(--ios-row-active);
+}
+:host .ios-alert-spinner {
+  display: block;
+  width: var(--status-height);
+  height: var(--status-height);
+  margin: 0 auto var(--ios-space-medium);
+  border: calc(var(--ios-icon-stroke) * 1px) solid var(--ios-line);
+  border-top-color: var(--ios-secondary-ink);
+  border-radius: 50%;
+  animation: ios-alert-spin 800ms linear infinite;
+}
+@keyframes ios-alert-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :host .ios-alert-spinner {
+    animation: none;
+  }
+}

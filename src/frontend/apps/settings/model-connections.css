@@ -2,31 +2,68 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
-:host .model-connection-row-actions {
+:host .model-connections-page .ios-cell {
+  padding-block: 0;
+  padding-inline-start: 0;
+  gap: 0;
+}
+:host .model-connection-choice {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--ios-space-small);
-}
-:host .model-connection-choice {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: var(--control-size);
   min-height: var(--control-size);
+  padding-block: var(--ios-space-medium);
+  padding-inline: var(--ios-space-small) var(--ios-space-medium);
+  cursor: pointer;
 }
 :host .model-connection-radio {
-  width: var(--status-height);
-  height: var(--status-height);
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   margin: 0;
-  accent-color: var(--ios-blue);
+  opacity: 0;
+  cursor: pointer;
+}
+:host .model-connection-check {
+  width: var(--ios-chevron-size);
   flex-shrink: 0;
+  color: var(--ios-blue);
+  text-align: center;
+  visibility: hidden;
+}
+:host .model-connection-radio:checked + .model-connection-check {
+  visibility: visible;
+}
+:host .model-connection-choice:has(input:focus-visible) {
+  outline: var(--ios-focus-width) solid var(--ios-blue);
+  outline-offset: calc(-1 * var(--ios-focus-width));
+}
+:host .model-connection-choice:active {
+  background: var(--ios-row-active);
+}
+:host .model-connection-info {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+:host .model-connection-info svg {
+  width: var(--ios-chevron-size);
+  height: var(--ios-chevron-size);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+}
+:host .model-connection-info-dot {
+  fill: currentColor;
+  stroke: none;
 }
 :host .model-connection-add {
   font-size: var(--ios-chevron-size);
 }
 :host .model-connection-note,
-:host .model-connection-error,
-:host .model-connection-test-result {
+:host .model-connection-error {
   margin: var(--ios-space-medium) var(--ios-space-large);
   font-size: var(--ios-body-size);
   overflow-wrap: anywhere;
@@ -46,12 +83,6 @@
 :host .model-connection-header + .model-connection-header,
 :host .model-connection-header + .model-connection-wide-action {
   border-top: var(--ios-hairline) solid var(--ios-line);
-}
-:host .model-connection-test-result {
-  white-space: pre-wrap;
-}
-:host .model-connection-test-result p {
-  margin-block: var(--ios-space-small);
 }
 :host .model-connection-confirmation {
   display: flex;
