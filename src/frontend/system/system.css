@@ -25,6 +25,15 @@
 :host .home-layer--covered .ios-safe-area {
   opacity: 0;
 }
+:host .home-layer .ios-footer {
+  transition:
+    background-color 300ms ease,
+    backdrop-filter 300ms ease;
+}
+:host .home-layer--covered .ios-footer {
+  background-color: transparent;
+  backdrop-filter: blur(0px);
+}
 :host .app-layer {
   z-index: 1;
   transform-origin: top left;
@@ -133,7 +142,8 @@
   :host .home-layer,
   :host .home-layer .ios-page-content,
   :host .home-layer .home-dock,
-  :host .home-layer .ios-safe-area {
+  :host .home-layer .ios-safe-area,
+  :host .home-layer .ios-footer {
     transition: none;
   }
 }

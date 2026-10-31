@@ -1,5 +1,11 @@
 # 前端开发与验收
 
+## Dock 材质随桌面退场（2026-10-31）
+
+Dock 背景色和 backdrop-filter 使用与桌面相同的 300ms ease 转场，退场时背景变透明、模糊降至 0，之后隐藏桌面；返回时反向恢复。Dock 与祖先的 opacity 保持 1，减少动态效果时立即切换。
+
+Edge 独立预览冻结真实 Home → Expose 转场的 0、150、299、300ms 帧：修复前四帧均为 blur(22px)，最后一帧直接隐藏；修复后依次约为 22、4.347、0.00013、0px，背景 alpha 同步降至 0。Expose → Home 与 App → Home 的反向恢复、Home → App 的退场，以及减少动态效果下 Home ↔ Expose 均通过；诊断脚本与浏览器覆盖已清除。typecheck、lint、format:check、26 项 test、build 和 git diff --check 通过。未在 iPhone Safari 真机或真实 ST 中复验。
+
 ## Expose 切换后的 Home 动画目标修复（2026-10-31）
 
 App 返回 Home 前按当前前台应用查询桌面按钮，并将按钮中心相对于桌面层的坐标换算为逻辑像素，消除机身缩放和桌面缩放的影响。退场不再沿用上次从桌面启动其他 App 时记录的原点；Expose 卡片恢复与 Expose 返回桌面的动画保持原有行为。
