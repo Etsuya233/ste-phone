@@ -1,4 +1,5 @@
 import { createPreviewSettings } from "./preview-wallpapers.ts";
+import { createPreviewModelConnectionTest } from "./preview-model-connections.ts";
 import { mountPhone } from "../../src/frontend/host/mount-phone.tsx";
 import { BackgroundDataSource } from "../../src/features/background/index.ts";
 import { createPreviewMemory } from "./data-source-fixture.ts";
@@ -15,6 +16,7 @@ const dataSource = new BackgroundDataSource(new MemoryBackgroundProvider(databas
 const settings = await createPreviewSettings();
 mountPhone({
   settings,
+  testModelConnection: createPreviewModelConnectionTest(options.get("model-test")),
   dataSource,
   database,
   initialApp:

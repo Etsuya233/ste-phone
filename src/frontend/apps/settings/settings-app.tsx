@@ -12,15 +12,24 @@ import { GroupedList } from "../../foundation/grouped-list.tsx";
 import { ListCell } from "../../foundation/list-cell.tsx";
 import { Button } from "../../foundation/button.tsx";
 import { Switch } from "../../foundation/switch.tsx";
+import type { ModelConnection } from "../../../features/settings/model-connections.ts";
+import type { TestModelConnection } from "../../../infrastructure/host/model-connection-test.ts";
+import { ModelConnections, ModelConnectionEditor } from "./model-connections.tsx";
 
 type SettingsRoute =
-  { page: "root" } | { page: "wallpapers" } | { page: "preview"; wallpaper: Wallpaper };
+  | { page: "root" }
+  | { page: "wallpapers" }
+  | { page: "preview"; wallpaper: Wallpaper }
+  | { page: "connections" }
+  | { page: "connection-editor"; connection: ModelConnection | null };
 export function SettingsApp({
   settings,
+  testModelConnection,
   active,
   onHome,
 }: {
   settings: PhoneSettingsService;
+  testModelConnection: TestModelConnection;
   active: boolean;
   onHome: () => void;
 }) {
@@ -31,10 +40,25 @@ export function SettingsApp({
           <Page navBar={<NavBar title="设置" back={{ label: "主屏幕", onClick: onHome }} />}>
             <GroupedList>
               <ListCell title="壁纸" onClick={() => navigation.push({ page: "wallpapers" })} />
+              <ListCell title="模型连接" onClick={() => navigation.push({ page: "connections" })} />
             </GroupedList>
           </Page>
         ) : route.page === "wallpapers" ? (
           <WallpaperLibrary settings={settings} navigation={navigation} />
+        ) : route.page === "connections" ? (
+          <ModelConnections
+            settings={settings}
+            onBack={navigation.pop}
+            onEdit={(connection) => navigation.push({ page: "connection-editor", connection })}
+          />
+        ) : route.page === "connection-editor" ? (
+          <ModelConnectionEditor
+            settings={settings}
+            connection={route.connection}
+            testModelConnection={testModelConnection}
+            current={navigation.current}
+            onBack={navigation.pop}
+          />
         ) : (
           <WallpaperPreview
             settings={settings}
@@ -238,7 +262,7 @@ function WallpaperPreview({
             <Button
               onClick={() => {
                 try {
-                  settings.apply({ version: 2, wallpaper, blur });
+                  settings.setWallpaper(wallpaper, blur);
                   onBack();
                 } catch (failure) {
                   setError(failure instanceof Error ? failure.message : String(failure));

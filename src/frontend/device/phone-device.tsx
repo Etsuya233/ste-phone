@@ -22,6 +22,7 @@ import { appSession } from "./app-session.ts";
 import type { AppId } from "./app-session.ts";
 import { SettingsApp } from "../apps/settings/settings-app.tsx";
 import type { PhoneSettingsService } from "../../features/settings/phone-settings.ts";
+import type { TestModelConnection } from "../../infrastructure/host/model-connection-test.ts";
 import { Expose } from "./expose.tsx";
 import type { ExposeDrag } from "./expose.tsx";
 
@@ -33,6 +34,7 @@ const RunningApp = memo(function RunningApp({
   source,
   database,
   settings,
+  testModelConnection,
   onHome,
 }: {
   app: AppId;
@@ -40,6 +42,7 @@ const RunningApp = memo(function RunningApp({
   source: PhoneDataSource;
   database: PhoneDatabaseService;
   settings: PhoneSettingsService;
+  testModelConnection: TestModelConnection;
   onHome: () => void;
 }) {
   return app === "stopwatch" ? (
@@ -51,13 +54,19 @@ const RunningApp = memo(function RunningApp({
   ) : app === "database" ? (
     <DatabaseApp active={active} database={database} onHome={onHome} />
   ) : (
-    <SettingsApp active={active} settings={settings} onHome={onHome} />
+    <SettingsApp
+      active={active}
+      settings={settings}
+      testModelConnection={testModelConnection}
+      onHome={onHome}
+    />
   );
 });
 export function PhoneDevice({
   dataSource,
   database,
   settings,
+  testModelConnection,
   visible,
   scale,
   draggable,
@@ -74,6 +83,7 @@ export function PhoneDevice({
   dataSource: PhoneDataSource;
   database: PhoneDatabaseService;
   settings: PhoneSettingsService;
+  testModelConnection: TestModelConnection;
 }) {
   const screen = useRef<HTMLDivElement>(null);
   const [session, dispatch] = useReducer(appSession, {
@@ -316,6 +326,7 @@ export function PhoneDevice({
                     source={dataSource}
                     database={database}
                     settings={settings}
+                    testModelConnection={testModelConnection}
                     onHome={home}
                   />
                 </div>

@@ -1,5 +1,6 @@
 export { Button } from "./button.tsx";
 export { Text } from "./text.tsx";
+export { TextField } from "./text-field.tsx";
 export { Icon } from "./icon.tsx";
 export { Page } from "./page.tsx";
 export { NavBar } from "./nav-bar.tsx";

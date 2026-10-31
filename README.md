@@ -35,7 +35,13 @@ Home 单击返回主屏，双击进入 Expose。已打开的五个 App 保留页
 
 「设置 → 壁纸」显示默认渐变和 Phone 上传的图片，使用三列 9:16 缩略图。右上角「+」上传 PNG、JPEG 或 WebP（最大 10 MB），上传后进入全幅预览；选择 Blur 后点「设定」保存并返回图库。上传图片通过 ST 原生图片接口保存到 `data/<账号>/user/images/ste-phone-wallpapers/`，配置只保存所选路径与 Blur，图片内容留在账号目录，不改变 ST 背景。全局设置通过 `extensionSettings.ste_phone` 交给宿主延迟保存。
 
-设置 schema 升为 v2：首次读取 v1 时移除旧 URL 列表与旧背景选择，恢复默认渐变并保留 Blur。独立预览使用自己的 IndexedDB 保存 Blob、localStorage 保存配置，刷新时重新生成图片 URL；不连接真实 ST。`/?settings=1` 可快捷进入设置，同一局域网 HTTP 预览也支持上传。
+设置 schema 为 v3，包含壁纸与模型连接。首次读取 v1 时移除旧 URL 列表与旧背景选择，恢复默认渐变并保留 Blur；v2 保留壁纸与 Blur，补上空连接列表和未选择的默认连接。独立预览使用自己的 IndexedDB 保存 Blob、localStorage 保存配置，刷新时重新生成图片 URL；不连接真实 ST。`/?settings=1` 可快捷进入设置，同一局域网 HTTP 预览也支持上传。
+
+「设置 → 模型连接」支持添加、编辑和删除命名连接，配置 OpenAI Chat Completions 兼容服务的 Base URL、API Key、模型 ID 与自定义请求头。Base URL 需要包含服务要求的路径前缀（如 `/v1`），不要填写完整 `/chat/completions` 地址。首个连接保存后自动设为默认，后续可选择其他连接或「无默认」；删除默认连接后清空选择。保存显式提交草稿，返回时可确认舍弃；Home 与关闭手机保留草稿，Expose 退出设置或刷新结束草稿。
+
+连接测试使用当前填写的配置，通过 Pi Agent 和 ST 同源 Custom 代理发送一次简短文本生成，支持流式、取消和 60 秒超时，可能产生少量用量；保存配置不会自动测试。首期仅验证文本生成，未接入业务生成或工具调用。API Key 可以留空，自定义 `Authorization` 优先于 API Key；无鉴权时显式使用空值，避免继承 ST Custom 连接的密钥。请求头名不区分大小写且不能重复，值可为空但不能含换行；`Content-Type` 固定 JSON，传输层请求头不可自定义。API Key 和请求头值明文保存在 Phone 的 ST 设置中，界面默认隐藏，不改变 ST 主连接或密钥。
+
+独立预览的模型测试始终模拟，不联系配置的服务，回复中明确标记模拟结果；`model-test=slow`、`error`、`length` 可分别验收取消、失败与输出上限状态，例如 `/?settings=1&model-test=slow`。Pi 两包锁定 `0.83.0`，连接测试直接创建 Agent，协议转换位于宿主适配器。
 
 ## 开发命令
 

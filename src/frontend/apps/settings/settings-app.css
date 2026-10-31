@@ -1,3 +1,5 @@
+@import "./model-connections.css";
+
 :host .wallpaper-file {
   display: none;
 }

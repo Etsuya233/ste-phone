@@ -1,4 +1,5 @@
 import type { PhoneSettingsService } from "../features/settings/phone-settings.ts";
+import type { TestModelConnection } from "../infrastructure/host/model-connection-test.ts";
 import type { AppId } from "./device/app-session.ts";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
@@ -17,6 +18,7 @@ export function PhoneApp({
   dataSource,
   database,
   settings,
+  testModelConnection,
   responsive = false,
   draggable = false,
   initialApp = "home",
@@ -26,6 +28,7 @@ export function PhoneApp({
   draggable?: boolean;
   initialApp?: "home" | AppId;
   settings: PhoneSettingsService;
+  testModelConnection: TestModelConnection;
   dataSource: PhoneDataSource;
   database: PhoneDatabaseService;
   menuEntry?: StMenuEntry;
@@ -165,6 +168,7 @@ export function PhoneApp({
             <PhoneDevice
               visible={open}
               settings={settings}
+              testModelConnection={testModelConnection}
               dataSource={dataSource}
               database={database}
               initialApp={initialApp}

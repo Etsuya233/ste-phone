@@ -1,0 +1,43 @@
+:host .ios-text-field {
+  padding: var(--ios-space-small) var(--ios-space-large);
+}
+:host .ios-text-field + .ios-text-field {
+  border-top: var(--ios-hairline) solid var(--ios-line);
+}
+:host .ios-text-field-label {
+  display: block;
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+  line-height: var(--ios-copy-line-height);
+}
+:host .ios-text-field-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ios-space-small);
+  min-width: 0;
+}
+:host .ios-text-field input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-size);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--ios-row-surface);
+  color: var(--ios-ink);
+  font: inherit;
+  font-size: var(--ios-body-size);
+  appearance: none;
+}
+:host .ios-text-field input::placeholder {
+  color: var(--ios-secondary-ink);
+  opacity: 1;
+}
+:host .ios-text-field input:focus-visible {
+  outline: var(--ios-focus-width) solid var(--ios-blue);
+  outline-offset: var(--ios-focus-offset);
+}
+:host .ios-text-field-controls > .ios-button {
+  flex-shrink: 0;
+}

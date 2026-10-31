@@ -43,7 +43,7 @@ test("native ST image requests use the fixed account-relative folder and unique 
   };
   try {
     const service = createStSettings();
-    service.apply({ ...defaultSettings, blur: true });
+    service.setWallpaper(defaultSettings.wallpaper, true);
     assert.equal(saves, 1);
     const path = `/user/images/ste-phone-wallpapers/${encodeURIComponent("夜空 #1.jpg")}`;
     assert.deepEqual(await service.listWallpapers(), [{ path, url: path }]);

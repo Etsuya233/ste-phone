@@ -1,4 +1,5 @@
 import { createStSettings } from "../infrastructure/host/st-settings.ts";
+import { createStModelConnectionTest } from "../infrastructure/host/model-connection-test.ts";
 import { mountPhone } from "./host/mount-phone.tsx";
 import { BackgroundDataSource } from "../features/background/index.ts";
 import { MemoryBackgroundProvider } from "../infrastructure/ste-memory/memory-background-provider.ts";
@@ -17,5 +18,13 @@ if (!menu || !button) throw new Error("ST 魔法棒菜单尚未就绪，无法�
 const provider = new MemoryDatabaseProvider();
 const database = new PhoneDatabaseService(provider);
 const dataSource = new BackgroundDataSource(new MemoryBackgroundProvider(database, provider));
-mountPhone({ dataSource, database, settings: createStSettings(), menuEntry: { menu, button } });
+mountPhone({
+  dataSource,
+  database,
+  settings: createStSettings(),
+  testModelConnection: createStModelConnectionTest(() =>
+    window.SillyTavern.getContext().getRequestHeaders(),
+  ),
+  menuEntry: { menu, button },
+});
 console.info(`[STE Phone] v${__STE_PHONE_VERSION__} 已加载`);

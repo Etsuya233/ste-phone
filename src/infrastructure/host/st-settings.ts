@@ -1,7 +1,11 @@
 import { PhoneSettingsService, wallpaperFormats } from "../../features/settings/phone-settings.ts";
-import type { PhoneSettings, LegacyPhoneSettings } from "../../features/settings/phone-settings.ts";
+import type {
+  PhoneSettings,
+  PhoneSettingsV2,
+  LegacyPhoneSettings,
+} from "../../features/settings/phone-settings.ts";
 interface StContext {
-  extensionSettings: { ste_phone?: PhoneSettings | LegacyPhoneSettings };
+  extensionSettings: { ste_phone?: PhoneSettings | PhoneSettingsV2 | LegacyPhoneSettings };
   saveSettingsDebounced: () => void;
   getRequestHeaders: () => Record<string, string>;
 }

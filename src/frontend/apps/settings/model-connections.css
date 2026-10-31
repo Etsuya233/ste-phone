@@ -1,0 +1,60 @@
+:host .model-connections-page .ios-cell-copy {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+:host .model-connection-row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ios-space-small);
+}
+:host .model-connection-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--control-size);
+  min-height: var(--control-size);
+}
+:host .model-connection-radio {
+  width: var(--status-height);
+  height: var(--status-height);
+  margin: 0;
+  accent-color: var(--ios-blue);
+  flex-shrink: 0;
+}
+:host .model-connection-add {
+  font-size: var(--ios-chevron-size);
+}
+:host .model-connection-note,
+:host .model-connection-error,
+:host .model-connection-test-result {
+  margin: var(--ios-space-medium) var(--ios-space-large);
+  font-size: var(--ios-body-size);
+  overflow-wrap: anywhere;
+}
+:host .model-connection-note {
+  color: var(--ios-secondary-ink);
+}
+:host .model-connection-error {
+  color: var(--ios-red);
+}
+:host .model-connection-wide-action {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding-inline: var(--ios-space-large);
+}
+:host .model-connection-header + .model-connection-header,
+:host .model-connection-header + .model-connection-wide-action {
+  border-top: var(--ios-hairline) solid var(--ios-line);
+}
+:host .model-connection-test-result {
+  white-space: pre-wrap;
+}
+:host .model-connection-test-result p {
+  margin-block: var(--ios-space-small);
+}
+:host .model-connection-confirmation {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}

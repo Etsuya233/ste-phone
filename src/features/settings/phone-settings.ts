@@ -1,5 +1,15 @@
+import { validateModelConnection } from "./model-connections.ts";
+import type { ModelConnection } from "./model-connections.ts";
+
 export type Wallpaper = { kind: "gradient" } | { kind: "image"; path: string };
 export interface PhoneSettings {
+  version: 3;
+  wallpaper: Wallpaper;
+  blur: boolean;
+  modelConnections: ModelConnection[];
+  defaultModelConnectionId: string | null;
+}
+export interface PhoneSettingsV2 {
   version: 2;
   wallpaper: Wallpaper;
   blur: boolean;
@@ -15,16 +25,18 @@ export interface WallpaperImage {
   url: string;
 }
 export interface SettingsStorage {
-  read: () => PhoneSettings | LegacyPhoneSettings | undefined;
+  read: () => PhoneSettings | PhoneSettingsV2 | LegacyPhoneSettings | undefined;
   save: (settings: PhoneSettings) => void;
   listWallpapers: () => Promise<WallpaperImage[]>;
   uploadWallpaper: (image: Blob) => Promise<WallpaperImage>;
   imageUrl: (path: string) => string;
 }
 export const defaultSettings: PhoneSettings = {
-  version: 2,
+  version: 3,
   wallpaper: { kind: "gradient" },
   blur: false,
+  modelConnections: [],
+  defaultModelConnectionId: null,
 };
 export const wallpaperFormats = {
   "image/png": "png",
@@ -41,9 +53,12 @@ export class PhoneSettingsService {
     if (!stored) this.state = defaultSettings;
     else if (stored.version === 1) {
       // Version 1 selected host backgrounds and external URLs; neither belongs to the Phone library.
-      this.state = { version: 2, wallpaper: { kind: "gradient" }, blur: stored.blur };
+      this.state = { ...defaultSettings, wallpaper: { kind: "gradient" }, blur: stored.blur };
       storage.save(this.state);
-    } else if (stored.version === 2) this.state = stored;
+    } else if (stored.version === 2) {
+      this.state = { ...defaultSettings, wallpaper: stored.wallpaper, blur: stored.blur };
+      storage.save(this.state);
+    } else if (stored.version === 3) this.state = stored;
     else throw new Error("不支持的手机设置版本");
   }
   getState = () => this.state;
@@ -64,7 +79,47 @@ export class PhoneSettingsService {
   imageUrl(wallpaper: Wallpaper): string | undefined {
     return wallpaper.kind === "image" ? this.storage.imageUrl(wallpaper.path) : undefined;
   }
-  apply(settings: PhoneSettings) {
+  setWallpaper(wallpaper: Wallpaper, blur: boolean) {
+    this.save({ ...this.state, wallpaper, blur });
+  }
+  saveModelConnection(connection: ModelConnection) {
+    const validated = validateModelConnection(connection);
+    const exists = this.state.modelConnections.some((item) => item.id === validated.id);
+    this.save({
+      ...this.state,
+      modelConnections: exists
+        ? this.state.modelConnections.map((item) => (item.id === validated.id ? validated : item))
+        : [...this.state.modelConnections, validated],
+      defaultModelConnectionId:
+        this.state.modelConnections.length === 0
+          ? validated.id
+          : this.state.defaultModelConnectionId,
+    });
+  }
+  deleteModelConnection(id: string) {
+    if (!this.state.modelConnections.some((connection) => connection.id === id))
+      throw new Error("模型连接不存在");
+    this.save({
+      ...this.state,
+      modelConnections: this.state.modelConnections.filter((connection) => connection.id !== id),
+      defaultModelConnectionId:
+        this.state.defaultModelConnectionId === id ? null : this.state.defaultModelConnectionId,
+    });
+  }
+  selectDefaultModelConnection(id: string | null) {
+    if (id !== null && !this.state.modelConnections.some((connection) => connection.id === id))
+      throw new Error("模型连接不存在");
+    this.save({ ...this.state, defaultModelConnectionId: id });
+  }
+  defaultModelConnection(): ModelConnection {
+    if (this.state.defaultModelConnectionId === null) throw new Error("请先选择默认模型连接");
+    const connection = this.state.modelConnections.find(
+      (item) => item.id === this.state.defaultModelConnectionId,
+    );
+    if (!connection) throw new Error("默认模型连接不存在");
+    return validateModelConnection(connection);
+  }
+  private save(settings: PhoneSettings) {
     this.storage.save(settings);
     this.state = settings;
     this.listeners.forEach((listener) => listener());

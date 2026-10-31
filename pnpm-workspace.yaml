@@ -1,3 +1,5 @@
-# 单包仓库，允许 esbuild 安装平台二进制。
+# 仅 esbuild 需要安装平台二进制；Pi 的未使用供应商依赖不执行构建脚本。
 allowBuilds:
+  "@google/genai": false
   esbuild: true
+  protobufjs: false
