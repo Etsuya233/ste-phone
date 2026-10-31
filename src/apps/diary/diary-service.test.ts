@@ -202,7 +202,7 @@ test("diary saves the final answer from a reasoning model without storing its th
     await app.service.prepare();
     await app.service.selectAuthor("author");
     await app.service.generate();
-    assert.equal(app.service.getSnapshot().status, "complete");
+    assert.equal(app.service.getSnapshot().generation.status, "complete");
     assert.equal(app.saved.get("phone-A")!.entries[0]!.body, "今天的海风让人安心。");
     assert.ok(!JSON.stringify(app.saved.get("phone-A")).includes("private-thought"));
   } finally {
@@ -216,9 +216,11 @@ test("truncated diary is rejected without saving partial text", async () => {
     await app.service.prepare();
     await app.service.selectAuthor("author");
     await app.service.generate();
-    assert.match(app.service.getSnapshot().error!, /输出上限/);
+    const generation = app.service.getSnapshot().generation;
+    assert.equal(generation.status, "error");
+    assert.match(generation.error.message, /输出上限/);
     assert.equal(app.service.getSnapshot().data.entries.length, 0);
-    assert.equal(app.service.getSnapshot().text, "");
+    assert.ok(!("text" in generation));
   } finally {
     app.close();
   }
@@ -236,7 +238,9 @@ test("diary owns the policy for an unexpected tool call and saves no entry", asy
     await app.service.prepare();
     await app.service.selectAuthor("author");
     await app.service.generate();
-    assert.match(app.service.getSnapshot().error!, /日记生成未注册工具.*unregistered/);
+    const generation = app.service.getSnapshot().generation;
+    assert.equal(generation.status, "error");
+    assert.match(generation.error.message, /日记生成未注册工具.*unregistered/);
     assert.equal(app.service.getSnapshot().data.entries.length, 0);
     assert.equal(requests, 1);
   } finally {
@@ -262,7 +266,7 @@ test("source revision keeps active generation while chat switching discards even
     const running = app.service.generate();
     await started;
     app.updateSource();
-    assert.equal(app.service.getSnapshot().status, "generating");
+    assert.equal(app.service.getSnapshot().generation.status, "generating");
     await assert.rejects(
       app.service.saveSettings({ timeoutSeconds: 1, maxTokens: 100 }),
       /等待日记/,
@@ -289,15 +293,15 @@ test("failed save retains complete body and retries same diary without another m
     await app.service.selectAuthor("author");
     app.failSave();
     await app.service.generate();
-    const result = app.service.getSnapshot();
-    assert.equal(result.status, "error");
-    assert.equal(result.unsaved!.body, "今天的风让人安心。");
-    const id = result.unsaved!.id;
+    const result = app.service.getSnapshot().generation;
+    assert.equal(result.status, "save-error");
+    assert.equal(result.entry.body, "今天的风让人安心。");
+    const id = result.entry.id;
     app.restoreSave();
     await app.service.retrySave();
     assert.equal(calls, 1);
     assert.equal(app.saved.get("phone-A")!.entries[0]!.id, id);
-    assert.equal(app.service.getSnapshot().unsaved, null);
+    assert.equal(app.service.getSnapshot().generation.status, "complete");
   } finally {
     app.close();
   }
@@ -338,7 +342,9 @@ test("ambiguous world state and cleaned-chat read failure stop before any model 
     await app.service.selectAuthor("author");
     app.db.exec("INSERT INTO phone_world_state SELECT * FROM phone_world_state");
     await app.service.generate();
-    assert.match(app.service.getSnapshot().error!, /恰好有一条/);
+    const invalidWorld = app.service.getSnapshot().generation;
+    assert.equal(invalidWorld.status, "error");
+    assert.match(invalidWorld.error.message, /恰好有一条/);
     assert.equal(requests, 0);
     app.db.exec(
       "DELETE FROM phone_world_state WHERE rowid=(SELECT max(rowid) FROM phone_world_state)",
@@ -347,9 +353,134 @@ test("ambiguous world state and cleaned-chat read failure stop before any model 
       throw new Error("Memory 聊天接口读取失败");
     };
     await app.service.generate();
-    assert.match(app.service.getSnapshot().error!, /聊天接口读取失败/);
+    const failedChat = app.service.getSnapshot().generation;
+    assert.equal(failedChat.status, "error");
+    assert.match(failedChat.error.message, /聊天接口读取失败/);
     assert.equal(requests, 0);
     assert.equal(app.service.getSnapshot().data.entries.length, 0);
+  } finally {
+    app.close();
+  }
+});
+
+test("refreshing author choices preserves a failed save and its original error", async () => {
+  const app = fixture();
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    app.failSave();
+    await app.service.generate();
+    const failed = app.service.getSnapshot().generation;
+    assert.equal(failed.status, "save-error");
+    await app.service.prepare();
+    assert.equal(app.service.getSnapshot().generation, failed);
+    assert.equal(failed.error.message, "磁盘失败");
+    app.service.startWriting();
+    assert.equal(app.service.getSnapshot().generation, failed);
+    app.restoreSave();
+    await app.service.retrySave();
+    const completed = app.service.getSnapshot().generation;
+    assert.equal(completed.status, "complete");
+    assert.equal(completed.entry, failed.entry);
+    app.service.startWriting();
+    assert.equal(app.service.getSnapshot().generation.status, "idle");
+    assert.equal(app.service.getSnapshot().data.entries.length, 1);
+  } finally {
+    app.close();
+  }
+});
+
+test("generation uses fresh author material and rejects a removed author before requesting a model", async () => {
+  const prompts: string[] = [];
+  const app = fixture(async (_, options) => {
+    prompts.push(options!.body as string);
+    return reply();
+  });
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    app.db.exec("UPDATE phone_characters SET profile_text='刚刚更新的作者资料'");
+    await app.service.generate();
+    assert.match(prompts[0]!, /刚刚更新的作者资料/);
+    app.db.exec("DELETE FROM phone_characters");
+    await app.service.generate();
+    const failed = app.service.getSnapshot().generation;
+    assert.equal(failed.status, "error");
+    assert.match(failed.error.message, /重新选择/);
+    assert.equal(prompts.length, 1);
+  } finally {
+    app.close();
+  }
+});
+
+test("a late author refresh cannot overwrite an active generation", async () => {
+  let release!: () => void;
+  let read!: () => void;
+  const started = new Promise<void>((done) => {
+    read = done;
+  });
+  const waiting = new Promise<void>((done) => {
+    release = done;
+  });
+  const app = fixture();
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    const query = app.data.query;
+    app.data.query = async (request) => {
+      if (request.sql.includes("LIMIT 200 OFFSET")) {
+        read();
+        await waiting;
+      }
+      return query(request);
+    };
+    const refreshing = app.service.prepare();
+    await started;
+    await app.service.generate();
+    const completed = app.service.getSnapshot().generation;
+    assert.equal(completed.status, "complete");
+    release();
+    await refreshing;
+    assert.equal(app.service.getSnapshot().generation, completed);
+    assert.equal(app.service.getSnapshot().preparing, false);
+  } finally {
+    app.close();
+  }
+});
+
+test("retrying a save supersedes an unfinished refresh without leaving the page busy", async () => {
+  let release!: () => void;
+  let read!: () => void;
+  const started = new Promise<void>((done) => {
+    read = done;
+  });
+  const waiting = new Promise<void>((done) => {
+    release = done;
+  });
+  const app = fixture();
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    app.failSave();
+    await app.service.generate();
+    const query = app.data.query;
+    app.data.query = async (request) => {
+      if (request.sql.includes("LIMIT 200 OFFSET")) {
+        read();
+        await waiting;
+      }
+      return query(request);
+    };
+    const refreshing = app.service.prepare();
+    await started;
+    app.restoreSave();
+    await app.service.retrySave();
+    assert.equal(app.service.getSnapshot().generation.status, "complete");
+    assert.equal(app.service.getSnapshot().preparing, false);
+    release();
+    await refreshing;
+    assert.equal(app.service.getSnapshot().generation.status, "complete");
+    assert.equal(app.saved.get("phone-A")!.entries.length, 1);
   } finally {
     app.close();
   }
