@@ -1,16 +1,18 @@
 import { useState } from "react";
 import type { DiaryEntry } from "../diary.ts";
 import { isDiaryRunning } from "../diary.ts";
+import { formatWrittenAt } from "../diary-time.ts";
 import { Alert } from "../../../frontend/foundation/alert.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { DiaryPage, type DiaryPageProps } from "./diary-page.tsx";
+import { DiarySheet, DiarySheetHeading, useDiaryCopy } from "./diary-paper.tsx";
 
 export function DiaryDetailPage(props: DiaryPageProps & { id: string }) {
   const entry = props.state.data.entries.find((item) => item.id === props.id);
   if (!entry)
     return (
-      <DiaryPage state={props.state} title="日记详情" onBack={props.navigation.pop}>
-        <p className="diary-message">这篇日记已删除。</p>
+      <DiaryPage state={props.state} title="日记" onBack={props.navigation.pop} backLabel="日记本">
+        <p className="diary-missing">这篇日记已经不在日记本里了。</p>
       </DiaryPage>
     );
   function writeAnother() {
@@ -32,7 +34,9 @@ export function DiaryEntryPage({
 }) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { message: copyMessage, copy } = useDiaryCopy(entry.body);
   const busy = state.preparing || isDiaryRunning(state.generation);
+
   async function deleteEntry() {
     setDeleting(false);
     setError(null);
@@ -43,32 +47,46 @@ export function DiaryEntryPage({
       setError((cause as Error).message);
     }
   }
+
   return (
     <>
       <DiaryPage
         state={state}
-        title="日记详情"
+        title="日记"
         onBack={navigation.pop}
+        backLabel="日记本"
         inert={deleting}
         error={error}
       >
-        <div className="diary-heading">
-          <p className="diary-author">{entry.author.name}</p>
-          <p className="diary-time">{entry.worldTime}</p>
-        </div>
-        <DiaryText body={entry.body} />
-        <div className="diary-entry-actions">
-          <Button disabled={busy} onClick={onWrite}>
-            再写一篇
-          </Button>
-          <Button variant="danger" disabled={busy} onClick={() => setDeleting(true)}>
-            删除日记
-          </Button>
+        <div className="diary-reader">
+          <DiarySheet toneName={entry.author.name} className="diary-sheet--reading">
+            <DiarySheetHeading worldTime={entry.worldTime} />
+            <div className="diary-body">{entry.body}</div>
+            <p className="diary-signature">
+              <span aria-hidden="true">——</span>
+              {entry.author.name}
+            </p>
+          </DiarySheet>
+          <p className="diary-written-at">{formatWrittenAt(entry.createdAt)}</p>
+          <div className="diary-read-actions">
+            <Button onClick={() => void copy()}>复制这一页</Button>
+            <Button disabled={busy} onClick={onWrite}>
+              再写一篇
+            </Button>
+            <Button variant="danger" disabled={busy} onClick={() => setDeleting(true)}>
+              删除
+            </Button>
+          </div>
+          {copyMessage ? (
+            <p className="diary-copy-status" role="status">
+              {copyMessage}
+            </p>
+          ) : null}
         </div>
       </DiaryPage>
       {deleting ? (
         <Alert
-          title="删除这篇日记？"
+          title="删除这一页？"
           active={navigation.current}
           onDismiss={() => setDeleting(false)}
           actions={[
@@ -79,27 +97,6 @@ export function DiaryEntryPage({
           <p>删除后无法恢复。</p>
         </Alert>
       ) : null}
-    </>
-  );
-}
-
-export function DiaryText({ body }: { body: string }) {
-  const [message, setMessage] = useState<string | null>(null);
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(body);
-      setMessage("已复制正文");
-    } catch (error) {
-      setMessage(`复制失败：${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-  return (
-    <>
-      <article className="diary-body">{body}</article>
-      <div className="diary-copy">
-        <Button onClick={() => void copy()}>复制正文</Button>
-        {message ? <p role="status">{message}</p> : null}
-      </div>
     </>
   );
 }

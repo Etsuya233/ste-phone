@@ -41,6 +41,9 @@
   --ios-page-dot-size: 6px;
   --database-icon-fill: linear-gradient(#de9e4a, #b36a26);
   --database-icon-ink: #fff6e9;
+  --diary-icon-fill: linear-gradient(#d99a6c, #a6573f);
+  --diary-icon-ink: #fff6ea;
+  --diary-icon-ribbon: #f5d6b4;
   --foundation-icon-ink: #b9deff;
   --foundation-icon-fill: #2877b5;
   --stopwatch-icon-accent: #ff9500;

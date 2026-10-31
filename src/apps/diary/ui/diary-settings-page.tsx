@@ -8,8 +8,13 @@ import { DiaryPage, type DiaryPageProps } from "./diary-page.tsx";
 
 export function DiarySettingsPage({ diary, state, navigation }: DiaryPageProps) {
   return (
-    <DiaryPage state={state} title="生成设置" onBack={navigation.pop}>
-      <GenerationSettings diary={diary} settings={state.data.settings} onBack={navigation.pop} />
+    <DiaryPage state={state} title="写作设置" onBack={navigation.pop} backLabel="返回">
+      <div className="diary-settings">
+        <p className="diary-settings-intro">
+          这些参数只影响下一次落笔，已经收进日记本的页面不会被改写。
+        </p>
+        <GenerationSettings diary={diary} settings={state.data.settings} onBack={navigation.pop} />
+      </div>
     </DiaryPage>
   );
 }
@@ -27,6 +32,7 @@ function GenerationSettings({
   const [tokens, setTokens] = useState(String(settings.maxTokens));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -40,11 +46,12 @@ function GenerationSettings({
       setSaving(false);
     }
   }
+
   return (
     <form onSubmit={(event) => void save(event)}>
       <GroupedList
         title="模型生成"
-        description="字数随人物和材料自然发挥，输出上限仅限制模型请求。修改后从下一次生成生效。"
+        description="篇幅由人物和材料自然发挥，输出上限只约束模型请求。"
       >
         <TextField
           label="总超时（秒）"

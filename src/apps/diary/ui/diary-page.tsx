@@ -61,7 +61,7 @@ export function DiaryPage({
             {error}
           </p>
         ) : null}
-        {!state.chatId ? <p>选择一个聊天后，即可记录这里的日记。</p> : null}
+        {!state.chatId ? <p>打开一个聊天，就能把日子收进这本日记。</p> : null}
       </div>
       {children}
     </Page>
