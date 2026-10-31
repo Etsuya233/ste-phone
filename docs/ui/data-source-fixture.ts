@@ -73,6 +73,36 @@ export function createPreviewMemory(mode: string | null): MemoryReadApi {
   });
   return {
     version: 1,
+    chat: {
+      version: 1,
+      async readRecent({ chatIdentity, count }) {
+        if (chatIdentity !== context.chatIdentity || !context.available)
+          throw new Error("预览：聊天资料不可用");
+        if (mode === "error") throw new Error("预览：聊天读取失败");
+        const messages =
+          mode === "empty"
+            ? []
+            : [
+                {
+                  floor: 0,
+                  name: "小蓝",
+                  role: "user" as const,
+                  content: "明天我把校对好的稿件带来。",
+                },
+                {
+                  floor: 1,
+                  name: "小红",
+                  role: "assistant" as const,
+                  content: "我把笔记本推过去，忽然觉得周五的朗读会也没有那么令人紧张了。",
+                },
+              ];
+        return {
+          chatIdentity,
+          messages: messages.slice(-count),
+          cleaning: { enabled: true, ruleId: "preview-story", ruleName: "预览正文清洗" },
+        };
+      },
+    },
     getContext: () => context,
     subscribe: () => () => {},
     read: async () => {

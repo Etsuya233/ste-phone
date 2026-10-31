@@ -4,7 +4,7 @@ import type { AiTransport } from "../../src/core/ai/public.ts";
 /** 预览复用设置的 Agent 流程，仅替换传输，始终不请求配置的模型服务。 */
 export function createPreviewAiTransport(mode: string | null): AiTransport {
   return {
-    createStream: () => (model, _context, options) => {
+    createStream: () => (model, context, options) => {
       const stream = createAssistantMessageEventStream();
       const output: AssistantMessage = {
         role: "assistant",
@@ -40,7 +40,9 @@ export function createPreviewAiTransport(mode: string | null): AiTransport {
             stream.push({ type: "error", reason: "error", error: output });
             return;
           }
-          const text = `模拟回复：${model.id} 的预览测试完成，未请求真实服务。`;
+          const text = context.systemPrompt?.includes("日记")
+            ? "【模拟日记，未请求真实模型】\n\n图书馆里很安静，窗边的光照在蓝色笔记本上。我把本子推给小蓝的时候，心里还在想着周五的朗读会。听见他说明天会带来校对好的稿件，我松了一口气。\n\n准备的事情似乎总也做不完，可有人一起认真对待，就没有那么慌张了。现在只想把这一点小小的安心记下来。"
+            : `模拟回复：${model.id} 的预览测试完成，未请求真实服务。`;
           output.content = [{ type: "text", text: "" }];
           stream.push({ type: "text_start", contentIndex: 0, partial: output });
           output.content[0] = { type: "text", text };

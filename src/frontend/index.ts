@@ -4,6 +4,7 @@ import { createPhone } from "../bootstrap/create-phone.tsx";
 import { createStChatContext } from "../infrastructure/host/chat-context.ts";
 import { mountPhone } from "./host/mount-phone.tsx";
 import { MemoryDatabaseProvider } from "../infrastructure/ste-memory/memory-database-provider.ts";
+import { createStDiaryStorage } from "../infrastructure/host/diary-storage.ts";
 
 declare const __STE_PHONE_VERSION__: string;
 
@@ -14,11 +15,13 @@ if (!menu || !button) throw new Error("ST 魔法棒菜单尚未就绪，无法�
 
 // 入口负责组装具体来源。数据源随插件挂载，手机窗口和各 App 只消费这个共享实例。
 // 宿主上下文与 App 的具体实现只在入口组装。
+const chat = createStChatContext(() => window.SillyTavern.getContext());
 const phone = createPhone({
   dataProvider: new MemoryDatabaseProvider(),
   settingsStorage: createStSettingsStorage(),
   aiTransport: createStAiTransport(() => window.SillyTavern.getContext().getRequestHeaders()),
-  chat: createStChatContext(() => window.SillyTavern.getContext()),
+  chat,
+  diaryStorage: createStDiaryStorage(() => window.SillyTavern.getContext(), chat),
 });
 mountPhone({ apps: phone.apps, wallpaper: phone.wallpaper, menuEntry: { menu, button } });
 console.info(`[STE Phone] v${__STE_PHONE_VERSION__} 已加载`);

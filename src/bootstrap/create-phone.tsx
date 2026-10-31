@@ -15,6 +15,9 @@ import type { AppDefinition } from "../frontend/device/app-lifecycle.ts";
 import type { AppId } from "../frontend/device/app-session.ts";
 import type { DataAppPublic } from "../apps/data-source/public.ts";
 import type { ModelConnectionsReader, WallpaperReader } from "../apps/settings/public.ts";
+import { DiaryService } from "../apps/diary/diary-service.ts";
+import type { DiaryStorage } from "../apps/diary/ports/diary-storage.ts";
+import { DiaryApp } from "../apps/diary/ui/diary-app.tsx";
 
 export interface PhoneRuntime {
   readonly apps: Record<AppId, AppDefinition>;
@@ -22,6 +25,7 @@ export interface PhoneRuntime {
   readonly modelConnections: ModelConnectionsReader;
   readonly data: DataAppPublic;
   readonly chat: ChatContext;
+  readonly diary: DiaryService;
 }
 
 /** 生产和预览共享组装；页面、后台消费者始终使用同一数据所有者。 */
@@ -30,12 +34,24 @@ export function createPhone(dependencies: {
   dataProvider: DatabaseProvider;
   aiTransport: AiTransport;
   chat: ChatContext;
+  diaryStorage: DiaryStorage;
 }): PhoneRuntime {
   const settings = new PhoneSettingsService(dependencies.settingsStorage);
   const data = new PhoneDataService(dependencies.dataProvider);
   const database = new DatabaseWorkspace(data);
   const testModelConnection = createModelConnectionTest(dependencies.aiTransport);
+  const diary = new DiaryService({
+    storage: dependencies.diaryStorage,
+    data,
+    chat: dependencies.chat,
+    connections: settings.modelConnections,
+    transport: dependencies.aiTransport,
+  });
   const apps: Record<AppId, AppDefinition> = {
+    diary: {
+      render: ({ active, onHome }) => <DiaryApp active={active} diary={diary} onHome={onHome} />,
+      onQuit: () => diary.quit(),
+    },
     settings: {
       render: ({ active, onHome }) => (
         <SettingsApp
@@ -69,5 +85,6 @@ export function createPhone(dependencies: {
     modelConnections: settings.modelConnections,
     data,
     chat: dependencies.chat,
+    diary,
   };
 }

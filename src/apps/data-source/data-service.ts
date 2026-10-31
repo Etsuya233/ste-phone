@@ -49,6 +49,24 @@ export class PhoneDataService implements DataAppPublic {
     this.#assertScope(request);
     return result;
   }
+  async readRecentChat(request: DataScope & { readonly count: number }) {
+    request = { ...request };
+    this.#assertScope(request);
+    if (!Number.isSafeInteger(request.count) || request.count <= 0)
+      throw new Error("最近聊天条数须为正整数");
+    if (!this.#provider.readRecentChat)
+      throw new Error("资料来源缺少清洗聊天读取能力，请更新 STE Memory");
+    const generation = this.#generation;
+    const result = await this.#provider.readRecentChat(request.count);
+    this.#assertScope(request, generation);
+    if (result.chatIdentity !== request.chatIdentity)
+      throw new Error("资料来源返回了其他聊天的消息");
+    return Object.freeze({
+      chatIdentity: result.chatIdentity,
+      cleaning: Object.freeze({ ...result.cleaning }),
+      messages: Object.freeze(result.messages.map((message) => Object.freeze({ ...message }))),
+    });
+  }
   async describe(
     request: DataScope,
     options: { readonly force?: boolean } = {},

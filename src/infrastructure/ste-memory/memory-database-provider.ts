@@ -62,6 +62,23 @@ export class MemoryDatabaseProvider implements DatabaseProvider {
     if (description.space.id !== context.scopeId) throw new Error("Memory 返回了其他空间的结构");
     return mapMemoryDatabase(description);
   }
+  async readRecentChat(count: number) {
+    const api = this.#api;
+    const context = this.getContext();
+    if (!context.available) throw new Error(context.message!);
+    if (api?.chat?.version !== 1)
+      throw new Error("Memory 缺少 chat v1 清洗聊天能力，请更新 Memory");
+    const result = await api.chat.readRecent({ chatIdentity: context.chatIdentity!, count });
+    if (api !== this.#api) throw new Error("Memory 接口已重新连接，请重新读取聊天");
+    const current = this.getContext();
+    if (
+      current.chatIdentity !== context.chatIdentity ||
+      current.scopeId !== context.scopeId ||
+      result.chatIdentity !== context.chatIdentity
+    )
+      throw new Error("读取期间聊天或记忆空间已变化");
+    return result;
+  }
   async register(schema: DatabaseSchema): Promise<void> {
     const api = this.#api!;
     const context = this.getContext();

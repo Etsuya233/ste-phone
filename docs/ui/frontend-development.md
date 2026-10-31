@@ -26,7 +26,7 @@ Foundation 组件应用位于 `src/apps/foundation/ui/`，可从主屏打开，�
 
 ## 手机会话与设置
 
-`src/bootstrap/create-phone.tsx` 向外壳提供各 App 的渲染定义，外壳只管理挂载与界面生命周期，不导入各 App 内部实现。五个 App 首次打开时挂载，Home 退到后台；Expose 以 iOS 7 风格横向展示真实页面预览，只有明确退出动画完成才卸载 App 页面。固定 App 数量无需淘汰策略。dialog 关闭保留 `PhoneDevice` 和各 App 的内存会话，重开恢复原前台页，刷新 ST 结束会话。后台 App 保持 DOM，平时使用 `hidden`；Expose 只在原父节点上缩放、位移这些页面，内容 wrapper 始终按 `active` 使用 `inert` 与 `aria-hidden`。预览点击和手势由独立透明层处理，不复制 App、截取页面或改变组件 key。拖动时 memo 保留 App 组件，避免手势刷新整页内容。秒表使用 `performance.now()` 累计后台时间，`active` 只允许前台执行显示 RAF；状态栏关闭时停止时钟定时器。DB 滚动监听与恢复仅在前台页执行，避免隐藏容器的零尺寸污染按聊天的滚动缓存。
+`src/bootstrap/create-phone.tsx` 向外壳提供各 App 的渲染定义，外壳只管理挂载与界面生命周期，不导入各 App 内部实现。各 App 首次打开时挂载，Home 退到后台；Expose 以 iOS 7 风格横向展示真实页面预览，只有明确退出动画完成才卸载 App 页面。固定 App 数量无需淘汰策略。dialog 关闭保留 `PhoneDevice` 和各 App 的内存会话，重开恢复原前台页，刷新 ST 结束会话。后台 App 保持 DOM，平时使用 `hidden`；Expose 只在原父节点上缩放、位移这些页面，内容 wrapper 始终按 `active` 使用 `inert` 与 `aria-hidden`。预览点击和手势由独立透明层处理，不复制 App、截取页面或改变组件 key。拖动时 memo 保留 App 组件，避免手势刷新整页内容。秒表使用 `performance.now()` 累计后台时间，`active` 只允许前台执行显示 RAF；状态栏关闭时停止时钟定时器。DB 滚动监听与恢复仅在前台页执行，避免隐藏容器的零尺寸污染按聊天的滚动缓存。
 
 物理与软件 Home 共用 280ms 单双击判断，双击进入 Expose，单击返回主屏。Expose 只显示壁纸、横向露边卡片、共享 AppIcon 图标与应用名称，不显示独立状态栏、提示、页码、切换箭头或主屏/退出按钮；主屏也不额外提供后台入口。左右拖动或方向键选择，点按或 Enter 打开，上滑 90 个逻辑像素或 Delete 退出。只有当前卡参与 Tab，删除后聚焦邻卡，全部退出后只保留壁纸并聚焦后台区域，Home 仍可返回主屏。关闭、卸载与页面变更取消待处理的单击。关闭发生于动画期间时收敛到动画目标，清除拖动，并完成正在退出的应用，避免重开卡在转场。减少动态效果关闭卡片与轨道的补间动画。
 

@@ -30,6 +30,15 @@ export function Home({
       <div className="home-grid" aria-label="主屏幕">
         <Button
           className="home-app"
+          data-app="diary"
+          onClick={(event) => onOpen(event, "diary")}
+          aria-label="打开日记"
+        >
+          <AppIcon app="diary" />
+          <Text role="caption">日记</Text>
+        </Button>
+        <Button
+          className="home-app"
           data-app="database"
           onClick={(event) => onOpen(event, "database")}
           aria-label="打开 Fake DBeaver"

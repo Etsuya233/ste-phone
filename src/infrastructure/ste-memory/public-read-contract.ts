@@ -69,6 +69,23 @@ export interface MemoryContext {
 export interface MemoryReadApi {
   readonly version: number;
   readonly database?: MemoryDatabaseApi;
+  readonly chat?: {
+    readonly version: 1;
+    readRecent(request: { readonly chatIdentity: string; readonly count: number }): Promise<{
+      readonly chatIdentity: string;
+      readonly messages: readonly {
+        readonly floor: number;
+        readonly name: string;
+        readonly role: "user" | "assistant" | "narrator";
+        readonly content: string;
+      }[];
+      readonly cleaning: {
+        readonly enabled: boolean;
+        readonly ruleId: string | null;
+        readonly ruleName: string | null;
+      };
+    }>;
+  };
   getContext(): MemoryContext;
   subscribe(listener: () => void): () => void;
   read(): Promise<{ readonly context: MemoryContext; readonly snapshot: MemorySnapshot }>;

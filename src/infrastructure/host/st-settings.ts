@@ -1,4 +1,4 @@
-import type { StChatContext } from "./chat-context.ts";
+import type { StDiaryContext } from "./diary-storage.ts";
 
 import type {
   PhoneSettings,
@@ -6,7 +6,7 @@ import type {
   LegacyPhoneSettings,
   SettingsStorage,
 } from "../../apps/settings/ports/settings-storage.ts";
-interface StContext extends StChatContext {
+interface StContext extends StDiaryContext {
   extensionSettings: { ste_phone?: PhoneSettings | PhoneSettingsV2 | LegacyPhoneSettings };
   saveSettingsDebounced: () => void;
   getRequestHeaders: () => Record<string, string>;

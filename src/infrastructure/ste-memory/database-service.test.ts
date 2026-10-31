@@ -24,6 +24,38 @@ function fixture() {
   };
 }
 
+test("Memory chat capability is required and forwards only cleaned public messages", async () => {
+  const f = fixture();
+  try {
+    const context = f.source.getSnapshot().context;
+    const request = { chatIdentity: context.chatIdentity, scopeId: context.scopeId, count: 20 };
+    await assert.rejects(f.source.readRecentChat(request), /chat v1/);
+    let received: unknown;
+    Object.assign(f.memory.api, {
+      chat: {
+        version: 1,
+        async readRecent(input: { chatIdentity: string; count: number }) {
+          received = input;
+          return {
+            chatIdentity: input.chatIdentity,
+            messages: [{ floor: 4, name: "角色", role: "assistant", content: "清洗后的正文" }],
+            cleaning: { enabled: true, ruleId: "rule", ruleName: "正文规则" },
+          };
+        },
+      },
+    });
+    const snapshot = await f.source.readRecentChat(request);
+    assert.deepEqual(received, { chatIdentity: context.chatIdentity, count: 20 });
+    assert.equal(snapshot.messages[0]!.content, "清洗后的正文");
+    assert.equal(snapshot.cleaning.ruleName, "正文规则");
+    assert.equal(f.memory.stats.reads, 0);
+    assert.equal(f.memory.stats.describes, 0);
+    assert.equal(f.memory.stats.queries.length, 0);
+  } finally {
+    f.dispose();
+  }
+});
+
 test("data notifications mark results stale without reading records or rebuilding views", async () => {
   const f = fixture();
   try {

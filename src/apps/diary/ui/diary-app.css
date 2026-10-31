@@ -1,0 +1,76 @@
+:host .diary-app {
+  position: relative;
+  height: 100%;
+}
+:host .diary-app-icon {
+  background: var(--database-icon-fill);
+  color: var(--database-icon-ink);
+}
+:host .diary-page {
+  font-size: var(--ios-body-size);
+}
+:host .diary-notices {
+  padding: 0 var(--ios-space-large);
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+  overflow-wrap: anywhere;
+}
+:host .diary-error {
+  color: var(--ios-red);
+}
+:host .diary-empty,
+:host .diary-message {
+  margin: 0;
+  padding: var(--ios-space-large);
+  color: var(--ios-secondary-ink);
+  overflow-wrap: anywhere;
+}
+:host .diary-empty {
+  text-align: center;
+}
+:host .diary-empty p {
+  margin: 0 0 var(--ios-space-medium);
+}
+:host .diary-write-actions,
+:host .diary-entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--ios-space-medium);
+  padding: var(--ios-space-large);
+}
+:host .diary-heading {
+  padding: var(--ios-group-gap) var(--ios-space-large) var(--ios-space-medium);
+}
+:host .diary-author {
+  margin: 0 0 var(--ios-space-small);
+  font-weight: 600;
+}
+:host .diary-time {
+  margin: 0;
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+  overflow-wrap: anywhere;
+}
+:host .diary-body {
+  padding: var(--ios-space-large);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: var(--ios-copy-line-height);
+  user-select: text;
+}
+:host .diary-copy {
+  padding: 0 var(--ios-space-large);
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+}
+:host .diary-copy p {
+  margin: 0 var(--ios-space-medium) var(--ios-space-medium);
+}
+:host .diary-page .ios-cell-subtitle {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
+}

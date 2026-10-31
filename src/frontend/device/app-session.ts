@@ -3,6 +3,7 @@ export const appNames = {
   foundation: "组件",
   "data-source": "资料",
   database: "Fake DBeaver",
+  diary: "日记",
   settings: "设置",
 } as const;
 export type AppId = keyof typeof appNames;

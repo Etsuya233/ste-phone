@@ -1,5 +1,13 @@
 # 手机公共资料与数据库
 
+## 清洗后的最近聊天
+
+`DataAppPublic.readRecentChat({ chatIdentity, scopeId, count })` 经资料来源适配器调用 Memory 可选 `chat v1.readRecent({ chatIdentity, count })`。请求中的聊天身份属于资料来源，与 Core 的聊天文件身份分别校验。返回原始楼层、发送者、消息类型、清洗后正文及清洗规则摘要的固定副本，不经过 Memory SQL，不复制聊天到 Phone 数据库。
+
+Memory 从 ST 当前生效消息中排除系统、工具和隐藏消息，保留正常旁白；隐藏旁白仍排除。先取最近 N 条窗口，再使用当前聊天规则清洗 AI 输出，用户消息及旁白保留正文，清洗后为空的消息移除且不向前补齐。不读取 swipe 备选、思考或附件。未选或停用规则明确报告未启用，悬空规则报错。缺少 capability、读取错误和上下文切换均明确失败，不切换到 ST 原文；切走再切回也不接受旧读取结果。
+
+日记使用此接口读取最近 20 条参考消息，生成中固定已取得的文本和规则摘要。世界状态及纪要时间仍通过既有标准视图查询；`readBackground()` 的人物、纪要和物品展示结构保持原有职责。
+
 Phone 定义标准查询结构，Memory 执行 SQL 并提供当前已提交资料。资料模块的 `PhoneDataService` 拥有来源结构、查询与背景缓存，Fake DBeaver 通过 `DataAppPublic` 共享这些能力，并由自己的 `DatabaseWorkspace` 保存编辑会话。Phone 只持有来源结构、视图 SELECT、查询结果与页面会话。生产插件不加载 SQLite/WASM，不调用 `STE_MEMORY_API.read()`，也不复制完整 records。
 
 ## 契约与归属
