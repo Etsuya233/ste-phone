@@ -1,6 +1,6 @@
 import type { Database, Sqlite3Static } from "@sqlite.org/sqlite-wasm";
-import { identifierKey, quoteIdentifier } from "../../src/features/database/index.ts";
-import type { DatabaseObject, QueryResult, SqlValue } from "../../src/features/database/index.ts";
+import { identifierKey, quoteIdentifier } from "../../src/apps/data-source/database.ts";
+import type { DatabaseObject, QueryResult, SqlValue } from "../../src/apps/data-source/public.ts";
 
 interface PreviewDatabase {
   readonly objects: readonly (DatabaseObject & {

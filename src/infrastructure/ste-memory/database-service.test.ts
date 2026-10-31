@@ -2,16 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { memoryDatabaseFixture } from "../../../tests/fixtures/memory-database.ts";
 import { MemoryDatabaseProvider } from "./memory-database-provider.ts";
-import { MemoryBackgroundProvider } from "./memory-background-provider.ts";
-import { BackgroundDataSource } from "../../features/background/index.ts";
-import { PhoneDatabaseService } from "../../features/database/index.ts";
+import { PhoneDataService } from "../../apps/data-source/data-service.ts";
+
+import { DatabaseWorkspace } from "../../apps/database/database-workspace.ts";
 
 function fixture() {
   const memory = memoryDatabaseFixture();
   memory.install();
   const provider = new MemoryDatabaseProvider();
-  const database = new PhoneDatabaseService(provider);
-  const source = new BackgroundDataSource(new MemoryBackgroundProvider(database, provider));
+  const source = new PhoneDataService(provider);
+  const database = new DatabaseWorkspace(source);
   return {
     memory,
     database,
@@ -95,7 +95,7 @@ test("background queries paginate complete required data and never query custom-
     );
     for (let index = 0; index < 405; index++)
       insert.run(`extra-${index}`, "2026-10-30", `人物${index}`, "性格", "经历", "近况");
-    const data = await f.source.load();
+    const data = await f.source.readBackground(f.source.getSnapshot().context);
     assert.equal(data.characters.length, 408);
     assert.match(data.items[0]!.description, /小蓝/);
     assert.equal(
@@ -109,7 +109,7 @@ test("background queries paginate complete required data and never query custom-
     assert.equal(f.memory.stats.reads, 0);
     const queries = f.memory.stats.queries.length;
     f.memory.change();
-    assert.equal(f.source.getState().stale, true);
+    assert.equal(f.source.getSnapshot().stale, true);
     assert.equal(f.memory.stats.queries.length, queries);
   } finally {
     f.dispose();
@@ -143,6 +143,79 @@ test("database reload and A to B to A register again even when schema is unchang
     f.memory.setDescription({ ...f.memory.description, databaseKey: "db-a-loaded-again" });
     await f.database.load();
     assert.equal(f.memory.stats.registrations, 4);
+  } finally {
+    f.dispose();
+  }
+});
+
+test("public data reads own no editor state and remain available after workspace disposal", async () => {
+  const f = fixture();
+  try {
+    f.database.edit({ sql: "SELECT 42", search: "保留搜索", scroll: { sql: 90 } });
+    const editor = f.database.getState().editor;
+    const snapshot = f.source.getSnapshot();
+    assert.equal(f.source.getSnapshot(), snapshot);
+    const background = await f.source.readBackground(snapshot.context);
+    assert.ok(Object.isFrozen(background));
+    const schema = await f.source.describe(snapshot.context);
+    assert.ok(Object.isFrozen(schema.objects));
+    assert.equal(f.database.getState().editor, editor);
+    f.database.dispose();
+    const result = await f.source.query({ ...snapshot.context, sql: "SELECT 42" });
+    assert.equal(result.rows[0]![0], 42);
+    assert.ok(Object.isFrozen(result.rows[0]));
+    assert.equal(f.source.getSnapshot(), f.source.getSnapshot());
+  } finally {
+    f.dispose();
+  }
+});
+
+test("public requests reject a different chat even when it shares the active memory scope", async () => {
+  const f = fixture();
+  try {
+    const request = { ...f.source.getSnapshot().context, chatIdentity: "another-chat" };
+    await assert.rejects(f.source.describe(request), /聊天已变化/);
+    await assert.rejects(f.source.query({ ...request, sql: "SELECT 42" }), /聊天已变化/);
+    await assert.rejects(f.source.readBackground(request), /聊天已变化/);
+    assert.equal(f.memory.stats.describes, 0);
+    assert.equal(f.memory.stats.queries.length, 0);
+    const active = f.source.getSnapshot().context;
+    await f.source.describe(active);
+    await assert.rejects(f.source.describe({ ...active, scopeId: "other-space" }), /聊天已变化/);
+  } finally {
+    f.dispose();
+  }
+});
+
+test("same-chat updates mark an in-flight editor result stale without cancelling its query", async () => {
+  const f = fixture();
+  try {
+    await f.database.load();
+    let release!: () => void;
+    f.memory.deferQuery(
+      () =>
+        new Promise<void>((done) => {
+          release = done;
+        }),
+    );
+    const pending = f.database.execute();
+    await new Promise((done) => setImmediate(done));
+    const previous = f.source.getSnapshot();
+    const notifications: number[] = [];
+    const unsubscribe = f.source.subscribe(() =>
+      notifications.push(f.source.getSnapshot().revision),
+    );
+    f.memory.change();
+    unsubscribe();
+    assert.deepEqual(notifications, [previous.revision + 1]);
+    release();
+    await pending;
+    assert.notEqual(f.database.getState().editor.result, null);
+    assert.equal(f.database.getState().editor.resultStale, true);
+    assert.equal(f.database.getState().editor.queryError, null);
+    const describes = f.memory.stats.describes;
+    await f.database.load(true);
+    assert.equal(f.memory.stats.describes, describes + 1);
   } finally {
     f.dispose();
   }

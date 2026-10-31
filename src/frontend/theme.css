@@ -3,10 +3,10 @@
 @import "./device/device.css";
 @import "./system/system.css";
 @import "./apps/home/home.css";
-@import "./apps/stopwatch/stopwatch.css";
-@import "./apps/foundation/foundation-app.css";
-@import "./apps/data-source/data-source-app.css";
+@import "../apps/stopwatch/ui/stopwatch.css";
+@import "../apps/foundation/ui/foundation-app.css";
+@import "../apps/data-source/ui/data-source-app.css";
 
-@import "./apps/database/database-app.css";
+@import "../apps/database/ui/database-app.css";
 
-@import "./apps/settings/settings-app.css";
+@import "../apps/settings/ui/settings-app.css";

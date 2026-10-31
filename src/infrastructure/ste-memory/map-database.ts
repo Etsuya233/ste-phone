@@ -2,8 +2,8 @@ import type {
   DatabaseColumn,
   DatabaseObject,
   DatabaseSchema,
-} from "../../features/database/index.ts";
-import { identifierKey, quoteIdentifier as q } from "../../features/database/index.ts";
+} from "../../apps/data-source/database.ts";
+import { identifierKey, quoteIdentifier as q } from "../../apps/data-source/database.ts";
 import type {
   MemoryDatabaseDescription,
   MemoryField,

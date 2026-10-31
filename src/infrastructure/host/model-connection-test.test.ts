@@ -1,11 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createStModelConnectionTest } from "./model-connection-test.ts";
-import type { ModelConnection } from "../../features/settings/model-connections.ts";
+import { createModelConnectionTest } from "../../apps/settings/model-connection-test.ts";
+import { createStAiTransport } from "./ai-transport.ts";
+function createStModelConnectionTest(
+  headers: () => Record<string, string>,
+  options: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
+) {
+  return createModelConnectionTest(createStAiTransport(headers, options), options);
+}
+import type { ModelConnection } from "../../apps/settings/model-connections.ts";
 import {
   PhoneSettingsService,
   type SettingsStorage,
-} from "../../features/settings/phone-settings.ts";
+} from "../../apps/settings/settings-service.ts";
 
 function connection(): ModelConnection {
   return {

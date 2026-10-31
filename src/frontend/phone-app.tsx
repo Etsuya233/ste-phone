@@ -1,24 +1,19 @@
-import type { PhoneSettingsService } from "../features/settings/phone-settings.ts";
-import type { TestModelConnection } from "../infrastructure/host/model-connection-test.ts";
+import type { WallpaperReader } from "../apps/settings/public.ts";
+import type { AppDefinition } from "./device/app-lifecycle.ts";
 import type { AppId } from "./device/app-session.ts";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
 import { PhoneDevice } from "./device/phone-device.tsx";
 import { StEntry } from "./host/st-entry.tsx";
 import type { StMenuEntry } from "./host/st-entry.tsx";
-import type { PhoneDataSource } from "../features/background/index.ts";
-
-import type { PhoneDatabaseService } from "../features/database/index.ts";
 
 const DEVICE_WIDTH = 430;
 const DEVICE_HEIGHT = 886;
 const VIEWPORT_GAP = 12;
 
 export function PhoneApp({
-  dataSource,
-  database,
-  settings,
-  testModelConnection,
+  wallpaper,
+  apps,
   responsive = false,
   draggable = false,
   initialApp = "home",
@@ -27,10 +22,8 @@ export function PhoneApp({
   responsive?: boolean;
   draggable?: boolean;
   initialApp?: "home" | AppId;
-  settings: PhoneSettingsService;
-  testModelConnection: TestModelConnection;
-  dataSource: PhoneDataSource;
-  database: PhoneDatabaseService;
+  wallpaper: WallpaperReader;
+  apps: Record<AppId, AppDefinition>;
   menuEntry?: StMenuEntry;
 }) {
   const panel = useRef<HTMLDialogElement>(null);
@@ -167,10 +160,8 @@ export function PhoneApp({
             </button>
             <PhoneDevice
               visible={open}
-              settings={settings}
-              testModelConnection={testModelConnection}
-              dataSource={dataSource}
-              database={database}
+              wallpaper={wallpaper}
+              apps={apps}
               initialApp={initialApp}
               scale={scale}
               draggable={draggable && !fullscreen}

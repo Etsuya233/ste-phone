@@ -1,6 +1,6 @@
 # 手机公共资料与数据库
 
-Phone 定义标准查询结构，Memory 执行 SQL 并提供当前已提交资料。资料 App 和 Fake DBeaver 共用 `PhoneDatabaseService`，Phone 只持有来源结构、视图 SELECT、查询结果与页面会话。生产插件不加载 SQLite/WASM，不调用 `STE_MEMORY_API.read()`，也不复制完整 records。
+Phone 定义标准查询结构，Memory 执行 SQL 并提供当前已提交资料。资料模块的 `PhoneDataService` 拥有来源结构、查询与背景缓存，Fake DBeaver 通过 `DataAppPublic` 共享这些能力，并由自己的 `DatabaseWorkspace` 保存编辑会话。Phone 只持有来源结构、视图 SELECT、查询结果与页面会话。生产插件不加载 SQLite/WASM，不调用 `STE_MEMORY_API.read()`，也不复制完整 records。
 
 ## 契约与归属
 
@@ -12,9 +12,11 @@ Memory 保留公开读取 v1 的 `getContext/subscribe/read`，Phone 要求额�
 
 ## 代码位置
 
-`features/database/database.ts` 定义结构、结果及 `DatabaseProvider`，`database-service.ts` 管理来源变化、请求去重、聊天归属与编辑会话。`infrastructure/ste-memory/memory-database-provider.ts` 对接正式 capability，`map-database.ts` 根据公开结构生成 SELECT，`memory-background-provider.ts` 分页查询标准视图供 `BackgroundDataSource` 缓存。入口组装单例，两个 App 共享服务。
+`src/apps/data-source/public.ts` 定义跨应用只读契约 `DataAppPublic`、来源快照和显式请求归属；`database.ts` 定义结构、结果与 SQL 值，`ports/database-provider.ts` 声明外部查询来源契约。`data-service.ts` 的 `PhoneDataService` 管理来源变化、结构检查、请求去重、聊天归属与背景缓存，`query-background-provider.ts` 通过同一资料公开查询能力分页读取标准视图，交给内部 `BackgroundDataSource` 缓存。
 
-`PhoneBackground` 只保存展示实际需要的人物、纪要与物品。资料读取每页 200 行，按创建时间和记录 ID 排序，读取到最后一页；单页意外截断会明确失败。它不读取自定义表 records，不以 200 行静默截断完整资料。来源通知只使缓存过期，用户刷新或下一次 `load` 时读取。来源更新期间完成的旧读取不能覆盖新状态。
+`src/infrastructure/ste-memory/memory-database-provider.ts` 对接正式 capability，`map-database.ts` 根据公开结构生成 SELECT。`src/apps/database/database-workspace.ts` 的 `DatabaseWorkspace` 只通过资料公开入口读取结构与查询，持有 SQL 草稿、结果、错误、搜索和滚动状态。`src/bootstrap/create-phone.tsx` 为生产和预览组装同一个资料服务，再注入数据库工作区；资料不依赖数据库应用或其编辑会话，公开能力也不依赖资料页面挂载。
+
+`PhoneBackground` 只保存展示实际需要的人物、纪要与物品。资料读取每页 200 行，按创建时间和记录 ID 排序，读取到最后一页；单页意外截断会明确失败。它不读取自定义表 records，不以 200 行静默截断完整资料。来源通知只使缓存过期，用户刷新或下一次 `readBackground` 时读取。来源更新期间完成的旧读取不能覆盖新状态。
 
 ## 源别名与标准视图
 
@@ -47,7 +49,7 @@ SELECT * FROM phone_capabilities WHERE status = 'unsupported';
 
 ## 查询与页面状态
 
-`PhoneDatabaseService.query(sql, params?)` 转发给 Memory，命名绑定使用 `:name`。Memory 执行单条只读 SQL，默认 200 行、750 ms，返回 `columns/rows/elapsedMs/truncated/maxRows`；截断和失败由页面明确显示。只允许公开业务表及当前 namespace 的视图，写入、内部 schema、危险函数、PRAGMA 和多语句由 Memory 拒绝，超时后可继续查询。
+`DataAppPublic.getSnapshot()` 与 `subscribe()` 提供稳定只读来源快照，包含当前上下文、来源 ID、背景资料、过期与错误状态及更新修订号。`readBackground({ chatIdentity, scopeId, force? })` 读取背景资料；`describe({ chatIdentity, scopeId }, { force? })` 读取查询结构；`query({ chatIdentity, scopeId, sql, params? })` 转发查询给 Memory，命名绑定使用 `:name`。请求和返回均校验发起时的聊天及范围，切换后的旧请求明确失败；已有背景快照保持固定，查询结果以只读副本交付。Memory 执行单条只读 SQL，默认 200 行、750 ms，返回 `columns/rows/elapsedMs/truncated/maxRows`；截断和失败由页面明确显示。只允许公开业务表及当前 namespace 的视图，写入、内部 schema、危险函数、PRAGMA 和多语句由 Memory 拒绝，超时后可继续查询。
 
 SQL 草稿、结果、错误、对象选择、搜索和滚动位置按聊天与范围保留在插件内存，退出 App 或关闭手机后恢复，刷新 ST 清空。来源更新后结果显示过期，检查视图结构不将旧结果伪装成新结果，重新执行后更新。联系人备注、好友关系、消息和日记属于 Phone 独立拥有的业务数据，后续按聊天保存；semantic 接入后置。
 

@@ -1,14 +1,13 @@
-import { PhoneSettingsService } from "../../src/features/settings/phone-settings.ts";
 import type {
   SettingsStorage,
   WallpaperImage,
-} from "../../src/features/settings/phone-settings.ts";
+} from "../../src/apps/settings/ports/settings-storage.ts";
 
 interface StoredImage {
   id: number;
   blob: Blob;
 }
-export async function createPreviewSettings(): Promise<PhoneSettingsService> {
+export async function createPreviewSettingsStorage(): Promise<SettingsStorage> {
   const database = await new Promise<IDBDatabase>((accept, reject) => {
     const request = indexedDB.open("ste-phone-preview-wallpapers", 1);
     request.onupgradeneeded = () =>
@@ -58,5 +57,5 @@ export async function createPreviewSettings(): Promise<PhoneSettingsService> {
     for (const url of images.values()) URL.revokeObjectURL(url);
     database.close();
   });
-  return new PhoneSettingsService(storage);
+  return storage;
 }

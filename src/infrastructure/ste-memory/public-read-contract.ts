@@ -1,4 +1,4 @@
-import type { QueryResult } from "../../features/database/index.ts";
+import type { QueryResult } from "../../apps/data-source/database.ts";
 
 /**
  * STE Memory 公共读取 v1 的最小结构契约，只在该适配器内使用。

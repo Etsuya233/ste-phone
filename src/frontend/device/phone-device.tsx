@@ -10,63 +10,37 @@ import {
 } from "react";
 import type { CSSProperties, MouseEvent, HTMLAttributes } from "react";
 import { Home } from "../apps/home/home.tsx";
-import { Stopwatch } from "../apps/stopwatch/stopwatch.tsx";
-import { FoundationApp } from "../apps/foundation/foundation-app.tsx";
 import { StatusBar } from "../system/status-bar.tsx";
-import { DataSourceApp } from "../apps/data-source/data-source-app.tsx";
-import type { PhoneDataSource } from "../../features/background/index.ts";
-import type { PhoneDatabaseService } from "../../features/database/index.ts";
-import { DatabaseApp } from "../apps/database/database-app.tsx";
-
 import { appSession } from "./app-session.ts";
 import type { AppId } from "./app-session.ts";
-import { SettingsApp } from "../apps/settings/settings-app.tsx";
-import type { PhoneSettingsService } from "../../features/settings/phone-settings.ts";
-import type { TestModelConnection } from "../../infrastructure/host/model-connection-test.ts";
+import type { AppDefinition } from "./app-lifecycle.ts";
+import type { WallpaperReader } from "../../apps/settings/public.ts";
 import { Expose } from "./expose.tsx";
 import type { ExposeDrag } from "./expose.tsx";
 
 type Transition = "entering" | "leaving" | "resuming" | "expose-home" | null;
 const emptyDrag: ExposeDrag = { x: 0, y: 0, app: null };
 const RunningApp = memo(function RunningApp({
-  app,
+  definition,
   active,
-  source,
-  database,
-  settings,
-  testModelConnection,
+  foreground,
+  windowVisible,
   onHome,
 }: {
-  app: AppId;
+  definition: AppDefinition;
   active: boolean;
-  source: PhoneDataSource;
-  database: PhoneDatabaseService;
-  settings: PhoneSettingsService;
-  testModelConnection: TestModelConnection;
+  foreground: boolean;
+  windowVisible: boolean;
   onHome: () => void;
 }) {
-  return app === "stopwatch" ? (
-    <Stopwatch active={active} onExit={onHome} />
-  ) : app === "foundation" ? (
-    <FoundationApp active={active} onHome={onHome} />
-  ) : app === "data-source" ? (
-    <DataSourceApp active={active} source={source} onHome={onHome} />
-  ) : app === "database" ? (
-    <DatabaseApp active={active} database={database} onHome={onHome} />
-  ) : (
-    <SettingsApp
-      active={active}
-      settings={settings}
-      testModelConnection={testModelConnection}
-      onHome={onHome}
-    />
-  );
+  useEffect(() => {
+    definition.onVisibilityChange?.({ foreground, windowVisible });
+  }, [definition, foreground, windowVisible]);
+  return definition.render({ active, onHome, visibility: { foreground, windowVisible } });
 });
 export function PhoneDevice({
-  dataSource,
-  database,
-  settings,
-  testModelConnection,
+  wallpaper,
+  apps,
   visible,
   scale,
   draggable,
@@ -80,10 +54,8 @@ export function PhoneDevice({
   draggable: boolean;
   visible: boolean;
   initialApp?: AppId | "home";
-  dataSource: PhoneDataSource;
-  database: PhoneDatabaseService;
-  settings: PhoneSettingsService;
-  testModelConnection: TestModelConnection;
+  wallpaper: WallpaperReader;
+  apps: Record<AppId, AppDefinition>;
 }) {
   const screen = useRef<HTMLDivElement>(null);
   const [session, dispatch] = useReducer(appSession, {
@@ -98,7 +70,7 @@ export function PhoneDevice({
   const [quittingApp, setQuittingApp] = useState<AppId | null>(null);
   const [screenSize, setScreenSize] = useState({ width: 375, height: 667, bottom: 0 });
   const homeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const selectedSettings = useSyncExternalStore(settings.subscribe, settings.getState);
+  const selectedSettings = useSyncExternalStore(wallpaper.subscribe, wallpaper.getSnapshot);
   const lastApp = useRef<AppId | null>(initialApp === "home" ? null : initialApp);
   useEffect(() => {
     if (homeTimer.current !== null) {
@@ -133,6 +105,7 @@ export function PhoneDevice({
   }, [visible]);
   const completeQuit = () => {
     const removedIndex = session.recent.indexOf(quittingApp!);
+    apps[quittingApp!].onQuit?.();
     dispatch({ type: "quit", app: quittingApp! });
     setExposeIndex((index) =>
       Math.max(0, Math.min(index - (removedIndex < index ? 1 : 0), session.recent.length - 2)),
@@ -194,6 +167,7 @@ export function PhoneDevice({
   const home = useCallback(() => {
     if (page === "home") return;
     if (quittingApp) {
+      apps[quittingApp].onQuit?.();
       dispatch({ type: "quit", app: quittingApp });
       setQuittingApp(null);
       setExposeIndex((index) => Math.max(0, Math.min(index, session.recent.length - 2)));
@@ -216,7 +190,7 @@ export function PhoneDevice({
       }
       setTransition(page === "expose" ? "expose-home" : "leaving");
     }
-  }, [page, quittingApp, session.recent.length]);
+  }, [page, quittingApp, session.recent.length, apps]);
   const expose = () => {
     if (quittingApp) completeQuit();
     setExposeIndex(0);
@@ -228,6 +202,7 @@ export function PhoneDevice({
     if (transition || quittingApp) return;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
       const removed = session.recent.indexOf(app);
+      apps[app].onQuit?.();
       dispatch({ type: "quit", app });
       setExposeIndex((index) =>
         Math.max(0, Math.min(index - (removed < index ? 1 : 0), session.recent.length - 2)),
@@ -282,7 +257,7 @@ export function PhoneDevice({
             style={
               selectedSettings.wallpaper.kind === "image"
                 ? {
-                    backgroundImage: `url(${JSON.stringify(settings.imageUrl(selectedSettings.wallpaper))})`,
+                    backgroundImage: `url(${JSON.stringify(selectedSettings.url)})`,
                   }
                 : undefined
             }
@@ -334,12 +309,10 @@ export function PhoneDevice({
                     <StatusBar light={false} active={false} />
                   </div>
                   <RunningApp
-                    app={app}
+                    definition={apps[app]}
                     active={active}
-                    source={dataSource}
-                    database={database}
-                    settings={settings}
-                    testModelConnection={testModelConnection}
+                    foreground={foreground}
+                    windowVisible={visible}
                     onHome={home}
                   />
                 </div>

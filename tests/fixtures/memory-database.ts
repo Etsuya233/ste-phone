@@ -4,8 +4,8 @@ import type {
   MemoryReadApi,
   MemorySnapshot,
 } from "../../src/infrastructure/ste-memory/public-read-contract.ts";
-import type { SqlValue } from "../../src/features/database/index.ts";
-import { quoteIdentifier as q } from "../../src/features/database/index.ts";
+import type { SqlValue } from "../../src/apps/data-source/database.ts";
+import { quoteIdentifier as q } from "../../src/apps/data-source/database.ts";
 import { memorySnapshotFixture } from "./memory-snapshot.ts";
 
 /** 真实 SQL 的公开 capability 测试替身；Phone 只获得 describe 与 query 结果。 */

@@ -43,7 +43,7 @@ Home 单击返回主屏，双击进入 Expose。已打开的五个 App 保留页
 
 连接测试使用当前填写的配置，通过 Pi Agent 和 ST 同源 Custom 代理发送一次简短文本生成，支持流式、取消和 60 秒超时，可能产生少量用量；保存配置不会自动测试。首期仅验证文本生成，未接入业务生成或工具调用。API Key 可以留空，自定义 `Authorization` 优先于 API Key；无鉴权时显式使用空值，避免继承 ST Custom 连接的密钥。请求头名不区分大小写且不能重复，值可为空但不能含换行；`Content-Type` 固定 JSON，传输层请求头不可自定义。API Key 和请求头值明文保存在 Phone 的 ST 设置中，界面默认隐藏，不改变 ST 主连接或密钥。
 
-独立预览的模型测试始终模拟，不联系配置的服务，回复中明确标记模拟结果；`model-test=slow`、`error`、`length` 可分别验收取消、失败与输出上限状态，例如 `/?settings=1&model-test=slow`。Pi 两包锁定 `0.83.0`，连接测试直接创建 Agent，协议转换位于宿主适配器。
+独立预览的模型测试始终模拟，不联系配置的服务，回复中明确标记模拟结果；`model-test=slow`、`error`、`length` 可分别验收取消、失败与输出上限状态，例如 `/?settings=1&model-test=slow`。Pi 两包锁定 `0.83.0`。生产与预览共用设置模块的 Agent、提示词、输出限制与超时流程，预览仅替换为模拟 AI 传输；生产协议转换位于宿主适配器。
 
 ## 开发命令
 
@@ -59,9 +59,9 @@ pnpm format:check
 pnpm test              # 串行验证工程接入、资料缓存、远端查询与标准视图 SQL
 ```
 
-生产入口为 `src/frontend/index.ts`，`host/mount-phone.tsx` 挂载 React 与 Shadow DOM，`phone-app.tsx` 管理窗口开关。`device/` 放机身与会话，`system/` 放状态栏与转场，`foundation/` 放基础视觉组件，`apps/` 放主屏与各应用，`foundation/NavigationStack` 提供保留 DOM 的页内导航，`theme.css` 汇总 CSS 与主题变量。React 随插件打包。字体优先使用 Apple 平台字体，Inter 西文字体通过 Google Fonts 加载，不进入产物；网络不可用时继续使用本机无衬线字体。构建产物的 manifest 版本与运行时版本统一读取 `package.json`。
+生产入口为 `src/frontend/index.ts`，与独立预览共用 `src/bootstrap/create-phone.tsx` 组装设置、资料、数据库工作区与应用页面，入口分别注入宿主或模拟适配器。`src/apps/<应用>/` 集中各应用业务与 `ui/` 页面；`src/frontend/host/mount-phone.tsx` 挂载 React 与 Shadow DOM，`phone-app.tsx` 管理窗口开关。`frontend/device/` 放机身与会话，`frontend/system/` 放状态栏与转场，`frontend/foundation/` 放基础视觉组件，`frontend/apps/home/` 放主屏，`NavigationStack` 提供保留 DOM 的页内导航，`frontend/theme.css` 汇总 CSS 与主题变量。React 随插件打包。字体优先使用 Apple 平台字体，Inter 西文字体通过 Google Fonts 加载，不进入产物；网络不可用时继续使用本机无衬线字体。构建产物的 manifest 版本与运行时版本统一读取 `package.json`。
 
-全局设置与存储约定位于 `src/features/settings/`，ST 设置与原生图片 API 接线位于 `src/infrastructure/host/`。公共背景资料位于 `src/features/background/`，包含资料类型、来源读取约定与缓存流程；数据库契约和会话服务位于 `src/features/database/`，Memory 数据库连接、协议和视图定义位于 `src/infrastructure/ste-memory/`。入口组装具体实现，App 共用来源缓存。代码位置与阅读顺序见 [公共数据源](docs/data-source.md)。
+全局设置与存储约定位于 `src/apps/settings/`，`public.ts` 提供壁纸读取、模型连接摘要与显式连接配置副本。公共资料、查询结构与来源缓存归 `src/apps/data-source/`，通过 `DataAppPublic` 供其他应用读取；`src/apps/database/` 只持有 SQL 草稿、结果、搜索与滚动等编辑工作区。Memory 数据库连接、协议和视图定义位于 `src/infrastructure/ste-memory/`，ST 设置、图片、AI 传输与聊天通知适配位于 `src/infrastructure/host/`；`src/core/ai/` 和 `src/core/chat/` 声明传输及当前聊天契约。各应用公开读取不依赖页面打开，跨应用仅通过所属模块的 `public.ts` 调用。职责与依赖见 [模块架构](docs/architecture.md)，资料接口与缓存见 [公共数据源](docs/data-source.md)。
 
 ## ST 安装与开发直连
 

@@ -1,10 +1,12 @@
-import { PhoneSettingsService, wallpaperFormats } from "../../features/settings/phone-settings.ts";
+import type { StChatContext } from "./chat-context.ts";
+
 import type {
   PhoneSettings,
   PhoneSettingsV2,
   LegacyPhoneSettings,
-} from "../../features/settings/phone-settings.ts";
-interface StContext {
+  SettingsStorage,
+} from "../../apps/settings/ports/settings-storage.ts";
+interface StContext extends StChatContext {
   extensionSettings: { ste_phone?: PhoneSettings | PhoneSettingsV2 | LegacyPhoneSettings };
   saveSettingsDebounced: () => void;
   getRequestHeaders: () => Record<string, string>;
@@ -15,9 +17,9 @@ declare global {
   }
 }
 const wallpaperFolder = "ste-phone-wallpapers";
-export function createStSettings(): PhoneSettingsService {
+export function createStSettingsStorage(): SettingsStorage {
   const context = window.SillyTavern.getContext();
-  return new PhoneSettingsService({
+  return {
     read: () => context.extensionSettings.ste_phone,
     save: (settings) => {
       context.extensionSettings.ste_phone = settings;
@@ -51,7 +53,12 @@ export function createStSettings(): PhoneSettingsService {
         headers: context.getRequestHeaders(),
         body: JSON.stringify({
           image: btoa(binary),
-          format: wallpaperFormats[image.type as keyof typeof wallpaperFormats],
+          format: (
+            { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" } as Record<
+              string,
+              string
+            >
+          )[image.type],
           ch_name: wallpaperFolder,
           filename,
         }),
@@ -61,5 +68,5 @@ export function createStSettings(): PhoneSettingsService {
       const path = uploaded.path;
       return { path, url: path };
     },
-  });
+  };
 }

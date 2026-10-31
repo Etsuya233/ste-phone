@@ -1,10 +1,6 @@
-import type {
-  DatabaseProvider,
-  DatabaseSchema,
-  QueryResult,
-  SqlValue,
-} from "../../features/database/index.ts";
-import type { SourceContext } from "../../features/background/index.ts";
+import type { DatabaseProvider } from "../../apps/data-source/ports/database-provider.ts";
+import type { DatabaseSchema, QueryResult, SqlValue } from "../../apps/data-source/database.ts";
+import type { SourceContext } from "../../apps/data-source/ports/background-provider.ts";
 import type { MemoryReadApi } from "./public-read-contract.ts";
 import { mapMemoryDatabase } from "./map-database.ts";
 

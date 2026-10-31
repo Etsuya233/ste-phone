@@ -1,24 +1,23 @@
-import { createPreviewSettings } from "./preview-wallpapers.ts";
-import { createPreviewModelConnectionTest } from "./preview-model-connections.ts";
+import { createPreviewSettingsStorage } from "./preview-wallpapers.ts";
+import { createPreviewAiTransport } from "./preview-ai-transport.ts";
+import { createPreviewChatContext } from "./preview-chat-context.ts";
+import { createPhone } from "../../src/bootstrap/create-phone.tsx";
 import { mountPhone } from "../../src/frontend/host/mount-phone.tsx";
-import { BackgroundDataSource } from "../../src/features/background/index.ts";
 import { createPreviewMemory } from "./data-source-fixture.ts";
 
-import { PhoneDatabaseService } from "../../src/features/database/index.ts";
 import { MemoryDatabaseProvider } from "../../src/infrastructure/ste-memory/memory-database-provider.ts";
-import { MemoryBackgroundProvider } from "../../src/infrastructure/ste-memory/memory-background-provider.ts";
 
 const options = new URLSearchParams(window.location.search);
 globalThis.STE_MEMORY_API = createPreviewMemory(options.get("data-state"));
-const provider = new MemoryDatabaseProvider();
-const database = new PhoneDatabaseService(provider);
-const dataSource = new BackgroundDataSource(new MemoryBackgroundProvider(database, provider));
-const settings = await createPreviewSettings();
+const phone = createPhone({
+  settingsStorage: await createPreviewSettingsStorage(),
+  aiTransport: createPreviewAiTransport(options.get("model-test")),
+  chat: createPreviewChatContext(),
+  dataProvider: new MemoryDatabaseProvider(),
+});
 mountPhone({
-  settings,
-  testModelConnection: createPreviewModelConnectionTest(options.get("model-test")),
-  dataSource,
-  database,
+  apps: phone.apps,
+  wallpaper: phone.wallpaper,
   initialApp:
     options.get("settings") === "1"
       ? "settings"

@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createStSettings } from "./st-settings.ts";
-import { defaultSettings } from "../../features/settings/phone-settings.ts";
-import type { PhoneSettings, LegacyPhoneSettings } from "../../features/settings/phone-settings.ts";
+import { createStSettingsStorage } from "./st-settings.ts";
+import { defaultSettings, PhoneSettingsService } from "../../apps/settings/settings-service.ts";
+import type { PhoneSettings, LegacyPhoneSettings } from "../../apps/settings/settings-service.ts";
 
 test("native ST image requests use the fixed account-relative folder and unique generated names", async () => {
   const originalWindow = globalThis.window;
@@ -42,7 +42,7 @@ test("native ST image requests use the fixed account-relative folder and unique 
     return Response.json({ path: `/user/images/ste-phone-wallpapers/${body.filename}.png` });
   };
   try {
-    const service = createStSettings();
+    const service = new PhoneSettingsService(createStSettingsStorage());
     service.setWallpaper(defaultSettings.wallpaper, true);
     assert.equal(saves, 1);
     const path = `/user/images/ste-phone-wallpapers/${encodeURIComponent("夜空 #1.jpg")}`;
@@ -54,7 +54,7 @@ test("native ST image requests use the fixed account-relative folder and unique 
       assert.match(uploaded.path, /^\/user\/images\/ste-phone-wallpapers\/[a-f0-9]{32}\.png$/);
       assert.equal(uploaded.path, uploaded.url);
     }
-    assert.equal(createStSettings().getState().blur, true);
+    assert.equal(new PhoneSettingsService(createStSettingsStorage()).getState().blur, true);
   } finally {
     globalThis.window = originalWindow;
     globalThis.fetch = originalFetch;
@@ -77,7 +77,7 @@ test("native upload failure does not select or persist a wallpaper", async () =>
   } as unknown as Window & typeof globalThis;
   globalThis.fetch = async () => new Response("denied", { status: 403 });
   try {
-    const service = createStSettings();
+    const service = new PhoneSettingsService(createStSettingsStorage());
     await assert.rejects(
       service.uploadWallpaper(new Blob(["image"], { type: "image/png" })),
       /上传失败（403）/,

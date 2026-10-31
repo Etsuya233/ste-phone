@@ -1,6 +1,6 @@
 import sqlite3InitModule from "@sqlite.org/sqlite-wasm";
 import { memorySnapshotFixture } from "../../tests/fixtures/memory-snapshot.ts";
-import type { DatabaseObject, SqlValue } from "../../src/features/database/index.ts";
+import type { DatabaseObject, SqlValue } from "../../src/apps/data-source/public.ts";
 import type {
   MemoryDatabaseDescription,
   MemoryReadApi,
