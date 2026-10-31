@@ -32,7 +32,7 @@ Foundation 组件应用位于 `src/apps/foundation/ui/`，可从主屏打开，�
 
 全局壁纸由 `src/apps/settings/settings-service.ts` 的 `PhoneSettingsService` 持有，设置页面只消费注入的服务。外壳通过 `src/apps/settings/public.ts` 的 `WallpaperReader` 订阅含图片 URL 的只读快照；模型消费者通过 `ModelConnectionsReader` 读取无凭据摘要，并显式取得独立连接配置副本。设置页面尚未打开或已退出时，这些读取仍然有效。图库只包含默认渐变和 Phone 上传的图片，三列 9:16 竖向缩略图，不显示文件名、说明或成功提示。「+」选择图片，实际解码通过后上传，成功进入独立全幅预览页；Blur 只修改预览，点「设定」保存并返回图库。导航栈保留图库滚动与页面状态，上传完成时页面退到后台则等待它回到前台再进入预览；离开已卸载的图库不发布迟到响应。
 
-生产接线使用 ST 的公开 `getContext()`、`extensionSettings.ste_phone`、`saveSettingsDebounced()`，图片通过 `POST /api/images/upload` 和 `POST /api/images/list`。固定 `ch_name` / `folder` 为 `ste-phone-wallpapers`，文件名使用 `crypto.getRandomValues()` 生成 128 位唯一值，原文件名和用户路径不进入请求。浏览器实际解码图片，核心服务限定 PNG、JPEG、WebP 与 10 MB；读取/上传失败显示简短错误，读取可重试，默认渐变始终可选。v3 设置保存所选图片路径、Blur、模型连接与默认连接；v1 旧地址列表与背景选择显式迁移为默认渐变，Blur 保留；v2 保留已有壁纸并补空连接。壁纸和连接使用服务的语义方法更新当前设置，页面不提交全量设置快照。
+生产接线使用 ST 的公开 `getContext()`、`extensionSettings.ste_phone`、`saveSettingsDebounced()`，图片通过 `POST /api/images/upload` 和 `POST /api/images/list`。固定 `ch_name` / `folder` 为 `ste-phone-wallpapers`，文件名使用 `crypto.getRandomValues()` 生成 128 位唯一值，原文件名和用户路径不进入请求。浏览器实际解码图片，核心服务限定 PNG、JPEG、WebP 与 10 MB；读取/上传失败显示简短错误，读取可重试，默认渐变始终可选。v4 设置保存所选图片路径、Blur、模型连接、默认连接和主屏/Dock 有序应用 ID；v3 升级添加默认布局与 App Store；v1 旧地址列表与背景选择显式迁移为默认渐变，Blur 保留；v2 保留已有壁纸并补空连接。壁纸和连接使用服务的语义方法更新当前设置，页面不提交全量设置快照。
 
 模型连接列表与编辑页使用相同 NavigationStack，TextField 提供带标签的输入及尾部显隐操作。连接以稳定 ID 关联默认选择，支持无默认；整行用原生 radio 选择，左侧显示蓝色勾，右侧圆圈 i 按钮独立进入编辑，不嵌套交互控件。编辑页按草稿显式保存，未保存返回显示页内舍弃确认并滚入可见区域。连接测试由设置模块接收 `AiTransport` 创建，页面提交当前草稿；模块持有 Pi Agent、提示词、输出限制和 60 秒超时策略。Core 在 `src/core/ai/public.ts` 声明绑定连接快照的 `createStream` 契约，`src/infrastructure/host/ai-transport.ts` 通过宿主 Custom 代理发送请求并转换 Pi 文本事件；每次调用独立，不读取 ST 当前模型或生成参数。当前仅支持文本，工具和思考内容明确报错。修改请求字段、页内返回与卸载取消当前测试，Home、Expose 预览及关闭手机保留运行。迟到结果只由发起它的控制器接收，后台不抢焦点或导航；确认和配置错误仅当前页聚焦。生产请求的 CSRF 等宿主头与上游自定义头分开处理，错误信息脱敏且不输出完整请求。独立预览注入 `docs/ui/preview-ai-transport.ts` 的可控模拟传输，复用相同 Agent 与连接测试流程，不请求真实模型服务。
 
@@ -51,3 +51,7 @@ Foundation Alert 在当前 App 的页面坐标内绘制遮罩、圆角半透明�
 异步操作应绑定发起时的对话和会话身份，验证切换后的响应归属。写入流程明确区分提交与持久化结果，错误应可见。
 
 验收覆盖成功、空态、失败、切换上下文以及涉及编辑时的未保存离开。公共组件修改需要验证调用页面；ST 接入与持久化需要在真实宿主内验证。预览要求见 [前端开发与验收](frontend-preview.md)。
+
+## 主屏与 App Store
+
+应用静态目录位于 `src/core/launcher/catalog.ts`，统一 ID、名称、描述与卸载权限。设置模块通过 `HomeScreenSettings` 公开安装、卸载、移动及只读布局快照，生产与预览共用 v4 配置迁移；主屏和 App Store 不各自持有可修改的安装状态。主屏拖动只更新手势内草稿，松手提交移动，取消手势恢复已保存布局。长按、右键或 F2 进入编辑，完成、Home 或 Escape 退出；关闭手机时结束编辑与未提交手势。资料、设置、App Store 可移动但不可卸载，Dock 容量四个。卸载保存成功后外壳通知运行中应用退出并移除会话，业务存储不清空；重新安装追加到主屏末尾。App Store 页面通过 bootstrap 注入系统打开应用的回调，不直接导入设备实现。

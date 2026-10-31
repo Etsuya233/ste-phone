@@ -3,7 +3,10 @@ import type {
   WallpaperSnapshot,
   ModelConnectionsReader,
   ModelConnectionsSnapshot,
+  HomeScreenSettings,
 } from "./public.ts";
+import { appCatalog, defaultHomeLayout } from "../../core/launcher/catalog.ts";
+import type { HomeLayout } from "../../core/launcher/catalog.ts";
 import { validateModelConnection } from "./model-connections.ts";
 import type { ModelConnection } from "./model-connections.ts";
 
@@ -16,17 +19,19 @@ import type {
 export type {
   PhoneSettings,
   PhoneSettingsV2,
+  PhoneSettingsV3,
   LegacyPhoneSettings,
   SettingsStorage,
   Wallpaper,
   WallpaperImage,
 } from "./ports/settings-storage.ts";
 export const defaultSettings: PhoneSettings = {
-  version: 3,
+  version: 4,
   wallpaper: { kind: "gradient" },
   blur: false,
   modelConnections: [],
   defaultModelConnectionId: null,
+  homeLayout: defaultHomeLayout,
 };
 export const wallpaperFormats = {
   "image/png": "png",
@@ -39,6 +44,47 @@ export class PhoneSettingsService {
   private storage: SettingsStorage;
   private wallpaperSnapshot!: WallpaperSnapshot;
   private connectionsSnapshot!: ModelConnectionsSnapshot;
+  private homeSnapshot!: HomeLayout;
+  readonly homeScreen: HomeScreenSettings = {
+    getSnapshot: () => this.homeSnapshot,
+    subscribe: (listener) => this.subscribe(listener),
+    install: (app) => {
+      if ([...this.state.homeLayout.grid, ...this.state.homeLayout.dock].includes(app))
+        throw new Error("应用已安装");
+      this.save({
+        ...this.state,
+        homeLayout: {
+          ...this.state.homeLayout,
+          grid: [...this.state.homeLayout.grid, app],
+        },
+      });
+    },
+    uninstall: (app) => {
+      if (!appCatalog[app].removable) throw new Error("此应用不可卸载");
+      if (![...this.state.homeLayout.grid, ...this.state.homeLayout.dock].includes(app))
+        throw new Error("应用未安装");
+      this.save({
+        ...this.state,
+        homeLayout: {
+          grid: this.state.homeLayout.grid.filter((id) => id !== app),
+          dock: this.state.homeLayout.dock.filter((id) => id !== app),
+        },
+      });
+    },
+    move: (app, area, index) => {
+      const layout = this.state.homeLayout;
+      if (![...layout.grid, ...layout.dock].includes(app)) throw new Error("应用未安装");
+      const next = {
+        grid: layout.grid.filter((id) => id !== app),
+        dock: layout.dock.filter((id) => id !== app),
+      };
+      if (area === "dock" && next.dock.length === 4) throw new Error("Dock 最多放四个应用");
+      if (!Number.isInteger(index) || index < 0 || index > next[area].length)
+        throw new Error("无效的图标位置");
+      next[area].splice(index, 0, app);
+      this.save({ ...this.state, homeLayout: next });
+    },
+  };
   readonly wallpaper: WallpaperReader = {
     getSnapshot: () => this.wallpaperSnapshot,
     subscribe: (listener) => this.subscribe(listener),
@@ -63,7 +109,10 @@ export class PhoneSettingsService {
     } else if (stored.version === 2) {
       this.state = { ...defaultSettings, wallpaper: stored.wallpaper, blur: stored.blur };
       storage.save(this.state);
-    } else if (stored.version === 3) this.state = stored;
+    } else if (stored.version === 3) {
+      this.state = { ...stored, version: 4, homeLayout: defaultHomeLayout };
+      storage.save(this.state);
+    } else if (stored.version === 4) this.state = stored;
     else throw new Error("不支持的手机设置版本");
     this.updateSnapshots();
   }
@@ -126,6 +175,10 @@ export class PhoneSettingsService {
     return validateModelConnection(connection);
   }
   private updateSnapshots() {
+    this.homeSnapshot = Object.freeze({
+      grid: Object.freeze([...this.state.homeLayout.grid]),
+      dock: Object.freeze([...this.state.homeLayout.dock]),
+    });
     this.wallpaperSnapshot = Object.freeze({
       wallpaper: Object.freeze({ ...this.state.wallpaper }),
       blur: this.state.blur,

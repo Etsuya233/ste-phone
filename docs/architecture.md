@@ -242,3 +242,7 @@ flowchart TD
 本方案延续 [0002](adr/0002-memory-executes-phone-views.md) 的 Memory 执行 Phone 视图、[0004](adr/0004-uploaded-wallpaper-library.md) 的壁纸存储，以及 [0005](adr/0005-phone-ai-connections-and-pi-runtime.md) 的独立连接与 Pi 基础。0005 中尚未确定的共享运行能力在这里限定为传输能力，Agent 管理归 App。
 
 [0003](adr/0003-retained-app-navigation-and-settings.md) 的页面保留与 Expose 卸载规则继续有效。本方案补充页面与业务模块的生命周期区别，不统一改变现有 App 的任务行为。结构决策摘要见 [0006](adr/0006-app-owned-public-interfaces-and-core.md)。
+
+## 主屏与应用商店
+
+内置应用的稳定 ID 和静态目录定义在 `core/launcher/catalog.ts`，供设置、外壳和商店共同使用；页面与运行定义仍由 bootstrap 组装。设置模块持有 v4 全局配置，通过 `HomeScreenSettings` 提供布局快照与安装、卸载、移动命令。两个有序数组记录主屏与 Dock，成员表示已安装；商店不再持有第二份安装状态。卸载不会删除应用的业务数据，主屏在设置保存成功后请求外壳退出对应会话；商店安装成功后将入口追加到主屏，通过注入的 `onOpen` 请求系统打开应用。运行中应用的 `onQuit` 与既有 Expose 退出规则相同，资料、设置、App Store 的卸载权限由目录与设置命令共同约束。

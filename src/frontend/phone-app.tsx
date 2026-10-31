@@ -1,4 +1,4 @@
-import type { WallpaperReader } from "../apps/settings/public.ts";
+import type { WallpaperReader, HomeScreenSettings } from "../apps/settings/public.ts";
 import type { AppDefinition } from "./device/app-lifecycle.ts";
 import type { AppId } from "./device/app-session.ts";
 import { useEffect, useRef, useState } from "react";
@@ -13,6 +13,7 @@ const VIEWPORT_GAP = 12;
 
 export function PhoneApp({
   wallpaper,
+  homeScreen,
   apps,
   responsive = false,
   draggable = false,
@@ -23,6 +24,7 @@ export function PhoneApp({
   draggable?: boolean;
   initialApp?: "home" | AppId;
   wallpaper: WallpaperReader;
+  homeScreen: HomeScreenSettings;
   apps: Record<AppId, AppDefinition>;
   menuEntry?: StMenuEntry;
 }) {
@@ -161,6 +163,7 @@ export function PhoneApp({
             <PhoneDevice
               visible={open}
               wallpaper={wallpaper}
+              homeScreen={homeScreen}
               apps={apps}
               initialApp={initialApp}
               scale={scale}

@@ -20,5 +20,10 @@ const phone = createPhone({
   aiTransport: createStAiTransport(() => window.SillyTavern.getContext().getRequestHeaders()),
   chat: createStChatContext(() => window.SillyTavern.getContext()),
 });
-mountPhone({ apps: phone.apps, wallpaper: phone.wallpaper, menuEntry: { menu, button } });
+mountPhone({
+  apps: phone.apps,
+  wallpaper: phone.wallpaper,
+  homeScreen: phone.homeScreen,
+  menuEntry: { menu, button },
+});
 console.info(`[STE Phone] v${__STE_PHONE_VERSION__} 已加载`);

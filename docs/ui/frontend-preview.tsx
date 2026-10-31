@@ -18,16 +18,19 @@ const phone = createPhone({
 mountPhone({
   apps: phone.apps,
   wallpaper: phone.wallpaper,
+  homeScreen: phone.homeScreen,
   initialApp:
-    options.get("settings") === "1"
-      ? "settings"
-      : options.get("database") === "1"
-        ? "database"
-        : options.get("data-source") === "1"
-          ? "data-source"
-          : options.get("foundation") === "1"
-            ? "foundation"
-            : "home",
+    options.get("app-store") === "1"
+      ? "app-store"
+      : options.get("settings") === "1"
+        ? "settings"
+        : options.get("database") === "1"
+          ? "database"
+          : options.get("data-source") === "1"
+            ? "data-source"
+            : options.get("foundation") === "1"
+              ? "foundation"
+              : "home",
   responsive: options.get("responsive") === "1",
   draggable: options.get("draggable") === "1",
 });
