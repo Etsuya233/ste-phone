@@ -7,10 +7,22 @@
 :host .home-layer {
   transition:
     transform 300ms ease,
-    opacity 300ms ease;
+    visibility 0s;
 }
 :host .home-layer--covered {
   transform: scale(1.08);
+  visibility: hidden;
+  transition-delay: 0s, 300ms;
+}
+/* Keep Dock ancestors opaque so backdrop-filter can sample the sibling wallpaper. */
+:host .home-layer .ios-page-content,
+:host .home-layer .home-dock,
+:host .home-layer .ios-safe-area {
+  transition: opacity 300ms ease;
+}
+:host .home-layer--covered .ios-page-content,
+:host .home-layer--covered .home-dock,
+:host .home-layer--covered .ios-safe-area {
   opacity: 0;
 }
 :host .app-layer {
@@ -118,7 +130,10 @@
   background: currentColor;
 }
 @media (prefers-reduced-motion: reduce) {
-  :host .home-layer {
+  :host .home-layer,
+  :host .home-layer .ios-page-content,
+  :host .home-layer .home-dock,
+  :host .home-layer .ios-safe-area {
     transition: none;
   }
 }
