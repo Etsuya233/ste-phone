@@ -202,7 +202,20 @@ export function PhoneDevice({
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
       dispatch({ type: "home" });
       setTransition(null);
-    } else setTransition(page === "expose" ? "expose-home" : "leaving");
+    } else {
+      if (page !== "expose") {
+        const desktop = screen.current!.querySelector<HTMLElement>(".home-layer")!;
+        const bounds = desktop.getBoundingClientRect();
+        const icon = desktop
+          .querySelector<HTMLButtonElement>(`button[data-app="${page}"]`)!
+          .getBoundingClientRect();
+        // Desktop-relative ratios remove both device scaling and the covered desktop's zoom.
+        setOrigin(
+          `${((icon.left + icon.width / 2 - bounds.left) / bounds.width) * desktop.clientWidth}px ${((icon.top + icon.height / 2 - bounds.top) / bounds.height) * desktop.clientHeight}px`,
+        );
+      }
+      setTransition(page === "expose" ? "expose-home" : "leaving");
+    }
   }, [page, quittingApp, session.recent.length]);
   const expose = () => {
     if (quittingApp) completeQuit();
