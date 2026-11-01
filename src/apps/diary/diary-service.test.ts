@@ -119,7 +119,9 @@ function fixture(fetchImpl: typeof fetch = async () => reply()) {
     storage: {
       read: (id) => saved.get(id) ?? null,
       write: async (id, value) => {
-        if (failSave) throw new Error("磁盘失败");
+        if (failSave) {
+          throw new Error("磁盘失败");
+        }
         saved.set(id, structuredClone(value));
       },
     },
@@ -136,14 +138,18 @@ function fixture(fetchImpl: typeof fetch = async () => reply()) {
     rebuildScope() {
       stableScopeId = "new-preset-origin";
       snapshot = { ...snapshot, revision: snapshot.revision + 1 };
-      for (const listener of sourceListeners) listener();
+      for (const listener of sourceListeners) {
+        listener();
+      }
     },
     importScope(nextStableScopeId = "scope") {
       stableScopeId = nextStableScopeId;
       db.exec(`UPDATE phone_characters SET record_id='imported-author';
         UPDATE phone_chronicle_characters SET character_id='imported-author' WHERE character_id='author'`);
       snapshot = { ...snapshot, context: { ...snapshot.context, scopeId: "imported-scope" } };
-      for (const listener of sourceListeners) listener();
+      for (const listener of sourceListeners) {
+        listener();
+      }
     },
     saved,
     db,
@@ -155,11 +161,15 @@ function fixture(fetchImpl: typeof fetch = async () => reply()) {
     },
     switchChat: () => {
       current = { id: "phone-B", name: "B" };
-      for (const listener of chatListeners) listener();
+      for (const listener of chatListeners) {
+        listener();
+      }
     },
     updateSource: () => {
       snapshot = { ...snapshot, revision: snapshot.revision + 1 };
-      for (const listener of sourceListeners) listener();
+      for (const listener of sourceListeners) {
+        listener();
+      }
     },
     close: () => {
       service.dispose();

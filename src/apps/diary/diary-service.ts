@@ -74,62 +74,82 @@ export class DiaryService {
   };
 
   async prepare(): Promise<void> {
-    if (this.#task) return;
+    if (this.#task) {
+      return;
+    }
     const version = ++this.#preparationVersion;
     this.#publish({ preparing: true, preparationError: null });
     try {
-      if (!this.#snapshot.chatId) throw new Error("请先打开一个 ST 聊天");
+      if (!this.#snapshot.chatId) {
+        throw new Error("请先打开一个 ST 聊天");
+      }
       const { data } = this.#dependencies;
       const scope = currentDiaryScope(data);
       const authors = await readDiaryAuthors(data, scope);
       const world = await readDiaryWorld(data, scope);
-      if (version === this.#preparationVersion)
+      if (version === this.#preparationVersion) {
         this.#publish({ authors, worldTime: world.worldTime, preparing: false });
+      }
     } catch (error) {
-      if (version === this.#preparationVersion)
+      if (version === this.#preparationVersion) {
         this.#publish({ preparing: false, preparationError: error as Error });
+      }
     }
   }
 
   /** 从列表开始写下一篇；后台运行和待保存的正文继续保留。 */
   startWriting(): void {
-    if (this.#snapshot.generation.status === "complete")
+    if (this.#snapshot.generation.status === "complete") {
       this.#publish({ generation: { status: "idle" }, notice: null });
+    }
   }
 
   async selectAuthor(id: string): Promise<void> {
-    if (this.#task) throw new Error("请先等待日记生成完成或取消，再修改作者");
+    if (this.#task) {
+      throw new Error("请先等待日记生成完成或取消，再修改作者");
+    }
     const author = this.#snapshot.authors.find((candidate) => candidate.id === id);
-    if (!author) throw new Error("请选择当前资料中的日记作者");
+    if (!author) {
+      throw new Error("请选择当前资料中的日记作者");
+    }
     await this.#saveData({ ...this.#snapshot.data, author });
   }
 
   async saveSettings(settings: DiarySettings): Promise<void> {
-    if (this.#task) throw new Error("请先等待日记生成完成或取消，再修改生成设置");
+    if (this.#task) {
+      throw new Error("请先等待日记生成完成或取消，再修改生成设置");
+    }
     if (
       !Number.isInteger(settings.timeoutSeconds) ||
       settings.timeoutSeconds <= 0 ||
       settings.timeoutSeconds * 1000 > 2_147_483_647
-    )
+    ) {
       throw new Error("超时秒数须为正整数且不能超过 2147483 秒");
-    if (!Number.isSafeInteger(settings.maxTokens) || settings.maxTokens <= 0)
+    }
+    if (!Number.isSafeInteger(settings.maxTokens) || settings.maxTokens <= 0) {
       throw new Error("输出 token 上限须为正整数");
+    }
     await this.#saveData({ ...this.#snapshot.data, settings: { ...settings } });
   }
 
   async deleteEntry(id: string): Promise<void> {
-    if (this.#task) throw new Error("请先等待日记生成完成或取消，再删除日记");
+    if (this.#task) {
+      throw new Error("请先等待日记生成完成或取消，再删除日记");
+    }
     await this.#saveData({
       ...this.#snapshot.data,
       entries: this.#snapshot.data.entries.filter((entry) => entry.id !== id),
     });
     const generation = this.#snapshot.generation;
-    if (generation.status === "complete" && generation.entry.id === id)
+    if (generation.status === "complete" && generation.entry.id === id) {
       this.#publish({ generation: { status: "idle" } });
+    }
   }
 
   async generate(): Promise<void> {
-    if (this.#task) throw new Error("日记正在生成，请等待完成或取消");
+    if (this.#task) {
+      throw new Error("日记正在生成，请等待完成或取消");
+    }
     const { chatId, data } = this.#snapshot;
     if (!chatId || !data.author) {
       const error = new Error(!chatId ? "请先打开一个 ST 聊天" : "请先选择日记作者");
@@ -148,7 +168,9 @@ export class DiaryService {
     try {
       const { connections, transport } = this.#dependencies;
       const defaultId = connections.getSnapshot().defaultModelConnectionId;
-      if (!defaultId) throw new Error("请先在设置中选择默认模型连接");
+      if (!defaultId) {
+        throw new Error("请先在设置中选择默认模型连接");
+      }
       const connection = connections.getConnection(defaultId);
       const settings = { ...data.settings };
       const context = await readDiaryContext(
@@ -156,7 +178,9 @@ export class DiaryService {
         data.author,
         task.controller.signal,
       );
-      if (!this.#ownsTask(task)) return;
+      if (!this.#ownsTask(task)) {
+        return;
+      }
       this.#publish({
         worldTime: context.world.worldTime,
         generation: { status: "generating", text: "" },
@@ -176,34 +200,48 @@ export class DiaryService {
         prompt: buildDiaryPrompt(context),
         signal: task.controller.signal,
         onText: (text) => {
-          if (this.#ownsTask(task)) this.#publish({ generation: { status: "generating", text } });
+          if (this.#ownsTask(task)) {
+            this.#publish({ generation: { status: "generating", text } });
+          }
         },
       });
-      if (!this.#ownsTask(task)) return;
+      if (!this.#ownsTask(task)) {
+        return;
+      }
       // 普通资料更新保留已取材料；同实例重建成其他稳定空间时禁止保存旧作者结果。
       const schema = await this.#dependencies.data.describe(
         currentDiaryScope(this.#dependencies.data),
       );
-      if (!this.#ownsTask(task)) return;
+      if (!this.#ownsTask(task)) {
+        return;
+      }
       if (
         schema.sourceId !== context.author.sourceId ||
         schema.stableScopeId !== context.author.scopeId
-      )
+      ) {
         throw new Error("生成期间稳定资料空间已变化，未保存日记");
+      }
       const entry = createDiaryEntry(context.author, context.world.worldTime, body);
       await this.#saveEntry(entry, task);
     } catch (error) {
-      if (this.#ownsTask(task))
+      if (this.#ownsTask(task)) {
         this.#publish({ generation: { status: "error", error: error as Error } });
+      }
     } finally {
-      if (this.#task === task) this.#task = null;
+      if (this.#task === task) {
+        this.#task = null;
+      }
     }
   }
 
   async retrySave(): Promise<void> {
-    if (this.#task) throw new Error("日记正在保存，请等待完成");
+    if (this.#task) {
+      throw new Error("日记正在保存，请等待完成");
+    }
     const { generation, chatId } = this.#snapshot;
-    if (generation.status !== "save-error" || !chatId) throw new Error("没有待保存的日记");
+    if (generation.status !== "save-error" || !chatId) {
+      throw new Error("没有待保存的日记");
+    }
     const task: DiaryTask = { chatId, controller: new AbortController() };
     this.#task = task;
     ++this.#preparationVersion;
@@ -211,7 +249,9 @@ export class DiaryService {
     try {
       await this.#saveEntry(generation.entry, task);
     } finally {
-      if (this.#task === task) this.#task = null;
+      if (this.#task === task) {
+        this.#task = null;
+      }
     }
   }
 
@@ -229,7 +269,9 @@ export class DiaryService {
 
   dispose(): void {
     this.cancel();
-    for (const unsubscribe of this.#unsubscribe) unsubscribe();
+    for (const unsubscribe of this.#unsubscribe) {
+      unsubscribe();
+    }
     this.#listeners.clear();
   }
 
@@ -250,20 +292,26 @@ export class DiaryService {
         ...this.#snapshot.data,
         entries: [entry, ...this.#snapshot.data.entries.filter((item) => item.id !== entry.id)],
       });
-      if (this.#ownsTask(task)) this.#publish({ generation: { status: "complete", entry } });
+      if (this.#ownsTask(task)) {
+        this.#publish({ generation: { status: "complete", entry } });
+      }
     } catch (error) {
-      if (this.#ownsTask(task))
+      if (this.#ownsTask(task)) {
         this.#publish({ generation: { status: "save-error", entry, error: error as Error } });
+      }
     }
   }
 
   async #saveData(data: DiaryData): Promise<void> {
     const { chatId } = this.#snapshot;
     const session = this.#session;
-    if (!chatId || this.#dependencies.chat.getSnapshot()?.id !== chatId)
+    if (!chatId || this.#dependencies.chat.getSnapshot()?.id !== chatId) {
       throw new Error("当前聊天已变化，未保存日记");
+    }
     await this.#dependencies.storage.write(chatId, data);
-    if (session === this.#session && this.#snapshot.chatId === chatId) this.#publish({ data });
+    if (session === this.#session && this.#snapshot.chatId === chatId) {
+      this.#publish({ data });
+    }
   }
 
   #currentSourceScopeKey(): string {
@@ -272,7 +320,9 @@ export class DiaryService {
   }
   #chatChanged = (): void => {
     const chatId = this.#dependencies.chat.getSnapshot()?.id ?? null;
-    if (chatId === this.#snapshot.chatId) return;
+    if (chatId === this.#snapshot.chatId) {
+      return;
+    }
     this.cancel();
     this.#publish({
       chatId,
@@ -300,6 +350,8 @@ export class DiaryService {
   };
   #publish(patch: Partial<DiarySnapshot>): void {
     this.#snapshot = { ...this.#snapshot, ...patch };
-    for (const listener of this.#listeners) listener();
+    for (const listener of this.#listeners) {
+      listener();
+    }
   }
 }

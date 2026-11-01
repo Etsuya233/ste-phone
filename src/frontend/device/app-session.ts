@@ -11,15 +11,17 @@ export interface AppSession {
 export type SessionAction =
   { type: "open"; app: AppId } | { type: "home" | "expose" } | { type: "quit"; app: AppId };
 export function appSession(state: AppSession, action: SessionAction): AppSession {
-  if (action.type === "open")
+  if (action.type === "open") {
     return {
       foreground: action.app,
       recent: [action.app, ...state.recent.filter((app) => app !== action.app)],
     };
-  if (action.type === "quit")
+  }
+  if (action.type === "quit") {
     return {
       foreground: state.foreground === action.app ? "expose" : state.foreground,
       recent: state.recent.filter((app) => app !== action.app),
     };
+  }
   return { ...state, foreground: action.type };
 }

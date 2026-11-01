@@ -54,7 +54,7 @@ export function memoryDatabaseFixture(snapshot: MemorySnapshot = memorySnapshotF
     const insert = db.prepare(
       `INSERT INTO ${q(table.key)} VALUES(${description.columns[table.key]!.map(() => "?").join(",")})`,
     );
-    for (const record of snapshot.records.filter((record) => record.tableId === table.id))
+    for (const record of snapshot.records.filter((record) => record.tableId === table.id)) {
       insert.run(
         record.id,
         record.stableId,
@@ -63,12 +63,19 @@ export function memoryDatabaseFixture(snapshot: MemorySnapshot = memorySnapshotF
         record.createdAt,
         ...tableFields.map((field) => {
           const value = record.payload[field.id];
-          if (value === undefined || value === null) return null;
-          if (Array.isArray(value)) return JSON.stringify(value);
-          if (typeof value === "boolean") return Number(value);
+          if (value === undefined || value === null) {
+            return null;
+          }
+          if (Array.isArray(value)) {
+            return JSON.stringify(value);
+          }
+          if (typeof value === "boolean") {
+            return Number(value);
+          }
           return value as SqlValue;
         }),
       );
+    }
   }
   const stats = { describes: 0, registrations: 0, reads: 0, queries: [] as string[] };
   let viewNames: string[] = [];
@@ -93,10 +100,16 @@ export function memoryDatabaseFixture(snapshot: MemorySnapshot = memorySnapshotF
       },
       async registerViews({ views }) {
         stats.registrations++;
-        for (const name of viewNames) db.exec(`DROP VIEW ${q(name)}`);
+        for (const name of viewNames) {
+          db.exec(`DROP VIEW ${q(name)}`);
+        }
         viewNames = views.map((view) => view.name);
-        for (const view of views) db.exec(`CREATE VIEW ${q(view.name)} AS ${view.select}`);
-        for (const view of views) db.prepare(`SELECT * FROM ${q(view.name)} LIMIT 0`).all();
+        for (const view of views) {
+          db.exec(`CREATE VIEW ${q(view.name)} AS ${view.select}`);
+        }
+        for (const view of views) {
+          db.prepare(`SELECT * FROM ${q(view.name)} LIMIT 0`).all();
+        }
       },
       async query({ sql, params, maxRows = 200 }) {
         stats.queries.push(sql);
@@ -129,7 +142,9 @@ export function memoryDatabaseFixture(snapshot: MemorySnapshot = memorySnapshotF
     },
     change(next: Partial<typeof context> = {}) {
       context = { ...context, ...next, revision: context.revision + 1 };
-      for (const listener of listeners) listener();
+      for (const listener of listeners) {
+        listener();
+      }
     },
     install() {
       globalThis.window = new EventTarget() as unknown as Window & typeof globalThis;

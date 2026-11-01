@@ -22,10 +22,14 @@ export function DatabaseApp({
 }) {
   const state = useSyncExternalStore(database.subscribe, database.getState);
   useEffect(() => {
-    if (state.context.available) void database.load().catch(() => {});
+    if (state.context.available) {
+      void database.load().catch(() => {});
+    }
   }, [database, state.context.chatIdentity, state.context.scopeId, state.context.available]);
   const routes: DatabaseRoute[] = [{ object: null }];
-  if (state.editor.selected) routes.push({ object: state.editor.selected });
+  if (state.editor.selected) {
+    routes.push({ object: state.editor.selected });
+  }
   return (
     <NavigationStack
       key={JSON.stringify([state.context.chatIdentity, state.context.scopeId])}
@@ -58,14 +62,17 @@ function DatabasePage({
   const hasSchema = state.schema !== null;
   const scrollKey = `${tab}:${tab === "objects" ? (route.object ?? "list") : "editor"}`;
   useLayoutEffect(() => {
-    if (!hasSchema || !navigation.current) return;
+    if (!hasSchema || !navigation.current) {
+      return;
+    }
     const content = container.current!.querySelector<HTMLDivElement>(".ios-page-content")!;
     content.scrollTop = editor.scroll[scrollKey] ?? 0;
     const chat = JSON.stringify([state.context.chatIdentity, state.context.scopeId]);
     const track = () => {
       const current = database.getState();
-      if (JSON.stringify([current.context.chatIdentity, current.context.scopeId]) === chat)
+      if (JSON.stringify([current.context.chatIdentity, current.context.scopeId]) === chat) {
         database.edit({ scroll: { ...current.editor.scroll, [scrollKey]: content.scrollTop } });
+      }
     };
     content.addEventListener("scroll", track, { passive: true });
     return () => content.removeEventListener("scroll", track);
@@ -126,7 +133,9 @@ function DatabasePage({
             value={tab}
             onValueChange={(tab) => {
               database.edit({ tab: tab as "objects" | "sql", selected: null });
-              if (route.object) navigation.pop();
+              if (route.object) {
+                navigation.pop();
+              }
             }}
             options={[
               { value: "objects", label: "数据库" },

@@ -40,7 +40,11 @@ function fixture() {
     pending,
     change(next?: Partial<SourceContext>, notify = true) {
       context = { ...context, ...next };
-      if (notify) for (const listener of listeners) listener();
+      if (notify) {
+        for (const listener of listeners) {
+          listener();
+        }
+      }
     },
   };
 }

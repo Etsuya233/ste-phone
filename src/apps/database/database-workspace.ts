@@ -69,14 +69,18 @@ export class DatabaseWorkspace {
     return () => this.#listeners.delete(listener);
   };
   async load(force = false): Promise<void> {
-    if (!force && this.#state.schema && this.#loadedRevision === this.#revision) return;
+    if (!force && this.#state.schema && this.#loadedRevision === this.#revision) {
+      return;
+    }
     const revision = this.#revision;
     const context = this.#data.getSnapshot().context;
     const generation = this.#generation;
     this.#publish({ ...this.#state, status: "loading", error: null });
     try {
       const schema = await this.#data.describe(context, { force });
-      if (generation !== this.#generation) return;
+      if (generation !== this.#generation) {
+        return;
+      }
       this.#loadedRevision = revision;
       this.#publish({
         ...this.#state,
@@ -86,12 +90,13 @@ export class DatabaseWorkspace {
         loadedAt: new Date().toISOString(),
       });
     } catch (error) {
-      if (generation === this.#generation)
+      if (generation === this.#generation) {
         this.#publish({
           ...this.#state,
           status: context.available ? "error" : "unavailable",
           error: error instanceof Error ? error.message : String(error),
         });
+      }
       throw error;
     }
   }
@@ -108,7 +113,9 @@ export class DatabaseWorkspace {
     this.edit({ running: true, queryError: null });
     try {
       const result = await this.query(sql);
-      if (chat !== binding(this.#state.context) || generation !== this.#generation) return;
+      if (chat !== binding(this.#state.context) || generation !== this.#generation) {
+        return;
+      }
       this.edit({
         result,
         resultStale: revision !== this.#revision,
@@ -117,16 +124,20 @@ export class DatabaseWorkspace {
       });
       this.#publish({ ...this.#state, stale: this.#state.editor.resultStale });
     } catch (error) {
-      if (chat === binding(this.#state.context) && generation === this.#generation)
+      if (chat === binding(this.#state.context) && generation === this.#generation) {
         this.edit({
           running: false,
           queryError: error instanceof Error ? error.message : String(error),
         });
+      }
     } finally {
       const editor = this.#editors.get(chat);
       if (editor?.running) {
-        if (chat === binding(this.#state.context)) this.edit({ running: false });
-        else this.#editors.set(chat, { ...editor, running: false });
+        if (chat === binding(this.#state.context)) {
+          this.edit({ running: false });
+        } else {
+          this.#editors.set(chat, { ...editor, running: false });
+        }
       }
     }
   }
@@ -144,7 +155,9 @@ export class DatabaseWorkspace {
     const snapshot = this.#data.getSnapshot();
     const context = snapshot.context;
     const changed = binding(context) !== binding(this.#state.context) || !context.available;
-    if (!changed && snapshot.revision === this.#revision) return;
+    if (!changed && snapshot.revision === this.#revision) {
+      return;
+    }
     this.#revision = snapshot.revision;
     if (changed) {
       this.#generation++;
@@ -173,6 +186,8 @@ export class DatabaseWorkspace {
   };
   #publish(state: DatabaseState): void {
     this.#state = state;
-    for (const listener of this.#listeners) listener();
+    for (const listener of this.#listeners) {
+      listener();
+    }
   }
 }

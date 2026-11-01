@@ -52,12 +52,16 @@ test("建链与解链拒绝真实目录、外部链接和断链", (t) => {
   mkdirSync(dist);
   mkdirSync(target);
   writeFileSync(path.join(target, "user-data"), "retained");
-  for (const remove of [false, true]) assert.throws(() => linkExtension(dist, target, remove));
+  for (const remove of [false, true]) {
+    assert.throws(() => linkExtension(dist, target, remove));
+  }
   assert.equal(readFileSync(path.join(target, "user-data"), "utf8"), "retained");
   mkdirSync(other);
   const link = path.join(root, "foreign-link");
   symlinkSync(other, link, process.platform === "win32" ? "junction" : "dir");
-  for (const remove of [false, true]) assert.throws(() => linkExtension(dist, link, remove));
+  for (const remove of [false, true]) {
+    assert.throws(() => linkExtension(dist, link, remove));
+  }
   rmdirSync(other);
   assert.throws(() => linkExtension(dist, link, false));
   assert.ok(lstatSync(link).isSymbolicLink());
@@ -68,16 +72,24 @@ test("同步只复制发布产物，识别直连并拒绝错误目标", (t) => {
   const dist = path.join(root, "dist");
   const target = path.join(root, "target");
   mkdirSync(dist);
-  for (const file of DIST_FILES) writeFileSync(path.join(dist, file), file);
+  for (const file of DIST_FILES) {
+    writeFileSync(path.join(dist, file), file);
+  }
   writeFileSync(path.join(dist, "index.js.map"), "dev-only");
   mkdirSync(target);
-  for (const file of OBSOLETE_DIST_FILES) writeFileSync(path.join(target, file), "old-managed");
+  for (const file of OBSOLETE_DIST_FILES) {
+    writeFileSync(path.join(target, file), "old-managed");
+  }
   writeFileSync(path.join(target, "user-data"), "retained");
   syncExtension(dist, target);
-  for (const file of OBSOLETE_DIST_FILES) assert.equal(existsSync(path.join(target, file)), false);
+  for (const file of OBSOLETE_DIST_FILES) {
+    assert.equal(existsSync(path.join(target, file)), false);
+  }
   assert.equal(readFileSync(path.join(target, "user-data"), "utf8"), "retained");
   assert.equal(existsSync(path.join(target, "index.js.map")), false);
-  for (const file of DIST_FILES) assert.equal(readFileSync(path.join(target, file), "utf8"), file);
+  for (const file of DIST_FILES) {
+    assert.equal(readFileSync(path.join(target, file), "utf8"), file);
+  }
   const link = path.join(root, "linked");
   linkExtension(dist, link, false);
   syncExtension(dist, link);

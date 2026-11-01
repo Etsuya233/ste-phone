@@ -2,7 +2,7 @@ import type { AppId } from "../device/app-session.ts";
 import { Icon } from "../foundation/icon.tsx";
 
 export function AppIcon({ app }: { app: AppId }) {
-  if (app === "app-store")
+  if (app === "app-store") {
     return (
       <Icon appearance="app" className="app-store-icon">
         <svg viewBox="0 0 60 60">
@@ -11,7 +11,8 @@ export function AppIcon({ app }: { app: AppId }) {
         </svg>
       </Icon>
     );
-  if (app === "diary")
+  }
+  if (app === "diary") {
     return (
       <Icon appearance="app" className="diary-app-icon">
         <svg viewBox="0 0 60 60">
@@ -21,7 +22,8 @@ export function AppIcon({ app }: { app: AppId }) {
         </svg>
       </Icon>
     );
-  if (app === "stopwatch")
+  }
+  if (app === "stopwatch") {
     return (
       <Icon appearance="app" className="stopwatch-icon">
         <svg viewBox="0 0 60 60">
@@ -32,7 +34,8 @@ export function AppIcon({ app }: { app: AppId }) {
         </svg>
       </Icon>
     );
-  if (app === "database")
+  }
+  if (app === "database") {
     return (
       <Icon appearance="app" className="database-app-icon">
         <svg viewBox="0 0 60 60">
@@ -41,7 +44,8 @@ export function AppIcon({ app }: { app: AppId }) {
         </svg>
       </Icon>
     );
-  if (app === "data-source")
+  }
+  if (app === "data-source") {
     return (
       <Icon appearance="app" className="data-app-icon">
         <svg viewBox="0 0 60 60">
@@ -50,7 +54,8 @@ export function AppIcon({ app }: { app: AppId }) {
         </svg>
       </Icon>
     );
-  if (app === "foundation")
+  }
+  if (app === "foundation") {
     return (
       <Icon appearance="app" className="foundation-app-icon">
         <svg viewBox="0 0 60 60">
@@ -61,7 +66,8 @@ export function AppIcon({ app }: { app: AppId }) {
         </svg>
       </Icon>
     );
-  if (app === "settings")
+  }
+  if (app === "settings") {
     return (
       <Icon appearance="app" className="settings-app-icon">
         <svg viewBox="0 0 60 60">
@@ -71,4 +77,5 @@ export function AppIcon({ app }: { app: AppId }) {
         </svg>
       </Icon>
     );
+  }
 }

@@ -59,11 +59,15 @@ export class BackgroundDataSource implements PhoneDataSource {
 
   load(options: { force?: boolean } = {}): Promise<PhoneBackground> {
     this.synchronize();
-    if (!this.#state.context.available)
+    if (!this.#state.context.available) {
       return Promise.reject(new Error(this.#state.context.message ?? "数据源不可用"));
-    if (this.#pendingRead) return this.#pendingRead;
-    if (!options.force && this.#state.data && !this.#state.stale)
+    }
+    if (this.#pendingRead) {
+      return this.#pendingRead;
+    }
+    if (!options.force && this.#state.data && !this.#state.stale) {
       return Promise.resolve(this.#state.data);
+    }
     const changeVersion = this.#changeVersion;
     const context = this.#state.context;
     this.#publish({
@@ -74,7 +78,9 @@ export class BackgroundDataSource implements PhoneDataSource {
     });
     const pending = this.#readAndPublish(context, changeVersion).finally(() => {
       // 旧读取结束时，新的读取可能已经开始，不能清除新请求。
-      if (this.#pendingRead === pending) this.#pendingRead = undefined;
+      if (this.#pendingRead === pending) {
+        this.#pendingRead = undefined;
+      }
     });
     this.#pendingRead = pending;
     return pending;
@@ -86,8 +92,9 @@ export class BackgroundDataSource implements PhoneDataSource {
     if (
       !sameBinding(this.#state.context, current) ||
       current.available !== this.#state.context.available
-    )
+    ) {
       this.#invalidateCache();
+    }
   }
 
   dispose(): void {
@@ -103,13 +110,17 @@ export class BackgroundDataSource implements PhoneDataSource {
       if (
         changeVersion !== this.#changeVersion ||
         !sameBinding(context, this.#provider.getContext())
-      )
+      ) {
         throw new Error("资料或聊天已变化，本次读取已取消");
-      if (data.scopeId !== context.scopeId) throw new Error("数据源返回了其他记忆空间的资料");
+      }
+      if (data.scopeId !== context.scopeId) {
+        throw new Error("数据源返回了其他记忆空间的资料");
+      }
 
       // App 可以持有这份输入继续生成；下一次刷新只替换缓存，不修改已有快照。
-      for (const entry of [...data.characters, ...data.chronicles, ...data.items])
+      for (const entry of [...data.characters, ...data.chronicles, ...data.items]) {
         Object.freeze(entry);
+      }
       Object.freeze(data.characters);
       Object.freeze(data.chronicles);
       Object.freeze(data.items);
@@ -125,13 +136,14 @@ export class BackgroundDataSource implements PhoneDataSource {
       return data;
     } catch (error) {
       // 错误归属与成功结果相同：旧请求失败也不能覆盖新聊天的状态。
-      if (changeVersion === this.#changeVersion)
+      if (changeVersion === this.#changeVersion) {
         this.#publish({
           ...this.#state,
           status: "error",
           stale: this.#state.data !== null,
           error: error instanceof Error ? error.message : String(error),
         });
+      }
       throw error;
     }
   }
@@ -154,6 +166,8 @@ export class BackgroundDataSource implements PhoneDataSource {
 
   #publish(state: DataSourceState): void {
     this.#state = state;
-    for (const listener of this.#listeners) listener();
+    for (const listener of this.#listeners) {
+      listener();
+    }
   }
 }

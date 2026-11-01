@@ -30,8 +30,9 @@ export function DataSourceApp({
 }) {
   const state = useSyncExternalStore(source.subscribe, source.getSnapshot);
   useEffect(() => {
-    if (state.context.available)
+    if (state.context.available) {
       void source.readBackground(source.getSnapshot().context).catch(() => {});
+    }
   }, [source, state.context.chatIdentity, state.context.scopeId, state.context.available]);
   return (
     <NavigationStack<Route>
@@ -116,8 +117,11 @@ function DataBrowser({
               label:
                 selectedId && category ? categoryNames[category] : category ? "资料" : "主屏幕",
               onClick: () => {
-                if (category) navigation.pop();
-                else onHome();
+                if (category) {
+                  navigation.pop();
+                } else {
+                  onHome();
+                }
               },
             }}
             right={

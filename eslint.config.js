@@ -21,4 +21,12 @@ export default tseslint.config(
     },
   },
   prettier,
+  // 放在 Prettier 配置之后，确保控制流始终使用花括号并逐行展开。
+  {
+    files: ["**/*.{js,mjs,cjs,ts,tsx}"],
+    rules: {
+      curly: ["error", "all"],
+      "max-statements-per-line": ["error", { max: 1 }],
+    },
+  },
 );

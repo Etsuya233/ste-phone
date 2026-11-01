@@ -34,16 +34,22 @@ export function NavigationStack<T>({
     setMotion(null);
   };
   useEffect(() => {
-    if (!active && motion) finish();
+    if (!active && motion) {
+      finish();
+    }
     const preference = matchMedia("(prefers-reduced-motion: reduce)");
     const change = () => {
-      if (preference.matches && motion) finish();
+      if (preference.matches && motion) {
+        finish();
+      }
     };
     preference.addEventListener("change", change);
     return () => preference.removeEventListener("change", change);
   }, [active, motion, entries]);
   useLayoutEffect(() => {
-    if (!active || motion) return;
+    if (!active || motion) {
+      return;
+    }
     const top = element.current!.querySelector<HTMLElement>(".navigation-entry--current")!;
     const remembered = pendingFocus.current;
     // A route may replace its list with SQL while returning from an object detail.
@@ -55,7 +61,9 @@ export function NavigationStack<T>({
     pendingFocus.current = null;
   }, [active, motion, entries.length]);
   const push = (route: T) => {
-    if (locked.current || !active) return;
+    if (locked.current || !active) {
+      return;
+    }
     locked.current = !matchMedia("(prefers-reduced-motion: reduce)").matches;
     const focus = element.current!.getRootNode() as ShadowRoot;
     setEntries((previous) => [
@@ -65,7 +73,9 @@ export function NavigationStack<T>({
     setMotion(locked.current ? "push" : null);
   };
   const pop = () => {
-    if (locked.current || !active || entries.length === 1) return;
+    if (locked.current || !active || entries.length === 1) {
+      return;
+    }
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
       pendingFocus.current = entries.at(-1)!.focus;
       setEntries((previous) => previous.slice(0, -1));
@@ -89,7 +99,9 @@ export function NavigationStack<T>({
             hidden={!current && !(beneath && motion)}
             inert={!active || !current || motion !== null}
             onAnimationEnd={(event) => {
-              if (event.target === event.currentTarget && current && motion) finish();
+              if (event.target === event.currentTarget && current && motion) {
+                finish();
+              }
             }}
           >
             {children(entry.route, { push, pop, current: active && current && motion === null })}

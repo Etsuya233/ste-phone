@@ -72,11 +72,13 @@ test("the three system apps cannot be uninstalled and a full dock rejects a fift
   const service = new PhoneSettingsService(storageWith());
   const home = service.homeScreen;
   const before = home.getSnapshot();
-  for (const app of ["data-source", "settings", "app-store"] as const)
+  for (const app of ["data-source", "settings", "app-store"] as const) {
     assert.throws(() => home.uninstall(app), /不可卸载/);
+  }
   assert.equal(home.getSnapshot(), before);
-  for (const app of ["data-source", "settings", "app-store"] as const)
+  for (const app of ["data-source", "settings", "app-store"] as const) {
     home.move(app, "dock", home.getSnapshot().dock.length);
+  }
   const full = home.getSnapshot();
   assert.throws(() => home.move("foundation", "dock", 4), /最多放四个/);
   assert.equal(home.getSnapshot(), full);

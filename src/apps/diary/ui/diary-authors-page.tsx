@@ -9,7 +9,9 @@ export function DiaryAuthorsPage({ diary, state, navigation }: DiaryPageProps) {
   const busy = state.preparing || isDiaryRunning(state.generation);
 
   useEffect(() => {
-    if (navigation.current) void diary.prepare();
+    if (navigation.current) {
+      void diary.prepare();
+    }
   }, [diary, navigation.current]);
 
   async function selectAuthor(id: string) {

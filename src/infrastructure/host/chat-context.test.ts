@@ -18,7 +18,9 @@ function fixture() {
     },
     eventSource: {
       on: (event, listener) => {
-        if (!handlers.has(event)) handlers.set(event, new Set());
+        if (!handlers.has(event)) {
+          handlers.set(event, new Set());
+        }
         handlers.get(event)!.add(listener);
       },
       removeListener: (event, listener) => {
@@ -31,7 +33,9 @@ function fixture() {
     context,
     chat,
     emit: (event: string) => {
-      for (const handler of handlers.get(event)!) handler();
+      for (const handler of handlers.get(event)!) {
+        handler();
+      }
     },
   };
 }

@@ -50,22 +50,31 @@ export async function generateDiaryText(input: {
       }
     },
   });
-  if (toolFailure) throw toolFailure;
+  if (toolFailure) {
+    throw toolFailure;
+  }
   input.signal.throwIfAborted();
-  if (reply?.role !== "assistant") throw new Error("日记生成未收到模型回复");
-  if (timedOut)
+  if (reply?.role !== "assistant") {
+    throw new Error("日记生成未收到模型回复");
+  }
+  if (timedOut) {
     throw new Error(`日记生成超时（${input.settings.timeoutSeconds} 秒）：${reply.errorMessage}`, {
       cause: reply.diagnostics,
     });
-  if (reply.stopReason === "length")
+  }
+  if (reply.stopReason === "length") {
     throw new Error("日记达到输出上限，正文未保存，请增加输出上限后重试", { cause: reply });
-  if (reply.stopReason !== "stop")
+  }
+  if (reply.stopReason !== "stop") {
     throw new Error(reply.errorMessage || "日记生成未正常完成", { cause: reply.diagnostics });
+  }
   const body = reply.content
     .filter((block) => block.type === "text")
     .map((block) => block.text)
     .join("")
     .trim();
-  if (!body) throw new Error("模型返回了空日记", { cause: reply });
+  if (!body) {
+    throw new Error("模型返回了空日记", { cause: reply });
+  }
   return body;
 }

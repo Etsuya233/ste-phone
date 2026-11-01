@@ -58,13 +58,19 @@ export function createPreviewDiaryStorage(mode: string | null): DiaryStorage {
   return {
     read(chatId) {
       const saved = localStorage.getItem(key(chatId));
-      if (saved === null) return mode === "demo" ? demoDiary : null;
+      if (saved === null) {
+        return mode === "demo" ? demoDiary : null;
+      }
       const data = JSON.parse(saved) as DiaryData;
-      if (data.version !== 1) throw new Error("日记数据版本不受支持");
+      if (data.version !== 1) {
+        throw new Error("日记数据版本不受支持");
+      }
       return data;
     },
     async write(chatId, data) {
-      if (mode === "save-error") throw new Error("预览：日记保存失败");
+      if (mode === "save-error") {
+        throw new Error("预览：日记保存失败");
+      }
       localStorage.setItem(key(chatId), JSON.stringify(data));
     },
   };

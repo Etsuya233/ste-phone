@@ -20,21 +20,28 @@ export function Alert({
   const messageId = useId();
   const panel = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
-    if (!active) return;
+    if (!active) {
+      return;
+    }
     const element = panel.current!;
     const root = element.getRootNode() as ShadowRoot;
     const previous = root.activeElement as HTMLElement | null;
     return () => {
-      if (!element.contains(root.activeElement)) return;
+      if (!element.contains(root.activeElement)) {
+        return;
+      }
       // The underlying Page becomes interactive in the same React commit that removes the alert.
       queueMicrotask(() => {
-        if (previous?.isConnected && !previous.closest("[hidden], [inert], :disabled"))
+        if (previous?.isConnected && !previous.closest("[hidden], [inert], :disabled")) {
           previous.focus({ preventScroll: true });
+        }
       });
     };
   }, [active]);
   useLayoutEffect(() => {
-    if (active) panel.current!.querySelector<HTMLButtonElement>("button")!.focus();
+    if (active) {
+      panel.current!.querySelector<HTMLButtonElement>("button")!.focus();
+    }
   }, [active, title]);
 
   function handleKey(event: KeyboardEvent<HTMLDivElement>) {

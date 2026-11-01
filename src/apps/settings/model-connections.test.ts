@@ -31,8 +31,9 @@ test("connection validation preserves LAN HTTP and path prefixes while trimming 
     { baseUrl: "https://example.com/v1#fragment" },
     { baseUrl: "https://example.com/v1/chat/completions/" },
     { apiKey: "key\r\nheader: value" },
-  ])
+  ]) {
     assert.throws(() => validateModelConnection({ ...connection, ...patch }));
+  }
 });
 
 test("header validation rejects duplicates and protocol-owned fields before converting rows", () => {
@@ -45,8 +46,15 @@ test("header validation rejects duplicates and protocol-owned fields before conv
   );
   assert.match(connectionHeaderError([["Bad Header", "a"]])!, /名称不合法/);
   assert.match(connectionHeaderError([["X-Test", "a\nb"]])!, /换行/);
-  for (const name of ["Content-Type", "Host", "Content-Length", "Connection", "Transfer-Encoding"])
+  for (const name of [
+    "Content-Type",
+    "Host",
+    "Content-Length",
+    "Connection",
+    "Transfer-Encoding",
+  ]) {
     assert.ok(connectionHeaderError([[name.toUpperCase(), "value"]]));
+  }
   assert.equal(
     connectionHeaderError([
       ["X-Test", ""],

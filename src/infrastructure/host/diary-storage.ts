@@ -17,15 +17,21 @@ export function createStDiaryStorage(
   request: typeof fetch = fetch,
 ): DiaryStorage {
   const current = (chatId: string) => {
-    if (chat.getSnapshot()?.id !== chatId) throw new Error("当前聊天已变化，无法保存日记");
+    if (chat.getSnapshot()?.id !== chatId) {
+      throw new Error("当前聊天已变化，无法保存日记");
+    }
     return getContext();
   };
   return {
     read(chatId) {
       const context = current(chatId);
       const phone = context.chatMetadata.ste_phone as { diary?: DiaryData } | undefined;
-      if (phone?.diary === undefined) return null;
-      if (phone.diary.version !== 1) throw new Error("日记数据版本不受支持");
+      if (phone?.diary === undefined) {
+        return null;
+      }
+      if (phone.diary.version !== 1) {
+        throw new Error("日记数据版本不受支持");
+      }
       return structuredClone(phone.diary);
     },
     async write(chatId, data) {
@@ -57,7 +63,9 @@ export function createStDiaryStorage(
         headers: context.getRequestHeaders(),
         body,
       });
-      if (!response.ok) throw new Error(`日记保存失败（${response.status}）`);
+      if (!response.ok) {
+        throw new Error(`日记保存失败（${response.status}）`);
+      }
     },
   };
 }

@@ -17,7 +17,9 @@ if (args.some((arg) => !["--push", "--dry-run"].includes(arg))) {
 }
 const dryRun = args.includes("--dry-run");
 const push = args.includes("--push");
-if (dryRun && push) throw new Error("--dry-run 与 --push 不能同时使用");
+if (dryRun && push) {
+  throw new Error("--dry-run 与 --push 不能同时使用");
+}
 
 function git(args: string[], cwd = PACKAGE_ROOT): string {
   return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
@@ -25,11 +27,15 @@ function git(args: string[], cwd = PACKAGE_ROOT): string {
 
 const sourceBranch = git(["branch", "--show-current"]);
 const sourceCommit = git(["rev-parse", "HEAD"]);
-if (sourceBranch === branch) throw new Error("请从源码分支发版");
+if (sourceBranch === branch) {
+  throw new Error("请从源码分支发版");
+}
 if (!dryRun && git(["status", "--porcelain"])) {
   throw new Error("源码工作区有未提交的改动，请提交后发版；--dry-run 可先验证构建");
 }
-if (push) git(["remote", "get-url", "origin"]);
+if (push) {
+  git(["remote", "get-url", "origin"]);
+}
 
 await buildExtension();
 const pkg = JSON.parse(readFileSync(path.join(PACKAGE_ROOT, "package.json"), "utf8")) as {
@@ -38,7 +44,9 @@ const pkg = JSON.parse(readFileSync(path.join(PACKAGE_ROOT, "package.json"), "ut
 };
 const minimumMemoryVersion = pkg.stePhone.minimumMemoryVersion;
 for (const file of DIST_FILES) {
-  if (!existsSync(path.join(DIST_DIR, file))) throw new Error(`缺少发布产物：${file}`);
+  if (!existsSync(path.join(DIST_DIR, file))) {
+    throw new Error(`缺少发布产物：${file}`);
+  }
 }
 if (dryRun) {
   console.info(`[STE Phone] v${pkg.version} 构建通过，未修改发布分支，也未推送`);
@@ -66,7 +74,9 @@ if (dryRun) {
   }
   const allowed = new Set<string>([...DIST_FILES, ...OBSOLETE_DIST_FILES, "README.md"]);
   for (const file of git(["ls-files"], worktree).split("\n").filter(Boolean)) {
-    if (!allowed.has(file)) throw new Error(`发布分支有非产物文件，未修改：${file}`);
+    if (!allowed.has(file)) {
+      throw new Error(`发布分支有非产物文件，未修改：${file}`);
+    }
   }
 
   removeObsoleteAssets(worktree);
@@ -81,6 +91,8 @@ if (dryRun) {
   if (git(["diff", "--cached", "--name-only"], worktree)) {
     git(["commit", "-m", `release v${pkg.version} (${sourceCommit.slice(0, 7)})`], worktree);
   }
-  if (push) git(["push", "origin", branch]);
+  if (push) {
+    git(["push", "origin", branch]);
+  }
   console.info(`[STE Phone] v${pkg.version} → ${branch}${push ? "，已推送" : "，仅本地提交"}`);
 }

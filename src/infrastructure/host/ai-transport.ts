@@ -10,10 +10,14 @@ import { readOpenAiStream, type StreamEventSummary } from "./openai-stream.ts";
 let requestSequence = 0;
 function completionMessages(context: Context) {
   const messages: Record<string, unknown>[] = [];
-  if (context.systemPrompt) messages.push({ role: "system", content: context.systemPrompt });
+  if (context.systemPrompt) {
+    messages.push({ role: "system", content: context.systemPrompt });
+  }
   for (const message of context.messages) {
     if (message.role === "assistant") {
-      if (message.stopReason === "error" || message.stopReason === "aborted") continue;
+      if (message.stopReason === "error" || message.stopReason === "aborted") {
+        continue;
+      }
       const content = message.content
         .filter((block) => block.type === "text")
         .map((block) => block.text)
@@ -126,10 +130,12 @@ export function createStAiTransport(
         void (async () => {
           try {
             signal.throwIfAborted();
-            if (requestModel.api !== "openai-completions")
+            if (requestModel.api !== "openai-completions") {
               throw new Error("模型传输仅支持 OpenAI Chat Completions");
-            if (options?.apiKey !== undefined || options?.headers !== undefined)
+            }
+            if (options?.apiKey !== undefined || options?.headers !== undefined) {
               throw new Error("请通过连接快照提供模型鉴权和请求头");
+            }
             const messages = completionMessages(context);
             stage = "request";
             record("request", {
@@ -212,7 +218,9 @@ export function createStAiTransport(
               signal,
               output,
               (event) => {
-                if (event.type === "text_delta") textCharacters += event.delta.length;
+                if (event.type === "text_delta") {
+                  textCharacters += event.delta.length;
+                }
                 stream.push(event);
               },
               (event) => {

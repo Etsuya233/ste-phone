@@ -35,20 +35,25 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
       .toSorted((a, b) => a.position - b.position || a.id.localeCompare(b.id));
   function add(object: DatabaseObject): void {
     const key = identifierKey(object.name);
-    if (names.has(key)) throw new Error(`查询对象名碰撞：${object.name}`);
+    if (names.has(key)) {
+      throw new Error(`查询对象名碰撞：${object.name}`);
+    }
     names.add(key);
     objects.push(object);
   }
   const idSelect = `${literal("ste-memory")} AS source_id,${literal(schema.space.id)} AS scope_id,${literal(schema.space.stableId)} AS stable_scope_id,r."$record_id" AS record_id,r."$stable_id" AS stable_record_id,r."$created_at" AS created_at`;
   for (const table of schema.tables) {
     const fields = fieldsFor(table);
-    if (!schema.columns[table.key]!.includes("$stable_id"))
+    if (!schema.columns[table.key]!.includes("$stable_id")) {
       throw new Error(`Memory 公开表缺少 $stable_id，请升级 Memory：${table.key}`);
+    }
     const columns = fields.map((field): DatabaseColumn => {
-      if (!schema.columns[table.key]!.includes(field.key))
+      if (!schema.columns[table.key]!.includes(field.key)) {
         throw new Error(`公开结构缺少列：${table.key}.${field.key}`);
-      if (identifierKey(field.key).startsWith("_phone_"))
+      }
+      if (identifierKey(field.key).startsWith("_phone_")) {
         throw new Error(`源列使用了保留前缀：${table.key}.${field.key}`);
+      }
       const multiple = ["multi_reference", "multi_select", "short_text_list"].includes(field.type);
       const target =
         field.referenceTableId === null
@@ -89,17 +94,25 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
 
   let alias = 0;
   function renderName(table: MemoryTable, row: string, visited: readonly string[]): string {
-    if (visited.includes(table.id)) throw new Error(`显示策略存在循环引用：${table.name}`);
+    if (visited.includes(table.id)) {
+      throw new Error(`显示策略存在循环引用：${table.name}`);
+    }
     const strategy = table.displayStrategy;
-    if (!strategy) return `${row}."$display_text"`;
+    if (!strategy) {
+      return `${row}."$display_text"`;
+    }
     const next = [...visited, table.id];
     const fields = fieldsFor(table);
     const render = (id: string): string => {
       const field = fields.find((item) => item.id === id);
-      if (!field) throw new Error(`显示策略引用了不可用字段：${table.name}.${id}`);
+      if (!field) {
+        throw new Error(`显示策略引用了不可用字段：${table.name}.${id}`);
+      }
       return renderValue(field, row, next);
     };
-    if (strategy.type === "field") return render(strategy.fieldId);
+    if (strategy.type === "field") {
+      return render(strategy.fieldId);
+    }
     const parts: string[] = [];
     let position = 0;
     for (const match of strategy.template.matchAll(/\{([^{}]+)\}/g)) {
@@ -116,17 +129,23 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
     const value = `${row}.${q(field.key)}`;
     if (field.type === "single_reference" || field.type === "multi_reference") {
       const table = schema.tables.find((item) => item.id === field.referenceTableId);
-      if (!table) throw new Error(`引用目标表不可用：${field.name}`);
+      if (!table) {
+        throw new Error(`引用目标表不可用：${field.name}`);
+      }
       const target = `ref${++alias}`;
       const name = renderName(table, target, visited);
-      if (field.type === "single_reference")
+      if (field.type === "single_reference") {
         return `(SELECT ${name} FROM ${q(table.key)} ${target} WHERE ${target}."$record_id"=${value})`;
+      }
       const json = `list${++alias}`;
       return `(SELECT group_concat(display_name,'、') FROM (SELECT ${name} AS display_name FROM json_each(${value}) ${json} JOIN ${q(table.key)} ${target} ON ${target}."$record_id"=${json}.value ORDER BY ${json}.key))`;
     }
-    if (["short_text_list", "multi_select"].includes(field.type))
+    if (["short_text_list", "multi_select"].includes(field.type)) {
       return `(SELECT group_concat(value,'、') FROM json_each(${value}))`;
-    if (field.type === "boolean") return `CASE ${value} WHEN 1 THEN '是' WHEN 0 THEN '否' END`;
+    }
+    if (field.type === "boolean") {
+      return `CASE ${value} WHEN 1 THEN '是' WHEN 0 THEN '否' END`;
+    }
     return `CAST(${value} AS TEXT)`;
   }
   function profile(table: MemoryTable): string {
@@ -145,16 +164,21 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
   ): void {
     try {
       const table = schema.tables.find((table) => table.key === tableKey);
-      if (!table) throw new Error(`缺少启用的 ${tableKey} 表`);
+      if (!table) {
+        throw new Error(`缺少启用的 ${tableKey} 表`);
+      }
       const fields = fieldsFor(table);
       const columns = definitions.map(([name, key, type]) => {
         const field = fields.find((field) => field.key === key && field.type === type);
-        if (!field) throw new Error(`字段缺失或类型不符：${tableKey}.${key}（需要 ${type}）`);
+        if (!field) {
+          throw new Error(`字段缺失或类型不符：${tableKey}.${key}（需要 ${type}）`);
+        }
         if (
           (key === "owner" || key === "related_characters") &&
           field.referenceTableId !== schema.tables.find((table) => table.key === "characters")?.id
-        )
+        ) {
           throw new Error(`引用目标不兼容：${tableKey}.${key}`);
+        }
         return {
           ...column(name, field.name),
           ...(key === "owner" || key === "related_characters"
@@ -246,8 +270,9 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
         "SELECT c.source_id,c.scope_id,c.stable_scope_id,c.record_id AS chronicle_id,CAST(j.value AS TEXT) AS character_id,c.stable_record_id AS stable_chronicle_id,p.stable_record_id AS stable_character_id FROM phone_chronicles c,json_each(c.related_character_ids) j LEFT JOIN phone_characters p ON p.record_id=CAST(j.value AS TEXT)",
     });
     capabilities.push(["phone_chronicle_characters", "supported", "完整多值 ID 关联"]);
-  } else
+  } else {
     capabilities.push(["phone_chronicle_characters", "unsupported", "需要可用的人物与纪要映射"]);
+  }
   const backgroundErrors = capabilities.filter(
     ([name, status]) =>
       ["phone_characters", "phone_chronicles", "phone_items"].includes(name!) &&

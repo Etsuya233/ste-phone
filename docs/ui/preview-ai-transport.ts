@@ -54,7 +54,9 @@ export function createPreviewAiTransport(mode: string | null): AiTransport {
         mode === "slow" ? 15_000 : 600,
       );
       options?.signal?.addEventListener("abort", abort, { once: true });
-      if (options?.signal?.aborted) abort();
+      if (options?.signal?.aborted) {
+        abort();
+      }
       return stream;
     },
   };

@@ -65,9 +65,15 @@ export function createPreviewMemory(mode: string | null): MemoryReadApi {
           record.createdAt,
           ...tableFields.map((field) => {
             const value = record.payload[field.id];
-            if (value === undefined || value === null) return null;
-            if (Array.isArray(value)) return JSON.stringify(value);
-            if (typeof value === "boolean") return Number(value);
+            if (value === undefined || value === null) {
+              return null;
+            }
+            if (Array.isArray(value)) {
+              return JSON.stringify(value);
+            }
+            if (typeof value === "boolean") {
+              return Number(value);
+            }
             return value as SqlValue;
           }),
         ]),
@@ -79,9 +85,12 @@ export function createPreviewMemory(mode: string | null): MemoryReadApi {
     chat: {
       version: 1,
       async readRecent({ chatIdentity, count }) {
-        if (chatIdentity !== context.chatIdentity || !context.available)
+        if (chatIdentity !== context.chatIdentity || !context.available) {
           throw new Error("预览：聊天资料不可用");
-        if (mode === "error") throw new Error("预览：聊天读取失败");
+        }
+        if (mode === "error") {
+          throw new Error("预览：聊天读取失败");
+        }
         const messages =
           mode === "empty"
             ? []
@@ -114,7 +123,9 @@ export function createPreviewMemory(mode: string | null): MemoryReadApi {
     database: {
       version: 1,
       async describe() {
-        if (mode === "error") throw new Error("预览：Memory 数据库读取失败");
+        if (mode === "error") {
+          throw new Error("预览：Memory 数据库读取失败");
+        }
         return description;
       },
       async registerViews({ views }) {

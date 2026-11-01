@@ -9,12 +9,13 @@ import { DiarySheet, DiarySheetHeading, useDiaryCopy } from "./diary-paper.tsx";
 
 export function DiaryDetailPage(props: DiaryPageProps & { id: string }) {
   const entry = props.state.data.entries.find((item) => item.id === props.id);
-  if (!entry)
+  if (!entry) {
     return (
       <DiaryPage state={props.state} title="日记" onBack={props.navigation.pop} backLabel="日记本">
         <p className="diary-missing">这篇日记已经不在日记本里了。</p>
       </DiaryPage>
     );
+  }
   function writeAnother() {
     props.diary.startWriting();
     props.navigation.push({ page: "write" });

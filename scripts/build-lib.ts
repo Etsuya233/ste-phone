@@ -40,7 +40,9 @@ export const OBSOLETE_DIST_FILES = [
 ] as const;
 
 export function removeObsoleteAssets(outdir = DIST_DIR): void {
-  for (const file of OBSOLETE_DIST_FILES) rmSync(path.join(outdir, file), { force: true });
+  for (const file of OBSOLETE_DIST_FILES) {
+    rmSync(path.join(outdir, file), { force: true });
+  }
 }
 
 export function writeManifest(): void {

@@ -83,11 +83,15 @@ export function PhoneDevice({
       homeTimer.current = null;
     }
     return () => {
-      if (homeTimer.current !== null) clearTimeout(homeTimer.current);
+      if (homeTimer.current !== null) {
+        clearTimeout(homeTimer.current);
+      }
     };
   }, [visible, page]);
   useLayoutEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      return;
+    }
     const measure = () => {
       const element = screen.current!;
       const size = {
@@ -120,14 +124,24 @@ export function PhoneDevice({
   };
   useEffect(() => {
     // Closing settles every visible operation; native dialog hiding must not strand a transition.
-    if (visible) return;
+    if (visible) {
+      return;
+    }
     setExposeDrag(emptyDrag);
-    if (quittingApp) completeQuit();
-    if (transition === "leaving" || transition === "expose-home") dispatch({ type: "home" });
-    if (transition) setTransition(null);
+    if (quittingApp) {
+      completeQuit();
+    }
+    if (transition === "leaving" || transition === "expose-home") {
+      dispatch({ type: "home" });
+    }
+    if (transition) {
+      setTransition(null);
+    }
   }, [visible, transition, quittingApp]);
   useEffect(() => {
-    if (!visible || transition || page === "expose") return;
+    if (!visible || transition || page === "expose") {
+      return;
+    }
     const target =
       page === "home"
         ? screen.current!.querySelector<HTMLButtonElement>(
@@ -141,9 +155,15 @@ export function PhoneDevice({
   useEffect(() => {
     const preference = matchMedia("(prefers-reduced-motion: reduce)");
     const finish = () => {
-      if (!preference.matches) return;
-      if (quittingApp) completeQuit();
-      if (transition === "leaving" || transition === "expose-home") dispatch({ type: "home" });
+      if (!preference.matches) {
+        return;
+      }
+      if (quittingApp) {
+        completeQuit();
+      }
+      if (transition === "leaving" || transition === "expose-home") {
+        dispatch({ type: "home" });
+      }
       setTransition(null);
     };
     preference.addEventListener("change", finish);
@@ -151,9 +171,13 @@ export function PhoneDevice({
   }, [transition, quittingApp]);
   const open = useCallback(
     (event: MouseEvent<HTMLButtonElement> | undefined, app: AppId) => {
-      if (transition || quittingApp) return;
+      if (transition || quittingApp) {
+        return;
+      }
       const layout = homeScreen.getSnapshot();
-      if (![...layout.grid, ...layout.dock].includes(app)) throw new Error("应用未安装");
+      if (![...layout.grid, ...layout.dock].includes(app)) {
+        throw new Error("应用未安装");
+      }
       setEditingHome(false);
       if (event) {
         const icon = event.currentTarget.getBoundingClientRect();
@@ -177,7 +201,9 @@ export function PhoneDevice({
   );
   const openApp = useCallback((app: AppId) => open(undefined, app), [open]);
   const home = useCallback(() => {
-    if (page === "home") return;
+    if (page === "home") {
+      return;
+    }
     if (quittingApp) {
       apps[quittingApp].onQuit?.();
       dispatch({ type: "quit", app: quittingApp });
@@ -204,14 +230,18 @@ export function PhoneDevice({
     }
   }, [page, quittingApp, session.recent.length, apps]);
   const expose = () => {
-    if (quittingApp) completeQuit();
+    if (quittingApp) {
+      completeQuit();
+    }
     setExposeIndex(0);
     setExposeDrag(emptyDrag);
     dispatch({ type: "expose" });
     setTransition(null);
   };
   const quit = (app: AppId) => {
-    if (transition || quittingApp) return;
+    if (transition || quittingApp) {
+      return;
+    }
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
       const removed = session.recent.indexOf(app);
       apps[app].onQuit?.();
@@ -219,7 +249,9 @@ export function PhoneDevice({
       setExposeIndex((index) =>
         Math.max(0, Math.min(index - (removed < index ? 1 : 0), session.recent.length - 2)),
       );
-    } else setQuittingApp(app);
+    } else {
+      setQuittingApp(app);
+    }
     setExposeDrag(emptyDrag);
   };
   // Leave space above and below the preview-and-icon group, including on short screens.
@@ -244,11 +276,12 @@ export function PhoneDevice({
       clearTimeout(homeTimer.current);
       homeTimer.current = null;
       expose();
-    } else
+    } else {
       homeTimer.current = setTimeout(() => {
         homeTimer.current = null;
         home();
       }, 280);
+    }
   };
   return (
     <div className="phone-device">
@@ -322,14 +355,22 @@ export function PhoneDevice({
                   } as CSSProperties
                 }
                 onTransitionEnd={(event) => {
-                  if (event.target !== event.currentTarget || event.propertyName !== "transform")
+                  if (event.target !== event.currentTarget || event.propertyName !== "transform") {
                     return;
-                  if (quittingApp === app) completeQuit();
-                  else if (foreground && transition === "resuming") setTransition(null);
+                  }
+                  if (quittingApp === app) {
+                    completeQuit();
+                  } else if (foreground && transition === "resuming") {
+                    setTransition(null);
+                  }
                 }}
                 onAnimationEnd={(event) => {
-                  if (event.target !== event.currentTarget) return;
-                  if (transition === "leaving") dispatch({ type: "home" });
+                  if (event.target !== event.currentTarget) {
+                    return;
+                  }
+                  if (transition === "leaving") {
+                    dispatch({ type: "home" });
+                  }
                   setTransition(null);
                 }}
               >

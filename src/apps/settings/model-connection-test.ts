@@ -62,20 +62,27 @@ export function createModelConnectionTest(
         }
       },
     });
-    if (toolFailure) throw toolFailure;
-    if (reply?.role !== "assistant") throw new Error("连接测试未收到模型回复");
-    if (reply.stopReason === "error" || reply.stopReason === "aborted")
+    if (toolFailure) {
+      throw toolFailure;
+    }
+    if (reply?.role !== "assistant") {
+      throw new Error("连接测试未收到模型回复");
+    }
+    if (reply.stopReason === "error" || reply.stopReason === "aborted") {
       throw new Error(
         timedOut
           ? `连接测试超时（${timeoutMs / 1000} 秒）：${reply.errorMessage}`
           : reply.errorMessage,
         { cause: reply.diagnostics },
       );
+    }
     const text = reply.content
       .filter((block) => block.type === "text")
       .map((block) => block.text)
       .join("");
-    if (!text.trim()) throw new Error("连接测试收到空回复", { cause: reply });
+    if (!text.trim()) {
+      throw new Error("连接测试收到空回复", { cause: reply });
+    }
     return { text, truncated: reply.stopReason === "length" };
   };
 }

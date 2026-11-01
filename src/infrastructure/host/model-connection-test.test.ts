@@ -235,7 +235,9 @@ test("total timeout and user cancel stop a pending stream and settle the Pi run"
     const controller = new AbortController();
     const promise = run(connection(), controller.signal);
     await responseStarted;
-    if (!timeout) controller.abort();
+    if (!timeout) {
+      controller.abort();
+    }
     await assert.rejects(promise, timeout ? /超时/ : /取消/);
     assert.equal(canceled, true);
   }

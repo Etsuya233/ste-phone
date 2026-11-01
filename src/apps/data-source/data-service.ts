@@ -52,15 +52,18 @@ export class PhoneDataService implements DataAppPublic {
   async readRecentChat(request: DataScope & { readonly count: number }) {
     request = { ...request };
     this.#assertScope(request);
-    if (!Number.isSafeInteger(request.count) || request.count <= 0)
+    if (!Number.isSafeInteger(request.count) || request.count <= 0) {
       throw new Error("最近聊天条数须为正整数");
-    if (!this.#provider.readRecentChat)
+    }
+    if (!this.#provider.readRecentChat) {
       throw new Error("资料来源缺少清洗聊天读取能力，请更新 STE Memory");
+    }
     const generation = this.#generation;
     const result = await this.#provider.readRecentChat(request.count);
     this.#assertScope(request, generation);
-    if (result.chatIdentity !== request.chatIdentity)
+    if (result.chatIdentity !== request.chatIdentity) {
       throw new Error("资料来源返回了其他聊天的消息");
+    }
     return Object.freeze({
       chatIdentity: result.chatIdentity,
       cleaning: Object.freeze({ ...result.cleaning }),
@@ -73,21 +76,30 @@ export class PhoneDataService implements DataAppPublic {
   ): Promise<DatabaseSchema> {
     request = { ...request };
     this.#assertScope(request);
-    if (!this.#provider.getContext().available)
+    if (!this.#provider.getContext().available) {
       throw new Error(this.#provider.getContext().message ?? "数据源不可用");
-    if (this.#pending) return this.#pending;
-    if (!options.force && !this.#dirty && this.#schema) return this.#schema;
+    }
+    if (this.#pending) {
+      return this.#pending;
+    }
+    if (!options.force && !this.#dirty && this.#schema) {
+      return this.#schema;
+    }
     const generation = this.#generation;
     const revision = this.#revision;
     const pending = (async () => {
       const schema = await this.#provider.describe();
       this.#assertScope(request, generation);
-      if (schema.scopeId !== request.scopeId) throw new Error("数据源返回了其他记忆空间的结构");
+      if (schema.scopeId !== request.scopeId) {
+        throw new Error("数据源返回了其他记忆空间的结构");
+      }
       await this.#provider.register(schema);
       this.#assertScope(request, generation);
       for (const object of schema.objects) {
         for (const column of object.columns) {
-          if (column.reference) Object.freeze(column.reference);
+          if (column.reference) {
+            Object.freeze(column.reference);
+          }
           Object.freeze(column);
         }
         Object.freeze(object.columns);
@@ -97,10 +109,14 @@ export class PhoneDataService implements DataAppPublic {
       Object.freeze(schema);
       this.#schema = schema;
       this.#dirty = revision !== this.#revision;
-      if (this.#snapshot.sourceId !== schema.sourceId) this.#publish();
+      if (this.#snapshot.sourceId !== schema.sourceId) {
+        this.#publish();
+      }
       return schema;
     })().finally(() => {
-      if (this.#pending === pending) this.#pending = undefined;
+      if (this.#pending === pending) {
+        this.#pending = undefined;
+      }
     });
     this.#pending = pending;
     return pending;
@@ -123,7 +139,9 @@ export class PhoneDataService implements DataAppPublic {
   }
   dispose(): void {
     this.#generation++;
-    for (const unsubscribe of this.#unsubscribe) unsubscribe();
+    for (const unsubscribe of this.#unsubscribe) {
+      unsubscribe();
+    }
     this.#background.dispose();
     this.#listeners.clear();
   }
@@ -149,8 +167,9 @@ export class PhoneDataService implements DataAppPublic {
     if (
       (generation !== undefined && generation !== this.#generation) ||
       binding(request) !== binding(context)
-    )
+    ) {
       throw new Error("资料或聊天已变化，本次查询已取消");
+    }
   }
   #publish(): void {
     this.#snapshot = Object.freeze({
@@ -159,6 +178,8 @@ export class PhoneDataService implements DataAppPublic {
       revision: this.#revision,
       sourceId: this.#schema?.sourceId ?? this.#background.getState().data?.sourceId ?? null,
     });
-    for (const listener of this.#listeners) listener();
+    for (const listener of this.#listeners) {
+      listener();
+    }
   }
 }

@@ -18,13 +18,16 @@ export function DiaryWritePage(props: DiaryPageProps) {
   const actionsAbove = writing || generation.status === "save-error";
 
   useEffect(() => {
-    if (navigation.current) void diary.prepare();
+    if (navigation.current) {
+      void diary.prepare();
+    }
   }, [diary, navigation.current]);
 
-  if (generation.status === "complete")
+  if (generation.status === "complete") {
     return (
       <DiaryEntryPage {...props} entry={generation.entry} onWrite={() => void diary.generate()} />
     );
+  }
 
   const actions = (
     <WriteActions
@@ -85,9 +88,10 @@ export function DiaryWritePage(props: DiaryPageProps) {
 
 function WritingContent({ state }: { state: DiarySnapshot }) {
   const { generation, preparing, data } = state;
-  if (preparing || generation.status === "reading")
+  if (preparing || generation.status === "reading") {
     return <WritingStatus>正在翻开今天的记忆</WritingStatus>;
-  if (generation.status === "generating")
+  }
+  if (generation.status === "generating") {
     return generation.text ? (
       <div className="diary-body diary-body--live">
         {generation.text}
@@ -96,15 +100,18 @@ function WritingContent({ state }: { state: DiarySnapshot }) {
     ) : (
       <WritingStatus>正在落笔</WritingStatus>
     );
-  if (generation.status === "saving")
+  }
+  if (generation.status === "saving") {
     return (
       <>
         <div className="diary-body">{generation.entry.body}</div>
         <WritingStatus>正在收进日记本</WritingStatus>
       </>
     );
-  if (generation.status === "save-error")
+  }
+  if (generation.status === "save-error") {
     return <div className="diary-body">{generation.entry.body}</div>;
+  }
   return (
     <p className="diary-writing-placeholder">
       {data.author
@@ -140,9 +147,10 @@ function WriteActions({
 }) {
   const { generation, data, chatId } = state;
 
-  if (generation.status === "save-error")
+  if (generation.status === "save-error") {
     return <SaveErrorActions body={generation.entry.body} onRetry={() => void diary.retrySave()} />;
-  if (writing)
+  }
+  if (writing) {
     return (
       <div className="diary-write-actions">
         <Button
@@ -154,7 +162,8 @@ function WriteActions({
         </Button>
       </div>
     );
-  if (busy)
+  }
+  if (busy) {
     return (
       <div className="diary-write-actions">
         <Button variant="filled" disabled>
@@ -162,6 +171,7 @@ function WriteActions({
         </Button>
       </div>
     );
+  }
   return (
     <div className="diary-write-actions">
       {data.author ? (

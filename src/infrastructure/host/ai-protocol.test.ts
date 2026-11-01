@@ -91,8 +91,9 @@ test("Pi executes a complete tool roundtrip through ST request and response conv
   );
   const reply = agent.state.messages.at(-1)!;
   assert.equal(reply.role, "assistant");
-  if (reply.role === "assistant")
+  if (reply.role === "assistant") {
     assert.ok(reply.content.some((block) => block.type === "text" && block.text === "完成"));
+  }
 });
 
 test("HTTP errors preserve the complete response and original credentials in Pi diagnostics", async () => {

@@ -58,13 +58,15 @@ export function AppStore({
                 className="store-action"
                 aria-label={`${installed.has(id) ? "打开" : "获取"}${appCatalog[id].name}`}
                 onClick={() => {
-                  if (installed.has(id)) onOpen(id);
-                  else
+                  if (installed.has(id)) {
+                    onOpen(id);
+                  } else {
                     try {
                       homeScreen.install(id);
                     } catch (cause) {
                       setError((cause as Error).message);
                     }
+                  }
                 }}
               >
                 {installed.has(id) ? "打开" : "获取"}

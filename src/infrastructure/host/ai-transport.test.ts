@@ -51,8 +51,9 @@ test("request logs retain the exact malformed response and its original cause", 
   const details = logs[2]!.streamEvent as { delta: Record<string, unknown> };
   assert.deepEqual(details.delta.tool_calls, { type: "object" });
   const serialized = JSON.stringify(logs);
-  for (const secret of ["private-key", "private-header", "private-prompt"])
+  for (const secret of ["private-key", "private-header", "private-prompt"]) {
     assert.ok(!serialized.includes(secret));
+  }
   assert.ok(serialized.includes("private-reply"));
   assert.ok(serialized.includes("private-thought"));
 });
@@ -196,7 +197,9 @@ test("transport propagates caller cancellation and timeout to pending reads", as
         { signal: controller.signal, ...(timeout ? { timeoutMs: 15 } : {}) },
       );
       await started;
-      if (!timeout) controller.abort();
+      if (!timeout) {
+        controller.abort();
+      }
       const result = await stream.result();
       assert.equal(result.stopReason, "aborted");
       assert.match(result.errorMessage!, timeout ? /超时/ : /取消/);

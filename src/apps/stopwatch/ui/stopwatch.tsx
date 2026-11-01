@@ -10,7 +10,9 @@ export function Stopwatch({ onExit, active }: { onExit: () => void; active: bool
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
-    if (!running || !active) return;
+    if (!running || !active) {
+      return;
+    }
     let frame: number;
     const tick = () => {
       setElapsed(accumulated.current + performance.now() - started.current);
@@ -23,7 +25,9 @@ export function Stopwatch({ onExit, active }: { onExit: () => void; active: bool
     if (running) {
       accumulated.current += performance.now() - started.current;
       setElapsed(accumulated.current);
-    } else started.current = performance.now();
+    } else {
+      started.current = performance.now();
+    }
     setRunning(!running);
   };
   const centiseconds = Math.floor(elapsed / 10);

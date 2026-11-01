@@ -125,7 +125,7 @@ test("background queries paginate complete required data and never query custom-
     const insert = f.memory.db.prepare(
       'INSERT INTO characters ("$record_id","$stable_id","$created_at",name,personality,background,current_status) VALUES(?,?,?,?,?,?,?)',
     );
-    for (let index = 0; index < 405; index++)
+    for (let index = 0; index < 405; index++) {
       insert.run(
         `extra-${index}`,
         `extra-${index}`,
@@ -135,6 +135,7 @@ test("background queries paginate complete required data and never query custom-
         "经历",
         "近况",
       );
+    }
     const data = await f.source.readBackground(f.source.getSnapshot().context);
     assert.equal(data.characters.length, 408);
     assert.match(data.items[0]!.description, /小蓝/);

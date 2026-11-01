@@ -15,10 +15,14 @@ const sync: Plugin = {
   name: "ste-phone-sync",
   setup(build) {
     build.onEnd((result) => {
-      if (result.errors.length > 0) return;
+      if (result.errors.length > 0) {
+        return;
+      }
       writeManifest();
       removeObsoleteAssets();
-      if (target) syncExtension(DIST_DIR, target);
+      if (target) {
+        syncExtension(DIST_DIR, target);
+      }
     });
   },
 };
@@ -42,7 +46,9 @@ console.info(`[STE Phone] watch 已启动，${target ? `同步至 ${target}` : "
 console.info("修改后刷新 ST 页面；Ctrl+C 退出。");
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
-    for (const watcher of watchers) watcher.close();
+    for (const watcher of watchers) {
+      watcher.close();
+    }
     void ctx.dispose();
   });
 }

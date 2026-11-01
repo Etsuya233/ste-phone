@@ -33,16 +33,22 @@ export class SqliteDatabase {
       db.exec("BEGIN");
       for (const object of snapshot.objects) {
         const key = identifierKey(object.name);
-        if (names.has(key)) throw new Error(`SQLite 对象名碰撞：${object.name}`);
+        if (names.has(key)) {
+          throw new Error(`SQLite 对象名碰撞：${object.name}`);
+        }
         names.add(key);
         const columns = new Set<string>();
         for (const column of object.columns) {
           const key = identifierKey(column.name);
-          if (columns.has(key)) throw new Error(`SQLite 列名碰撞：${object.name}.${column.name}`);
+          if (columns.has(key)) {
+            throw new Error(`SQLite 列名碰撞：${object.name}.${column.name}`);
+          }
           columns.add(key);
         }
         if (object.kind === "view") {
-          if (!object.select) throw new Error(`视图缺少 SELECT：${object.name}`);
+          if (!object.select) {
+            throw new Error(`视图缺少 SELECT：${object.name}`);
+          }
           db.exec(`CREATE VIEW ${quoteIdentifier(object.name)} AS ${object.select}`);
         } else {
           db.exec(
@@ -63,8 +69,9 @@ export class SqliteDatabase {
         }
       }
       // 提前编译全部视图，错误不能延迟到成功发布后才暴露。
-      for (const object of snapshot.objects)
+      for (const object of snapshot.objects) {
         db.exec(`SELECT * FROM ${quoteIdentifier(object.name)} LIMIT 0`);
+      }
       db.exec("COMMIT");
     } catch (error) {
       db.close();
@@ -92,7 +99,9 @@ export class SqliteDatabase {
     } = {},
   ): QueryResult {
     const db = this.#db;
-    if (!db || binding !== this.#binding) throw new Error("当前聊天的数据库尚未就绪，请刷新");
+    if (!db || binding !== this.#binding) {
+      throw new Error("当前聊天的数据库尚未就绪，请刷新");
+    }
     const { capi, wasm } = this.#sqlite;
     const started = performance.now();
     const maxRows = options.maxRows ?? 200;
@@ -116,22 +125,28 @@ export class SqliteDatabase {
     capi.sqlite3_set_authorizer(
       db.pointer!,
       (_arg, action, tableName, columnName, databaseName) => {
-        if (!actions.has(action)) return capi.SQLITE_DENY;
+        if (!actions.has(action)) {
+          return capi.SQLITE_DENY;
+        }
         if (
           action === capi.SQLITE_FUNCTION &&
           dangerousFunctions.has(String(columnName).toLowerCase())
-        )
+        ) {
           return capi.SQLITE_DENY;
+        }
         if (action === capi.SQLITE_READ) {
           const table = identifierKey(String(tableName));
-          if (["json_each", "json_tree"].includes(table)) return capi.SQLITE_OK;
+          if (["json_each", "json_tree"].includes(table)) {
+            return capi.SQLITE_OK;
+          }
           const columns = this.#allowed.get(table);
           if (
             (databaseName && databaseName !== "main") ||
             !columns ||
             (columnName !== "" && !columns.has(identifierKey(String(columnName))))
-          )
+          ) {
             return capi.SQLITE_DENY;
+          }
         }
         return capi.SQLITE_OK;
       },
@@ -148,7 +163,9 @@ export class SqliteDatabase {
       tailPointer = 0,
       statement = 0;
     try {
-      if (sql.includes("\0")) throw new Error("SQL 不能包含 NUL");
+      if (sql.includes("\0")) {
+        throw new Error("SQL 不能包含 NUL");
+      }
       source = wasm.allocCString(sql, false);
       statementPointer = wasm.allocPtr(1);
       tailPointer = wasm.allocPtr(1);
@@ -166,11 +183,15 @@ export class SqliteDatabase {
         try {
           db.checkRc(code);
         } catch (error) {
-          if (next) capi.sqlite3_finalize(next);
+          if (next) {
+            capi.sqlite3_finalize(next);
+          }
           throw error;
         }
         cursor = wasm.peekPtr(tailPointer);
-        if (!next) continue;
+        if (!next) {
+          continue;
+        }
         if (statement) {
           capi.sqlite3_finalize(next);
           throw new Error("SQL 只允许一条只读查询语句");
@@ -181,15 +202,20 @@ export class SqliteDatabase {
         !statement ||
         !capi.sqlite3_stmt_readonly(statement) ||
         capi.sqlite3_column_count(statement) === 0
-      )
+      ) {
         throw new Error("SQL 需要一条返回结果的只读查询语句");
+      }
       const unused = new Set(Object.keys(options.params ?? {}));
       for (let index = 1; index <= capi.sqlite3_bind_parameter_count(statement); index++) {
         const name = capi.sqlite3_bind_parameter_name(statement, index);
-        if (!name || !name.startsWith(":")) throw new Error("SQL 绑定参数必须使用 :name");
+        if (!name || !name.startsWith(":")) {
+          throw new Error("SQL 绑定参数必须使用 :name");
+        }
         const key = name.slice(1);
         const value = options.params?.[key];
-        if (value === undefined) throw new Error(`SQL 缺少绑定参数：${name}`);
+        if (value === undefined) {
+          throw new Error(`SQL 缺少绑定参数：${name}`);
+        }
         unused.delete(key);
         if (typeof value === "string") {
           const text = wasm.allocCString(value, false);
@@ -206,14 +232,17 @@ export class SqliteDatabase {
           } finally {
             wasm.dealloc(text);
           }
-        } else
+        } else {
           db.checkRc(
             value === null
               ? capi.sqlite3_bind_null(statement, index)
               : capi.sqlite3_bind_double(statement, index, value),
           );
+        }
       }
-      if (unused.size) throw new Error(`SQL 包含未使用的绑定参数：${[...unused].join("、")}`);
+      if (unused.size) {
+        throw new Error(`SQL 包含未使用的绑定参数：${[...unused].join("、")}`);
+      }
       const columns = Array.from({ length: capi.sqlite3_column_count(statement) }, (_, index) =>
         capi.sqlite3_column_name(statement, index)!,
       );
@@ -222,35 +251,51 @@ export class SqliteDatabase {
         bytes = 0,
         step: number;
       while ((step = capi.sqlite3_step(statement)) === capi.SQLITE_ROW) {
-        if (performance.now() >= deadline) throw new Error(`SQL 执行超时（${budgetMs} ms）`);
+        if (performance.now() >= deadline) {
+          throw new Error(`SQL 执行超时（${budgetMs} ms）`);
+        }
         if (rows.length === maxRows) {
           truncated = true;
           break;
         }
         const row = columns.map((_, index): SqlValue => {
           const value = capi.sqlite3_column_js(statement, index);
-          if (value instanceof Uint8Array)
+          if (value instanceof Uint8Array) {
             throw new Error("结果包含 Blob，请使用 hex() 或转换为文本");
+          }
           return typeof value === "bigint" ? value.toString() : (value as SqlValue);
         });
         bytes += new TextEncoder().encode(JSON.stringify(row)).byteLength;
-        if (bytes > 2_000_000) throw new Error("查询结果超过 2 MB，请缩小选择的列或行数");
+        if (bytes > 2_000_000) {
+          throw new Error("查询结果超过 2 MB，请缩小选择的列或行数");
+        }
         rows.push(row);
       }
       if (!truncated && step !== capi.SQLITE_DONE) {
-        if (step === capi.SQLITE_INTERRUPT) throw new Error(`SQL 执行超时（${budgetMs} ms）`);
+        if (step === capi.SQLITE_INTERRUPT) {
+          throw new Error(`SQL 执行超时（${budgetMs} ms）`);
+        }
         db.checkRc(step);
       }
       return { columns, rows, truncated, maxRows, elapsedMs: performance.now() - started };
     } catch (error) {
-      if (performance.now() >= deadline)
+      if (performance.now() >= deadline) {
         throw new Error(`SQL 执行超时（${budgetMs} ms）`, { cause: error });
+      }
       throw error;
     } finally {
-      if (statement) capi.sqlite3_finalize(statement);
-      if (source) wasm.dealloc(source);
-      if (statementPointer) wasm.dealloc(statementPointer);
-      if (tailPointer) wasm.dealloc(tailPointer);
+      if (statement) {
+        capi.sqlite3_finalize(statement);
+      }
+      if (source) {
+        wasm.dealloc(source);
+      }
+      if (statementPointer) {
+        wasm.dealloc(statementPointer);
+      }
+      if (tailPointer) {
+        wasm.dealloc(tailPointer);
+      }
       capi.sqlite3_set_authorizer(db.pointer!, () => capi.SQLITE_OK, 0);
       capi.sqlite3_progress_handler(db.pointer!, 0, 0, 0);
       limits.forEach(([id], index) => capi.sqlite3_limit(db.pointer!, id, previousLimits[index]!));

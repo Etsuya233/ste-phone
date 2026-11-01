@@ -52,14 +52,20 @@ export class QueryBackgroundProvider implements BackgroundProvider {
           sql: `SELECT stable_record_id,${name},profile_text FROM ${view} ORDER BY created_at,record_id LIMIT 200 OFFSET :offset`,
           params: { offset },
         });
-        if (page.truncated) throw new Error(`资料分页被截断：${view}`);
+        if (page.truncated) {
+          throw new Error(`资料分页被截断：${view}`);
+        }
         all.push(...page.rows.map((row) => [...row]));
-        if (page.rows.length < 200) break;
+        if (page.rows.length < 200) {
+          break;
+        }
       }
       rows.push(all);
     }
     const text = (value: SqlValue | undefined): string => {
-      if (typeof value !== "string") throw new Error("标准资料视图返回了非文本值");
+      if (typeof value !== "string") {
+        throw new Error("标准资料视图返回了非文本值");
+      }
       return value;
     };
     return {

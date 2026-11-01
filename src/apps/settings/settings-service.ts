@@ -49,8 +49,9 @@ export class PhoneSettingsService {
     getSnapshot: () => this.homeSnapshot,
     subscribe: (listener) => this.subscribe(listener),
     install: (app) => {
-      if ([...this.state.homeLayout.grid, ...this.state.homeLayout.dock].includes(app))
+      if ([...this.state.homeLayout.grid, ...this.state.homeLayout.dock].includes(app)) {
         throw new Error("应用已安装");
+      }
       this.save({
         ...this.state,
         homeLayout: {
@@ -60,9 +61,12 @@ export class PhoneSettingsService {
       });
     },
     uninstall: (app) => {
-      if (!appCatalog[app].removable) throw new Error("此应用不可卸载");
-      if (![...this.state.homeLayout.grid, ...this.state.homeLayout.dock].includes(app))
+      if (!appCatalog[app].removable) {
+        throw new Error("此应用不可卸载");
+      }
+      if (![...this.state.homeLayout.grid, ...this.state.homeLayout.dock].includes(app)) {
         throw new Error("应用未安装");
+      }
       this.save({
         ...this.state,
         homeLayout: {
@@ -73,14 +77,19 @@ export class PhoneSettingsService {
     },
     move: (app, area, index) => {
       const layout = this.state.homeLayout;
-      if (![...layout.grid, ...layout.dock].includes(app)) throw new Error("应用未安装");
+      if (![...layout.grid, ...layout.dock].includes(app)) {
+        throw new Error("应用未安装");
+      }
       const next = {
         grid: layout.grid.filter((id) => id !== app),
         dock: layout.dock.filter((id) => id !== app),
       };
-      if (area === "dock" && next.dock.length === 4) throw new Error("Dock 最多放四个应用");
-      if (!Number.isInteger(index) || index < 0 || index > next[area].length)
+      if (area === "dock" && next.dock.length === 4) {
+        throw new Error("Dock 最多放四个应用");
+      }
+      if (!Number.isInteger(index) || index < 0 || index > next[area].length) {
         throw new Error("无效的图标位置");
+      }
       next[area].splice(index, 0, app);
       this.save({ ...this.state, homeLayout: next });
     },
@@ -94,15 +103,18 @@ export class PhoneSettingsService {
     subscribe: (listener) => this.subscribe(listener),
     getConnection: (id) => {
       const connection = this.state.modelConnections.find((item) => item.id === id);
-      if (!connection) throw new Error("模型连接不存在");
+      if (!connection) {
+        throw new Error("模型连接不存在");
+      }
       return { ...connection, customHeaders: { ...connection.customHeaders } };
     },
   };
   constructor(storage: SettingsStorage) {
     this.storage = storage;
     const stored = storage.read();
-    if (!stored) this.state = defaultSettings;
-    else if (stored.version === 1) {
+    if (!stored) {
+      this.state = defaultSettings;
+    } else if (stored.version === 1) {
       // Version 1 selected host backgrounds and external URLs; neither belongs to the Phone library.
       this.state = { ...defaultSettings, wallpaper: { kind: "gradient" }, blur: stored.blur };
       storage.save(this.state);
@@ -112,8 +124,11 @@ export class PhoneSettingsService {
     } else if (stored.version === 3) {
       this.state = { ...stored, version: 4, homeLayout: defaultHomeLayout };
       storage.save(this.state);
-    } else if (stored.version === 4) this.state = stored;
-    else throw new Error("不支持的手机设置版本");
+    } else if (stored.version === 4) {
+      this.state = stored;
+    } else {
+      throw new Error("不支持的手机设置版本");
+    }
     this.updateSnapshots();
   }
   getState = () => this.state;
@@ -125,10 +140,12 @@ export class PhoneSettingsService {
   };
   listWallpapers = () => this.storage.listWallpapers();
   async uploadWallpaper(image: Blob): Promise<WallpaperImage> {
-    if (!Object.hasOwn(wallpaperFormats, image.type))
+    if (!Object.hasOwn(wallpaperFormats, image.type)) {
       throw new Error("请选择 PNG、JPEG 或 WebP 图片");
-    if (image.size === 0 || image.size > 10 * 1024 * 1024)
+    }
+    if (image.size === 0 || image.size > 10 * 1024 * 1024) {
       throw new Error("图片大小需在 10 MB 以内");
+    }
     return this.storage.uploadWallpaper(image);
   }
   imageUrl(wallpaper: Wallpaper): string | undefined {
@@ -152,8 +169,9 @@ export class PhoneSettingsService {
     });
   }
   deleteModelConnection(id: string) {
-    if (!this.state.modelConnections.some((connection) => connection.id === id))
+    if (!this.state.modelConnections.some((connection) => connection.id === id)) {
       throw new Error("模型连接不存在");
+    }
     this.save({
       ...this.state,
       modelConnections: this.state.modelConnections.filter((connection) => connection.id !== id),
@@ -162,16 +180,21 @@ export class PhoneSettingsService {
     });
   }
   selectDefaultModelConnection(id: string | null) {
-    if (id !== null && !this.state.modelConnections.some((connection) => connection.id === id))
+    if (id !== null && !this.state.modelConnections.some((connection) => connection.id === id)) {
       throw new Error("模型连接不存在");
+    }
     this.save({ ...this.state, defaultModelConnectionId: id });
   }
   defaultModelConnection(): ModelConnection {
-    if (this.state.defaultModelConnectionId === null) throw new Error("请先选择默认模型连接");
+    if (this.state.defaultModelConnectionId === null) {
+      throw new Error("请先选择默认模型连接");
+    }
     const connection = this.state.modelConnections.find(
       (item) => item.id === this.state.defaultModelConnectionId,
     );
-    if (!connection) throw new Error("默认模型连接不存在");
+    if (!connection) {
+      throw new Error("默认模型连接不存在");
+    }
     return validateModelConnection(connection);
   }
   private updateSnapshots() {

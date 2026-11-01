@@ -38,7 +38,9 @@ function fixture(readRecentChat?: DatabaseProvider["readRecentChat"]) {
     request: { chatIdentity: "memory-chat", scopeId: "space", count: 20 },
     change(chatIdentity: string) {
       context = { ...context, chatIdentity };
-      for (const listener of listeners) listener();
+      for (const listener of listeners) {
+        listener();
+      }
     },
   };
 }

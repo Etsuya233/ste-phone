@@ -105,11 +105,13 @@ test("upload only accepts nonempty PNG, JPEG and WebP files within 10 MB", async
     new Blob(["text"], { type: "text/plain" }),
     new Blob([], { type: "image/png" }),
     new Blob([new Uint8Array(10 * 1024 * 1024 + 1)], { type: "image/webp" }),
-  ])
+  ]) {
     await assert.rejects(service.uploadWallpaper(blob));
+  }
   assert.equal(uploads, 0);
-  for (const type of ["image/png", "image/jpeg", "image/webp"])
+  for (const type of ["image/png", "image/jpeg", "image/webp"]) {
     assert.deepEqual(await service.uploadWallpaper(new Blob(["image"], { type })), image);
+  }
   assert.equal(uploads, 3);
 });
 

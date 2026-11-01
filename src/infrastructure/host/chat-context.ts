@@ -34,15 +34,20 @@ export function createStChatContext(
           : context.characterId !== undefined
             ? ["character", context.characters[Number(context.characterId)]!.avatar]
             : null;
-      if (owner)
+      if (owner) {
         next = Object.freeze({
           id: JSON.stringify([...owner, context.chatId]),
           name: context.chatId,
         });
+      }
     }
-    if (snapshot?.id === next?.id && snapshot?.name === next?.name) return;
+    if (snapshot?.id === next?.id && snapshot?.name === next?.name) {
+      return;
+    }
     snapshot = next;
-    for (const listener of listeners) listener();
+    for (const listener of listeners) {
+      listener();
+    }
   };
   const { eventSource, eventTypes } = getContext();
   const events = [
@@ -52,7 +57,9 @@ export function createStChatContext(
     eventTypes.GROUP_UPDATED,
   ];
   refresh();
-  for (const event of events) eventSource.on(event, refresh);
+  for (const event of events) {
+    eventSource.on(event, refresh);
+  }
   return {
     getSnapshot: () => snapshot,
     subscribe: (listener) => {
@@ -62,7 +69,9 @@ export function createStChatContext(
       };
     },
     dispose: () => {
-      for (const event of events) eventSource.removeListener(event, refresh);
+      for (const event of events) {
+        eventSource.removeListener(event, refresh);
+      }
       listeners.clear();
     },
   };

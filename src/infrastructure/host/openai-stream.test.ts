@@ -52,8 +52,12 @@ function streamedResponse(bytes: Uint8Array[], close = true, onCancel = () => {}
   return new Response(
     new ReadableStream<Uint8Array>({
       start(controller) {
-        for (const chunk of bytes) controller.enqueue(chunk);
-        if (close) controller.close();
+        for (const chunk of bytes) {
+          controller.enqueue(chunk);
+        }
+        if (close) {
+          controller.close();
+        }
       },
       cancel: onCancel,
     }),

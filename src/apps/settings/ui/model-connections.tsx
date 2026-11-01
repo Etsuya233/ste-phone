@@ -172,10 +172,14 @@ export function ModelConnectionEditor({
   const running = test.status === "running";
 
   useEffect(() => {
-    if (current && error) errorElement.current?.focus();
+    if (current && error) {
+      errorElement.current?.focus();
+    }
   }, [current, error]);
   useEffect(() => {
-    if (current && confirmation) confirmationButton.current?.focus();
+    if (current && confirmation) {
+      confirmationButton.current?.focus();
+    }
   }, [current, confirmation]);
 
   useEffect(
@@ -209,7 +213,9 @@ export function ModelConnectionEditor({
   function connectionFromDraft(): ModelConnection {
     const entries = draft.headers.map(({ name, value }) => [name, value] as const);
     const headerError = connectionHeaderError(entries);
-    if (headerError) throw new Error(headerError);
+    if (headerError) {
+      throw new Error(headerError);
+    }
     return validateModelConnection({
       id: draft.id,
       name: draft.name,
@@ -226,13 +232,20 @@ export function ModelConnectionEditor({
     setTestPresented(false);
   }
   function dismissTest() {
-    if (running) cancelTest();
+    if (running) {
+      cancelTest();
+    }
     setTestPresented(false);
   }
   function leave() {
-    if (running) cancelTest();
-    if (dirty) setConfirmation("discard");
-    else onBack();
+    if (running) {
+      cancelTest();
+    }
+    if (dirty) {
+      setConfirmation("discard");
+    } else {
+      onBack();
+    }
   }
   function save() {
     try {
@@ -259,15 +272,20 @@ export function ModelConnectionEditor({
     setTest({ status: "running", text: "" });
     try {
       const result = await testModelConnection(candidate, controller.signal, (text) => {
-        if (currentTest.current === controller && !controller.signal.aborted)
+        if (currentTest.current === controller && !controller.signal.aborted) {
           setTest({ status: "running", text });
+        }
       });
       // An edited draft or an unmounted editor no longer owns this response.
-      if (currentTest.current !== controller) return;
+      if (currentTest.current !== controller) {
+        return;
+      }
       currentTest.current = null;
       setTest({ status: "success", ...result });
     } catch (failure) {
-      if (currentTest.current !== controller) return;
+      if (currentTest.current !== controller) {
+        return;
+      }
       currentTest.current = null;
       setTest({
         status: "error",
@@ -429,8 +447,11 @@ export function ModelConnectionEditor({
                       onClick={() =>
                         setVisibleHeaders((previous) => {
                           const next = new Set(previous);
-                          if (next.has(header.id)) next.delete(header.id);
-                          else next.add(header.id);
+                          if (next.has(header.id)) {
+                            next.delete(header.id);
+                          } else {
+                            next.add(header.id);
+                          }
                           return next;
                         })
                       }
@@ -470,7 +491,9 @@ export function ModelConnectionEditor({
               className="model-connection-wide-action"
               variant="danger"
               onClick={() => {
-                if (running) cancelTest();
+                if (running) {
+                  cancelTest();
+                }
                 setConfirmation("delete");
               }}
             >

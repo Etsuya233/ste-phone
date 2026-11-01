@@ -63,7 +63,9 @@ export function Expose({
   const suppressClick = useRef(false);
   const selected = apps[selectedIndex];
   useLayoutEffect(() => {
-    if (!visible || blocked) return;
+    if (!visible || blocked) {
+      return;
+    }
     const target = selected
       ? element.current!.querySelector<HTMLButtonElement>(
           `.expose-preview[data-expose-app="${selected}"]`,
@@ -72,13 +74,17 @@ export function Expose({
     target.focus({ preventScroll: true });
   }, [visible, blocked, selected, apps.length]);
   useEffect(() => {
-    if (visible && !blocked) return;
+    if (visible && !blocked) {
+      return;
+    }
     gesture.current = null;
     onDrag({ x: 0, y: 0, app: null });
   }, [visible, blocked, onDrag]);
   const select = (index: number) => onSelect(Math.max(0, Math.min(apps.length - 1, index)));
   const start = (event: PointerEvent<HTMLDivElement>) => {
-    if (blocked || !event.isPrimary || event.button !== 0) return;
+    if (blocked || !event.isPrimary || event.button !== 0) {
+      return;
+    }
     const app = (event.target as HTMLElement).closest<HTMLElement>("[data-expose-app]")?.dataset
       .exposeApp as AppId | undefined;
     gesture.current = {
@@ -96,11 +102,14 @@ export function Expose({
   };
   const move = (event: PointerEvent<HTMLDivElement>) => {
     const current = gesture.current;
-    if (!current || current.pointer !== event.pointerId) return;
+    if (!current || current.pointer !== event.pointerId) {
+      return;
+    }
     current.dx = (event.clientX - current.x) / deviceScale;
     current.dy = (event.clientY - current.y) / deviceScale;
-    if (!current.axis && Math.max(Math.abs(current.dx), Math.abs(current.dy)) > 8)
+    if (!current.axis && Math.max(Math.abs(current.dx), Math.abs(current.dy)) > 8) {
       current.axis = Math.abs(current.dx) > Math.abs(current.dy) ? "x" : "y";
+    }
     const atEdge =
       (selectedIndex === 0 && current.dx > 0) ||
       (selectedIndex === apps.length - 1 && current.dx < 0);
@@ -112,13 +121,18 @@ export function Expose({
   };
   const end = (event: PointerEvent<HTMLDivElement>) => {
     const current = gesture.current;
-    if (!current || current.pointer !== event.pointerId) return;
+    if (!current || current.pointer !== event.pointerId) {
+      return;
+    }
     gesture.current = null;
     onDrag({ x: 0, y: 0, app: null });
-    if (current.axis === "x" && Math.abs(current.dx) >= 48)
+    if (current.axis === "x" && Math.abs(current.dx) >= 48) {
       select(selectedIndex + (current.dx < 0 ? 1 : -1));
-    else if (current.axis === "y" && current.dy <= -90 && current.app) onQuit(current.app);
-    else if (!current.axis && current.app) onOpen(current.app);
+    } else if (current.axis === "y" && current.dy <= -90 && current.app) {
+      onQuit(current.app);
+    } else if (!current.axis && current.app) {
+      onOpen(current.app);
+    }
   };
   return (
     <div
@@ -150,7 +164,9 @@ export function Expose({
         }
       }}
       onKeyDown={(event) => {
-        if (!apps.length || blocked) return;
+        if (!apps.length || blocked) {
+          return;
+        }
         if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
           event.preventDefault();
           select(selectedIndex + (event.key === "ArrowRight" ? 1 : -1));
@@ -160,7 +176,9 @@ export function Expose({
         }
       }}
       onAnimationEnd={(event) => {
-        if (event.target === event.currentTarget && leaving) onLeaveEnd();
+        if (event.target === event.currentTarget && leaving) {
+          onLeaveEnd();
+        }
       }}
     >
       {apps.map((app, index) => {

@@ -138,10 +138,14 @@ function WallpaperLibrary({
         setUploaded(result);
       }
     } catch (failure) {
-      if (mounted.current) setError(failure instanceof Error ? failure.message : String(failure));
+      if (mounted.current) {
+        setError(failure instanceof Error ? failure.message : String(failure));
+      }
     } finally {
       URL.revokeObjectURL(temporaryUrl);
-      if (mounted.current) setUploading(false);
+      if (mounted.current) {
+        setUploading(false);
+      }
     }
   }
   return (
@@ -176,7 +180,9 @@ function WallpaperLibrary({
         onChange={(event) => {
           const file = event.target.files![0];
           event.target.value = "";
-          if (file) void upload(file);
+          if (file) {
+            void upload(file);
+          }
         }}
       />
       {error ? (

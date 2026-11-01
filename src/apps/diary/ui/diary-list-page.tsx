@@ -19,8 +19,11 @@ export function DiaryListPage({ diary, state, navigation, onHome }: DiaryPagePro
     navigation.push({ page: "authors" });
   }
   function startFromEmpty() {
-    if (author) openWriter();
-    else openAuthors();
+    if (author) {
+      openWriter();
+    } else {
+      openAuthors();
+    }
   }
 
   return (

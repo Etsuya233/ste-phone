@@ -78,7 +78,9 @@ export function PhoneApp({
     };
   }, []);
   const startDrag = (event: PointerEvent<HTMLDivElement>) => {
-    if (!draggable || fullscreen || event.button !== 0) return;
+    if (!draggable || fullscreen || event.button !== 0) {
+      return;
+    }
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = {
       pointerId: event.pointerId,
@@ -90,7 +92,9 @@ export function PhoneApp({
   };
   const moveDrag = (event: PointerEvent<HTMLDivElement>) => {
     const current = drag.current;
-    if (!current || current.pointerId !== event.pointerId) return;
+    if (!current || current.pointerId !== event.pointerId) {
+      return;
+    }
     setPosition({
       x: Math.max(
         -horizontalTravel,
@@ -144,8 +148,11 @@ export function PhoneApp({
           drag.current = null;
           setOpen(false);
           setPosition({ x: 0, y: 0 });
-          if (menuEntry) menuEntry.button.focus();
-          else launcher.current!.focus();
+          if (menuEntry) {
+            menuEntry.button.focus();
+          } else {
+            launcher.current!.focus();
+          }
         }}
       >
         {started ? (

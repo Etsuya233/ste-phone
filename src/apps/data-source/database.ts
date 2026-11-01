@@ -39,7 +39,9 @@ export interface QueryResult {
 }
 /** SQLite 标识符引用。保留来源原始 key，双引号是 key 的一部分时按 SQL 规则转义。 */
 export function quoteIdentifier(value: string): string {
-  if (!value || value.includes("\0")) throw new Error("SQLite 对象名不能为空或包含 NUL");
+  if (!value || value.includes("\0")) {
+    throw new Error("SQLite 对象名不能为空或包含 NUL");
+  }
   return `"${value.replaceAll('"', '""')}"`;
 }
 

@@ -46,7 +46,9 @@ export function Home({
   const [error, setError] = useState<string | null>(null);
   const layout = draft ?? saved;
   function clearGesture() {
-    if (timer.current !== null) clearTimeout(timer.current);
+    if (timer.current !== null) {
+      clearTimeout(timer.current);
+    }
     timer.current = null;
     gesture.current = null;
     setDraft(null);
@@ -58,16 +60,22 @@ export function Home({
       setDeleting(null);
       setError(null);
     }
-    if (!active) onEditingChange(false);
+    if (!active) {
+      onEditingChange(false);
+    }
   }, [active, editing, onEditingChange]);
   useEffect(
     () => () => {
-      if (timer.current !== null) clearTimeout(timer.current);
+      if (timer.current !== null) {
+        clearTimeout(timer.current);
+      }
     },
     [],
   );
   function start(event: PointerEvent<HTMLButtonElement>, app: AppId) {
-    if (event.button !== 0 || !event.isPrimary) return;
+    if (event.button !== 0 || !event.isPrimary) {
+      return;
+    }
     event.currentTarget.setPointerCapture(event.pointerId);
     gesture.current = {
       app,
@@ -78,17 +86,20 @@ export function Home({
       moving: false,
       layout: saved,
     };
-    if (!editing)
+    if (!editing) {
       timer.current = setTimeout(() => {
         timer.current = null;
         gesture.current!.armed = true;
         suppressClick.current = true;
         onEditingChange(true);
       }, 500);
+    }
   }
   function move(event: PointerEvent<HTMLDivElement>) {
     const current = gesture.current;
-    if (!current || current.pointerId !== event.pointerId) return;
+    if (!current || current.pointerId !== event.pointerId) {
+      return;
+    }
     const distance = Math.hypot(event.clientX - current.x, event.clientY - current.y);
     if (!current.armed) {
       if (distance > 8) {
@@ -97,9 +108,13 @@ export function Home({
       }
       return;
     }
-    if (!current.moving && distance < 6) return;
+    if (!current.moving && distance < 6) {
+      return;
+    }
     // 跨主屏与 Dock 会重新挂载图标，拖动期间由稳定的桌面节点持有指针。
-    if (!current.moving) root.current!.setPointerCapture(event.pointerId);
+    if (!current.moving) {
+      root.current!.setPointerCapture(event.pointerId);
+    }
     current.moving = true;
     suppressClick.current = true;
     const bounds = root.current!.getBoundingClientRect();
@@ -117,14 +132,16 @@ export function Home({
         event.clientY > rect.bottom ||
         event.clientX < rect.left ||
         event.clientX > rect.right
-      )
+      ) {
         continue;
+      }
       if (
         area === "dock" &&
         current.layout.dock.length === 4 &&
         !current.layout.dock.includes(current.app)
-      )
+      ) {
         return;
+      }
       const target = [...container.querySelectorAll<HTMLElement>("[data-home-app]")].find(
         (slot) => {
           const box = slot.getBoundingClientRect();
@@ -137,7 +154,9 @@ export function Home({
         },
       );
       const targetApp = target?.dataset.homeApp as AppId | undefined;
-      if (targetApp === current.app) return;
+      if (targetApp === current.app) {
+        return;
+      }
       const next = {
         grid: current.layout.grid.filter((id) => id !== current.app),
         dock: current.layout.dock.filter((id) => id !== current.app),
@@ -152,7 +171,9 @@ export function Home({
   }
   function finish(event: PointerEvent<HTMLDivElement>) {
     const current = gesture.current;
-    if (!current || current.pointerId !== event.pointerId) return;
+    if (!current || current.pointerId !== event.pointerId) {
+      return;
+    }
     if (current.moving) {
       const area = current.layout.dock.includes(current.app) ? "dock" : "grid";
       try {
@@ -169,13 +190,17 @@ export function Home({
       onEditingChange(true);
       return;
     }
-    if (!editing) return;
+    if (!editing) {
+      return;
+    }
     if (event.key === "Delete" && appCatalog[app].removable) {
       event.preventDefault();
       setDeleting(app);
       return;
     }
-    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
+      return;
+    }
     event.preventDefault();
     const targetArea =
       event.ctrlKey && (event.key === "ArrowDown" || event.key === "ArrowUp")
@@ -222,7 +247,9 @@ export function Home({
           }}
           onKeyDown={(event) => key(event, app, area)}
           onClick={(event) => {
-            if (!editing && (event.detail === 0 || !suppressClick.current)) onOpen(event, app);
+            if (!editing && (event.detail === 0 || !suppressClick.current)) {
+              onOpen(event, app);
+            }
           }}
         >
           <AppIcon app={app} />
@@ -255,14 +282,17 @@ export function Home({
           error === null &&
           !suppressClick.current &&
           !(event.target as Element).closest("[data-home-app], .ios-alert-overlay")
-        )
+        ) {
           onEditingChange(false);
+        }
       }}
       onPointerMove={move}
       onPointerUp={finish}
       onPointerCancel={clearGesture}
       onLostPointerCapture={(event) => {
-        if (event.target === event.currentTarget) clearGesture();
+        if (event.target === event.currentTarget) {
+          clearGesture();
+        }
       }}
       onKeyDown={(event) => {
         if (editing && event.key === "Escape" && deleting === null && error === null) {

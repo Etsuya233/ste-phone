@@ -32,8 +32,9 @@ export interface DiaryContext {
 
 export function currentDiaryScope(data: DataAppPublic): DataScope {
   const { context } = data.getSnapshot();
-  if (!context.available || !context.chatIdentity || !context.scopeId)
+  if (!context.available || !context.chatIdentity || !context.scopeId) {
     throw new Error(context.message ?? "当前 Memory 资料不可用");
+  }
   return { chatIdentity: context.chatIdentity, scopeId: context.scopeId };
 }
 
@@ -49,10 +50,13 @@ export async function readDiaryAuthors(
       sql: "SELECT stable_record_id,name,profile_text FROM phone_characters ORDER BY name,record_id LIMIT 200 OFFSET :offset",
       params: { offset },
     });
-    if (page.truncated) throw new Error("人物资料查询被截断");
+    if (page.truncated) {
+      throw new Error("人物资料查询被截断");
+    }
     for (const [id, name, profileText] of page.rows) {
-      if (typeof id !== "string" || typeof name !== "string" || typeof profileText !== "string")
+      if (typeof id !== "string" || typeof name !== "string" || typeof profileText !== "string") {
         throw new Error("人物资料字段格式无效");
+      }
       authors.push({
         id,
         name,
@@ -61,7 +65,9 @@ export async function readDiaryAuthors(
         scopeId: schema.stableScopeId,
       });
     }
-    if (page.rows.length < 200) return authors;
+    if (page.rows.length < 200) {
+      return authors;
+    }
   }
 }
 
@@ -70,11 +76,13 @@ export async function readDiaryWorld(data: DataAppPublic, scope: DataScope): Pro
     ...scope,
     sql: "SELECT world_time,datetime(world_time),current_location,weather,clothing,other_scenes FROM phone_world_state LIMIT 2",
   });
-  if (state.truncated || state.rows.length !== 1)
+  if (state.truncated || state.rows.length !== 1) {
     throw new Error("世界状态必须恰好有一条记录，才能确定日记时刻");
+  }
   const [worldTime, validTime, location, weather, clothing, otherScenes] = state.rows[0]!;
-  if (typeof worldTime !== "string" || typeof validTime !== "string")
+  if (typeof worldTime !== "string" || typeof validTime !== "string") {
     throw new Error("世界状态缺少有效的剧情时间");
+  }
   return {
     worldTime,
     location: location!,
@@ -100,7 +108,9 @@ async function readDiaryChronicles(
       ORDER BY datetime(c.end_time) DESC,c.record_id DESC LIMIT 5`,
     params: { author: currentRecordId, now: worldTime },
   });
-  if (chronicles.truncated) throw new Error("最近纪要查询被截断");
+  if (chronicles.truncated) {
+    throw new Error("最近纪要查询被截断");
+  }
   const invalid = await data.query({
     ...scope,
     sql: `SELECT count(*) FROM phone_chronicles c
@@ -126,23 +136,29 @@ export async function readDiaryContext(
 ): Promise<DiaryContext> {
   const scope = currentDiaryScope(data);
   const schema = await data.describe(scope);
-  if (selected.sourceId !== schema.sourceId || selected.scopeId !== schema.stableScopeId)
+  if (selected.sourceId !== schema.sourceId || selected.scopeId !== schema.stableScopeId) {
     throw new Error("原日记作者已不在当前资料中，请重新选择");
+  }
   // 持久作者通过稳定身份找到当前实例；后续关系查询使用此次取得的实例 ID。
   const people = await data.query({
     ...scope,
     sql: "SELECT record_id,name,profile_text FROM phone_characters WHERE stable_record_id=:author",
     params: { author: selected.id },
   });
-  if (people.truncated) throw new Error("人物资料查询被截断");
-  if (people.rows.length !== 1) throw new Error("原日记作者已不在当前资料中，请重新选择");
+  if (people.truncated) {
+    throw new Error("人物资料查询被截断");
+  }
+  if (people.rows.length !== 1) {
+    throw new Error("原日记作者已不在当前资料中，请重新选择");
+  }
   const [currentRecordId, name, profileText] = people.rows[0]!;
   if (
     typeof currentRecordId !== "string" ||
     typeof name !== "string" ||
     typeof profileText !== "string"
-  )
+  ) {
     throw new Error("人物资料字段格式无效");
+  }
   const author = {
     id: selected.id,
     name,
@@ -157,8 +173,9 @@ export async function readDiaryContext(
   signal.throwIfAborted();
   // 同一实例空间也可能应用新预设；整份材料必须仍属于作者的稳定空间。
   const current = await data.describe(scope);
-  if (current.sourceId !== schema.sourceId || current.stableScopeId !== schema.stableScopeId)
+  if (current.sourceId !== schema.sourceId || current.stableScopeId !== schema.stableScopeId) {
     throw new Error("取材期间稳定资料空间已变化，请重新选择日记作者");
+  }
   return {
     author,
     world,

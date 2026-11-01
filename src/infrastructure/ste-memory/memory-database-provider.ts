@@ -28,10 +28,12 @@ export class MemoryDatabaseProvider implements DatabaseProvider {
       available: false,
     };
     const api = this.#api;
-    if (!api)
+    if (!api) {
       return { ...base, message: "未连接 STE Memory，请启用支持数据库接口的 Memory 版本并刷新 ST" };
-    if (api.version !== 1)
+    }
+    if (api.version !== 1) {
       return { ...base, message: `不支持 Memory 读取接口 v${api.version}，请更新两个插件` };
+    }
     const context = api.getContext();
     return {
       ...base,
@@ -55,30 +57,42 @@ export class MemoryDatabaseProvider implements DatabaseProvider {
   async describe(): Promise<DatabaseSchema> {
     const api = this.#api!;
     const context = this.getContext();
-    if (!context.available) throw new Error(context.message!);
+    if (!context.available) {
+      throw new Error(context.message!);
+    }
     const description = await api.database!.describe({
       chatIdentity: context.chatIdentity!,
       spaceId: context.scopeId!,
     });
-    if (api !== this.#api) throw new Error("Memory 接口已重新连接，请重新查询");
-    if (description.space.id !== context.scopeId) throw new Error("Memory 返回了其他空间的结构");
+    if (api !== this.#api) {
+      throw new Error("Memory 接口已重新连接，请重新查询");
+    }
+    if (description.space.id !== context.scopeId) {
+      throw new Error("Memory 返回了其他空间的结构");
+    }
     return mapMemoryDatabase(description);
   }
   async readRecentChat(count: number) {
     const api = this.#api;
     const context = this.getContext();
-    if (!context.available) throw new Error(context.message!);
-    if (api?.chat?.version !== 1)
+    if (!context.available) {
+      throw new Error(context.message!);
+    }
+    if (api?.chat?.version !== 1) {
       throw new Error("Memory 缺少 chat v1 清洗聊天能力，请更新 Memory");
+    }
     const result = await api.chat.readRecent({ chatIdentity: context.chatIdentity!, count });
-    if (api !== this.#api) throw new Error("Memory 接口已重新连接，请重新读取聊天");
+    if (api !== this.#api) {
+      throw new Error("Memory 接口已重新连接，请重新读取聊天");
+    }
     const current = this.getContext();
     if (
       current.chatIdentity !== context.chatIdentity ||
       current.scopeId !== context.scopeId ||
       result.chatIdentity !== context.chatIdentity
-    )
+    ) {
       throw new Error("读取期间聊天或记忆空间已变化");
+    }
     return result;
   }
   async register(schema: DatabaseSchema): Promise<void> {
@@ -86,7 +100,9 @@ export class MemoryDatabaseProvider implements DatabaseProvider {
     const context = this.getContext();
     const key = JSON.stringify([context.chatIdentity, schema.scopeId]);
     const identity = JSON.stringify([schema.databaseKey, schema.schemaKey]);
-    if (this.#registered.get(key) === identity) return;
+    if (this.#registered.get(key) === identity) {
+      return;
+    }
     await api.database!.registerViews({
       chatIdentity: context.chatIdentity!,
       spaceId: schema.scopeId,
@@ -98,7 +114,9 @@ export class MemoryDatabaseProvider implements DatabaseProvider {
         columns: object.columns.map((column) => column.name),
       })),
     });
-    if (api !== this.#api) throw new Error("Memory 接口已重新连接，请重新查询");
+    if (api !== this.#api) {
+      throw new Error("Memory 接口已重新连接，请重新查询");
+    }
     this.#registered.set(key, identity);
   }
   async query(
@@ -108,8 +126,9 @@ export class MemoryDatabaseProvider implements DatabaseProvider {
   ): Promise<QueryResult> {
     const api = this.#api!;
     const context = this.getContext();
-    if (!context.available || context.scopeId !== schema.scopeId)
+    if (!context.available || context.scopeId !== schema.scopeId) {
       throw new Error(context.message ?? "当前空间已变化");
+    }
     const result = await api.database!.query({
       chatIdentity: context.chatIdentity!,
       spaceId: schema.scopeId,
@@ -120,7 +139,9 @@ export class MemoryDatabaseProvider implements DatabaseProvider {
       maxRows: 200,
       budgetMs: 750,
     });
-    if (api !== this.#api) throw new Error("Memory 接口已重新连接，请重新查询");
+    if (api !== this.#api) {
+      throw new Error("Memory 接口已重新连接，请重新查询");
+    }
     return result;
   }
   #connect = (): void => {
@@ -131,6 +152,8 @@ export class MemoryDatabaseProvider implements DatabaseProvider {
     this.#changed();
   };
   #changed = (): void => {
-    for (const listener of this.#listeners) listener();
+    for (const listener of this.#listeners) {
+      listener();
+    }
   };
 }
