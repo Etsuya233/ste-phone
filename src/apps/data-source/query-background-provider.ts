@@ -31,6 +31,7 @@ export class QueryBackgroundProvider implements BackgroundProvider {
       return {
         sourceId: schema.sourceId,
         scopeId: schema.scopeId,
+        stableScopeId: schema.stableScopeId,
         characters: [],
         chronicles: [],
         items: [],
@@ -48,7 +49,7 @@ export class QueryBackgroundProvider implements BackgroundProvider {
       for (let offset = 0; ; offset += 200) {
         const page = await this.#database.query({
           ...scope,
-          sql: `SELECT record_id,${name},profile_text FROM ${view} ORDER BY created_at,record_id LIMIT 200 OFFSET :offset`,
+          sql: `SELECT stable_record_id,${name},profile_text FROM ${view} ORDER BY created_at,record_id LIMIT 200 OFFSET :offset`,
           params: { offset },
         });
         if (page.truncated) throw new Error(`资料分页被截断：${view}`);
@@ -64,6 +65,7 @@ export class QueryBackgroundProvider implements BackgroundProvider {
     return {
       sourceId: schema.sourceId,
       scopeId: schema.scopeId,
+      stableScopeId: schema.stableScopeId,
       characters: rows[0]!.map((row) => ({
         id: text(row[0]),
         name: text(row[1]),

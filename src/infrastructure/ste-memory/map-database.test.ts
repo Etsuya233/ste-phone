@@ -85,7 +85,13 @@ test("raw alias collisions fail at schema construction", () => {
           ],
           columns: {
             ...f.description.columns,
-            src_characters: ["$record_id", "$display_text", "$created_at", "$updated_at"],
+            src_characters: [
+              "$stable_id",
+              "$record_id",
+              "$display_text",
+              "$created_at",
+              "$updated_at",
+            ],
           },
         }),
       /碰撞/,

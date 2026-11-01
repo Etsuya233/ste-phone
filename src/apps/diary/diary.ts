@@ -3,6 +3,7 @@ export interface DiarySettings {
   readonly maxTokens: number;
 }
 
+/** 持久作者：scopeId/id 保存稳定空间与人物身份；字段形状与历史日记一致。 */
 export interface DiaryAuthor {
   readonly id: string;
   readonly name: string;

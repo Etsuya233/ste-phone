@@ -97,6 +97,7 @@ export function memorySnapshotFixture(empty = false): MemorySnapshot {
   ) {
     return {
       id,
+      stableId: id,
       memorySpaceId: "preview-space",
       tableId: `table-${table}`,
       payload: Object.fromEntries(
@@ -112,7 +113,13 @@ export function memorySnapshotFixture(empty = false): MemorySnapshot {
     };
   }
   return {
-    space: { id: "preview-space", name: "示例剧情", createdAt: timestamp, updatedAt: timestamp },
+    space: {
+      stableId: "preview-space",
+      id: "preview-space",
+      name: "示例剧情",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
     tables,
     fields,
     records: empty

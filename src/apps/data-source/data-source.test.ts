@@ -7,6 +7,7 @@ import type { PhoneBackground } from "./public.ts";
 const data = (scopeId = "space", name = "小红"): PhoneBackground => ({
   sourceId: "test",
   scopeId,
+  stableScopeId: scopeId,
   characters: [{ id: "red", name, profileText: "人物资料" }],
   chronicles: [],
   items: [],

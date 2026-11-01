@@ -43,6 +43,7 @@ export interface MemoryTable {
 export interface MemoryRecord {
   readonly [key: string]: unknown;
   readonly id: string;
+  readonly stableId: string;
   readonly tableId: string;
   readonly payload: Readonly<Record<string, string | number | boolean | null | readonly string[]>>;
   readonly displayText: string;
@@ -50,7 +51,12 @@ export interface MemoryRecord {
 }
 
 export interface MemorySnapshot {
-  readonly space: { readonly id: string; readonly name: string; readonly [key: string]: unknown };
+  readonly space: {
+    readonly id: string;
+    readonly stableId: string;
+    readonly name: string;
+    readonly [key: string]: unknown;
+  };
   readonly tables: readonly MemoryTable[];
   readonly fields: readonly MemoryField[];
   readonly records: readonly MemoryRecord[];
@@ -68,6 +74,8 @@ export interface MemoryContext {
 
 export interface MemoryReadApi {
   readonly version: number;
+  /** 稳定身份能力独立于 database v1；缺少时不可建立持久人物引用。 */
+  readonly identity?: { readonly version: 1 };
   readonly database?: MemoryDatabaseApi;
   readonly chat?: {
     readonly version: 1;

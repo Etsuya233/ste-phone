@@ -12,9 +12,9 @@ Phone 定义标准查询结构，Memory 执行 SQL 并提供当前已提交资�
 
 ## 契约与归属
 
-Memory 保留公开读取 v1 的 `getContext/subscribe/read`，Phone 要求额外的 `database.version === 1` capability：`describe` 返回空间、启用表/字段、公开列名、`schemaKey` 与数据库加载生命周期 `databaseKey`，不含 records；`registerViews` 在 `ste_phone` namespace 原子注册整组视图；`query` 接受当前聊天、空间、结构身份、SQL、命名参数及执行预算。Phone 只定义外部协议类型，不导入相邻仓库源码，不访问 Memory 内部实体表、调试 runtime 或历史。
+Memory 保留公开读取 v1 的 `getContext/subscribe/read`，Phone 要求额外的 `database.version === 1` 与 `identity.version === 1` capability：`describe` 返回空间、启用表/字段、公开列名、`schemaKey` 与数据库加载生命周期 `databaseKey`，不含 records；`registerViews` 在 `ste_phone` namespace 原子注册整组视图；`query` 接受当前聊天、空间、结构身份、SQL、命名参数及执行预算。Phone 只定义外部协议类型，不导入相邻仓库源码，不访问 Memory 内部实体表、调试 runtime 或历史。
 
-`sourceId/scopeId/record_id` 标识来源资料；聊天身份独立参与请求归属和编辑会话隔离，即使两个聊天共享同一空间也不能混用异步结果。空间名和人物名可变，身份保持稳定。查询反映执行时 Memory 当前 committed 数据，未提交内容不可见；多次查询和资料分页允许弱一致性，不建立历史快照会话。
+`sourceId/scopeId/record_id` 标识当前来源实例，负责请求归属、SQL 关联和编辑会话隔离；聊天身份独立参与校验，即使两个聊天共享稳定资料身份也不能混用异步结果。`describe().space.stableId` 与业务系统列 `$stable_id` 提供跨导出、导入及分支克隆保留的稳定身份，标准视图将它们公开为 `stable_scope_id/stable_record_id`。实例身份在克隆后改变，稳定身份允许不同分支保留同一人物及不同资料。查询反映执行时 Memory 当前 committed 数据，未提交内容不可见；多次查询和资料分页允许弱一致性，不建立历史快照会话。
 
 首次使用或收到来源更新后的下一次操作先 `describe`。结构身份与数据库加载生命周期均未变时沿用已注册视图；结构改变、空间卸载后重进或同聊天重新加载数据库时重新注册。Memory 负责在每次数据 publish 重建数据库后恢复已注册 namespace 视图。普通记录变更只标记现有结果与资料缓存过期，不读取全部数据、不自动重查、不重建 Phone 数据库。重新查询自然读取最新 committed 数据。结构检查或查询失败显示具体错误，同聊天旧结果保留并标过期。
 
@@ -28,7 +28,7 @@ Memory 保留公开读取 v1 的 `getContext/subscribe/read`，Phone 要求额�
 
 ## 源别名与标准视图
 
-所有 `src_<table.key>` 都是 Memory 公开业务表的别名 VIEW。字段 key 保持原样，布尔值使用 0/1，多值使用 JSON 数组，引用使用记录 ID。对象说明包含原始字段 ID、类型及引用目标。源别名提供 `_phone_source_id`、`_phone_scope_id`、`_phone_record_id`、`_phone_created_at`、`_phone_updated_at`、`_phone_display_text`，从公开系统列 `$record_id/$display_text/$created_at/$updated_at` 取得值。停用表/字段不在公开 SQL 结构内。
+所有 `src_<table.key>` 都是 Memory 公开业务表的别名 VIEW。字段 key 保持原样，布尔值使用 0/1，多值使用 JSON 数组，引用使用记录 ID。对象说明包含原始字段 ID、类型及引用目标。源别名提供 `_phone_source_id`、`_phone_scope_id`、`_phone_record_id`、`_phone_stable_scope_id`、`_phone_stable_record_id`、`_phone_created_at`、`_phone_updated_at`、`_phone_display_text`，记录稳定身份从 `$stable_id` 取得，其他记录属性从公开系统列 `$record_id/$display_text/$created_at/$updated_at` 取得值。停用表/字段不在公开 SQL 结构内。
 
 | 标准对象                     | 主要内容                                                                     |
 | ---------------------------- | ---------------------------------------------------------------------------- |
@@ -36,10 +36,10 @@ Memory 保留公开读取 v1 的 `getContext/subscribe/read`，Phone 要求额�
 | `phone_chronicles`           | 身份、`title/content/start_time/end_time/related_character_ids/profile_text` |
 | `phone_items`                | 身份、`name/description/owner_id/status/profile_text`                        |
 | `phone_world_state`          | 身份、`name/world_time/current_location/weather/clothing/other_scenes`       |
-| `phone_chronicle_characters` | `source_id/scope_id/chronicle_id/character_id`，用 json_each 展开完整关系    |
+| `phone_chronicle_characters` | `source_id/scope_id/chronicle_id/character_id` 及稳定身份列，展开完整关系    |
 | `phone_capabilities`         | `object_name/status/detail`，明确报告 supported 或 unsupported 及原因        |
 
-身份列包含 `source_id/scope_id/record_id/created_at`。各标准视图要求所声明来源字段启用、类型及引用目标兼容；无法映射时不注册该标准视图，在 `phone_capabilities` 说明原因，公开源别名仍可查询。支持的空表正常返回零行。资料展示依赖三类标准视图，任一不可用时显示具体映射错误。
+人物、纪要、物品和世界状态视图的身份列包含 `source_id/scope_id/record_id/stable_scope_id/stable_record_id/created_at`，关联视图保留当前记录 ID，并提供 `stable_scope_id/stable_chronicle_id/stable_character_id`。人物稳定身份通过当前人物视图关联取得，悬空人物引用保留原关系行及空稳定人物身份。各标准视图要求所声明来源字段启用、类型及引用目标兼容；无法映射时不注册该标准视图，在 `phone_capabilities` 说明原因，公开源别名仍可查询。支持的空表正常返回零行。资料展示依赖三类标准视图，任一不可用时显示具体映射错误。
 
 `profile_text` 由 SQL 按启用字段位置拼接标签和值，JSON 多值完整展开，引用名称按目标表当前显示策略生成；显示策略字段不可用或出现循环引用时明确报告 unsupported。人物改名后无需重建视图即可显示新引用名称。纪要创建顺序不代表剧情时间，世界日期仅取来源 `current_time`，不以设备时间替代。
 
@@ -61,11 +61,19 @@ SELECT * FROM phone_capabilities WHERE status = 'unsupported';
 
 SQL 草稿、结果、错误、对象选择、搜索和滚动位置按聊天与范围保留在插件内存，退出 App 或关闭手机后恢复，刷新 ST 清空。来源更新后结果显示过期，检查视图结构不将旧结果伪装成新结果，重新执行后更新。联系人备注、好友关系、消息和日记属于 Phone 独立拥有的业务数据，后续按聊天保存；semantic 接入后置。
 
+日记作者现有 `scopeId/id` 字段分别保存稳定空间与人物身份，数据版本和持久化形状保持 v1。作者读取先检查 `stableScopeId`，再通过 `stable_record_id` 找到当前人物实例，以本次查询的 `record_id` 读取关联纪要。旧快照稳定身份由原 ID 初始化，因此 Phone 不批量迁移日记，也不按姓名自动匹配。完整身份约定见 [ADR 0008](adr/0008-stable-memory-identity.md)。
+
 ## 预览与验收
 
 独立预览 `/?database=1`、`/?data-source=1` 复用生产页面及适配器，`data-state=empty/error/unavailable/unsupported` 检查对应状态。`docs/ui/data-source-fixture.ts` 提供独立 Fake Memory capability，`preview-sqlite.ts` 仅用于预览真实 SQL，SQLite 包属于 devDependency，WASM 仅复制到预览输出目录。生产只发布 `index.js/style.css/manifest.json`。build、watch、sync 和 release 会清理受管理的旧 Worker/WASM，保留用户其他文件。
 
 工程检查应串行执行类型、Lint、格式、测试与构建。测试用 Node 内置 SQLite 验证生成视图、当前引用名称、关联和日期，服务测试覆盖数据通知不复制、不调用 read、结构变更重新注册、完整分页、聊天异步归属与旧结果过期。真实 Memory 的只读授权、执行预算与 publish 生命周期由 Memory 测试验证。预览和真实 ST 的操作验收需另行记录，旧本地投影方案的历史验收不能作为新链路的通过证据。
+
+### 稳定身份验收（2026-11-01）
+
+Phone 全套 96 项串行测试及类型、Lint、格式、构建通过；纪要取材职责整理后再次通过相关 30 项测试及工程检查。Memory 最终 131 个测试文件、1399 项测试及类型、Lint、格式、构建通过。Phone 日记 v1 存储结构保持原样。
+
+跨仓集成使用 Memory 真实 SQLite WASM、正式 `PublicMemoryReader` 及 Phone 的来源适配器、资料服务和日记取材流程。旧 schema v2 快照按原 ID 迁移后，连续执行两轮导出、备份编解码、克隆及重新加载：实例空间与记录 ID 均改变，原作者对象保持不变，仍能读取正确人物和关联纪要。替换为其他稳定空间、使用旧聊天身份请求均被拒绝。验收未请求模型或修改用户聊天；本轮未重新进行浏览器和真实 ST 文件保存验收。
 
 ### 本轮验收（2026-10-30）
 

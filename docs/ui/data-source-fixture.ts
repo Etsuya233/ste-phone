@@ -25,6 +25,7 @@ export function createPreviewMemory(mode: string | null): MemoryReadApi {
         table.key,
         [
           "$record_id",
+          "$stable_id",
           "$display_text",
           "$created_at",
           "$updated_at",
@@ -58,6 +59,7 @@ export function createPreviewMemory(mode: string | null): MemoryReadApi {
         .filter((record) => record.tableId === table.id)
         .map((record) => [
           record.id,
+          record.stableId,
           record.displayText,
           record.createdAt,
           record.createdAt,
@@ -73,6 +75,7 @@ export function createPreviewMemory(mode: string | null): MemoryReadApi {
   });
   return {
     version: 1,
+    identity: { version: 1 },
     chat: {
       version: 1,
       async readRecent({ chatIdentity, count }) {

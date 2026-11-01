@@ -24,8 +24,8 @@ const reply = (reason = "stop") => new Response(event("今天的风让人安心�
 
 function fixture(fetchImpl: typeof fetch = async () => reply()) {
   const db = new DatabaseSync(":memory:");
-  db.exec(`CREATE TABLE phone_characters(record_id TEXT,name TEXT,profile_text TEXT);
-    INSERT INTO phone_characters VALUES ('author','林','沉静，喜欢散步');
+  db.exec(`CREATE TABLE phone_characters(record_id TEXT,stable_record_id TEXT,name TEXT,profile_text TEXT);
+    INSERT INTO phone_characters VALUES ('author','author','林','沉静，喜欢散步');
     CREATE TABLE phone_world_state(world_time TEXT,current_location TEXT,weather TEXT,clothing TEXT,other_scenes TEXT);
     INSERT INTO phone_world_state VALUES ('2026-10-31 23:00:00','海边','有风','外套','远处有人等车');
     CREATE TABLE phone_chronicles(record_id TEXT,title TEXT,content TEXT,start_time TEXT,end_time TEXT);
@@ -70,6 +70,7 @@ function fixture(fetchImpl: typeof fetch = async () => reply()) {
       return () => chatListeners.delete(listener);
     },
   };
+  let stableScopeId = "scope";
   const data: DataAppPublic = {
     getSnapshot: () => snapshot,
     subscribe: (listener) => {
@@ -81,7 +82,8 @@ function fixture(fetchImpl: typeof fetch = async () => reply()) {
     },
     describe: async () => ({
       sourceId: "ste-memory",
-      scopeId: "scope",
+      scopeId: snapshot.context.scopeId!,
+      stableScopeId: stableScopeId,
       name: "剧情",
       schemaVersion: 1,
       schemaKey: "schema",
@@ -131,6 +133,18 @@ function fixture(fetchImpl: typeof fetch = async () => reply()) {
   return {
     service,
     data,
+    rebuildScope() {
+      stableScopeId = "new-preset-origin";
+      snapshot = { ...snapshot, revision: snapshot.revision + 1 };
+      for (const listener of sourceListeners) listener();
+    },
+    importScope(nextStableScopeId = "scope") {
+      stableScopeId = nextStableScopeId;
+      db.exec(`UPDATE phone_characters SET record_id='imported-author';
+        UPDATE phone_chronicle_characters SET character_id='imported-author' WHERE character_id='author'`);
+      snapshot = { ...snapshot, context: { ...snapshot.context, scopeId: "imported-scope" } };
+      for (const listener of sourceListeners) listener();
+    },
     saved,
     db,
     failSave: () => {
@@ -481,6 +495,83 @@ test("retrying a save supersedes an unfinished refresh without leaving the page 
     await refreshing;
     assert.equal(app.service.getSnapshot().generation.status, "complete");
     assert.equal(app.saved.get("phone-A")!.entries.length, 1);
+  } finally {
+    app.close();
+  }
+});
+
+test("persisted diary author survives changed instance IDs and keeps current chronicle relations", async () => {
+  const requests: Record<string, unknown>[] = [];
+  const app = fixture(async (_, options) => {
+    requests.push(JSON.parse(options!.body as string));
+    return reply();
+  });
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    const oldAuthor = structuredClone(app.saved.get("phone-A")!.author);
+    app.importScope();
+    await app.service.generate();
+    assert.equal(app.service.getSnapshot().generation.status, "complete");
+    const messages = requests[0]!.messages as { role: string; content: string }[];
+    const prompt = JSON.parse(messages.find((message) => message.role === "user")!.content);
+    assert.deepEqual(
+      prompt.最近纪要.map((entry: { 标题: string }) => entry.标题),
+      ["纪要22", "纪要23", "纪要24", "纪要25", "纪要26"],
+    );
+    assert.deepEqual(app.saved.get("phone-A")!.author, oldAuthor);
+    assert.equal(app.saved.get("phone-A")!.entries[0]!.author.id, "author");
+    assert.equal(app.saved.get("phone-A")!.entries[0]!.author.scopeId, "scope");
+  } finally {
+    app.close();
+  }
+});
+
+test("same names and stable record IDs in a different stable scope reject an old author", async () => {
+  let requests = 0;
+  const app = fixture(async () => {
+    requests++;
+    return reply();
+  });
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    app.importScope("different-origin");
+    await app.service.generate();
+    const state = app.service.getSnapshot().generation;
+    assert.equal(state.status, "error");
+    assert.match(state.error.message, /原日记作者/);
+    assert.equal(requests, 0);
+    assert.equal(app.saved.get("phone-A")!.entries.length, 0);
+  } finally {
+    app.close();
+  }
+});
+
+test("rebuilding a stable space during generation rejects its old author even with the same instance scope", async () => {
+  let finish!: (response: Response) => void;
+  let start!: () => void;
+  const started = new Promise<void>((done) => {
+    start = done;
+  });
+  const app = fixture(async () => {
+    start();
+    return new Promise<Response>((done) => {
+      finish = done;
+    });
+  });
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    const running = app.service.generate();
+    await started;
+    app.rebuildScope();
+    finish(reply());
+    await running;
+    const generation = app.service.getSnapshot().generation;
+    assert.equal(generation.status, "error");
+    assert.match(generation.error.message, /稳定资料空间已变化/);
+    assert.equal(app.saved.get("phone-A")!.entries.length, 0);
   } finally {
     app.close();
   }

@@ -27,6 +27,7 @@ export function memoryDatabaseFixture(snapshot: MemorySnapshot = memorySnapshotF
         table.key,
         [
           "$record_id",
+          "$stable_id",
           "$display_text",
           "$created_at",
           "$updated_at",
@@ -46,7 +47,7 @@ export function memoryDatabaseFixture(snapshot: MemorySnapshot = memorySnapshotF
   };
   for (const table of tables) {
     const tableFields = fields.filter((field) => field.tableId === table.id);
-    const system = ["$record_id", "$display_text", "$created_at", "$updated_at"];
+    const system = ["$record_id", "$stable_id", "$display_text", "$created_at", "$updated_at"];
     db.exec(
       `CREATE TABLE ${q(table.key)} (${[...system.map((name) => `${q(name)} TEXT`), ...tableFields.map((field) => `${q(field.key)} ${["integer", "boolean"].includes(field.type) ? "INTEGER" : field.type === "decimal" ? "REAL" : "TEXT"}`)].join(",")})`,
     );
@@ -56,6 +57,7 @@ export function memoryDatabaseFixture(snapshot: MemorySnapshot = memorySnapshotF
     for (const record of snapshot.records.filter((record) => record.tableId === table.id))
       insert.run(
         record.id,
+        record.stableId,
         record.displayText,
         record.createdAt,
         record.createdAt,
@@ -73,6 +75,7 @@ export function memoryDatabaseFixture(snapshot: MemorySnapshot = memorySnapshotF
   let queryGate: (() => Promise<void>) | undefined;
   const api: MemoryReadApi = {
     version: 1,
+    identity: { version: 1 },
     getContext: () => context,
     subscribe: (listener) => {
       listeners.add(listener);

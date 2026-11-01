@@ -20,7 +20,10 @@ export interface DatabaseObject {
 }
 export interface DatabaseSchema {
   readonly sourceId: string;
+  /** 当前实例空间，用于查询请求归属。 */
   readonly scopeId: string;
+  /** 跨导入、分支保留的空间身份，用于持久业务引用。 */
+  readonly stableScopeId: string;
   readonly name: string;
   readonly schemaVersion: 1;
   readonly schemaKey: string;

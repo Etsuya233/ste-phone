@@ -39,11 +39,13 @@ export class MemoryDatabaseProvider implements DatabaseProvider {
       chatName: context.chatName,
       scopeId: context.spaceId,
       spaceName: context.spaceName,
-      available: context.available && api.database?.version === 1,
+      available: context.available && api.database?.version === 1 && api.identity?.version === 1,
       message:
-        api.database?.version === 1
-          ? context.message
-          : "Memory 缺少 database v1 capability，请更新 Memory",
+        api.database?.version !== 1
+          ? "Memory 缺少 database v1 capability，请更新 Memory"
+          : api.identity?.version !== 1
+            ? "Memory 缺少 identity v1 稳定身份能力，请升级 Memory 并刷新 ST"
+            : context.message,
     };
   }
   subscribe(listener: () => void): () => void {

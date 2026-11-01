@@ -46,14 +46,20 @@ export async function readDiaryAuthors(
   for (let offset = 0; ; offset += 200) {
     const page = await data.query({
       ...scope,
-      sql: "SELECT record_id,name,profile_text FROM phone_characters ORDER BY name,record_id LIMIT 200 OFFSET :offset",
+      sql: "SELECT stable_record_id,name,profile_text FROM phone_characters ORDER BY name,record_id LIMIT 200 OFFSET :offset",
       params: { offset },
     });
     if (page.truncated) throw new Error("人物资料查询被截断");
     for (const [id, name, profileText] of page.rows) {
       if (typeof id !== "string" || typeof name !== "string" || typeof profileText !== "string")
         throw new Error("人物资料字段格式无效");
-      authors.push({ id, name, profileText, sourceId: schema.sourceId, scopeId: schema.scopeId });
+      authors.push({
+        id,
+        name,
+        profileText,
+        sourceId: schema.sourceId,
+        scopeId: schema.stableScopeId,
+      });
     }
     if (page.rows.length < 200) return authors;
   }
@@ -78,29 +84,12 @@ export async function readDiaryWorld(data: DataAppPublic, scope: DataScope): Pro
   };
 }
 
-export async function readDiaryContext(
+async function readDiaryChronicles(
   data: DataAppPublic,
-  selected: DiaryAuthor,
-  signal: AbortSignal,
-): Promise<DiaryContext> {
-  const scope = currentDiaryScope(data);
-  const schema = await data.describe(scope);
-  if (selected.sourceId !== schema.sourceId || selected.scopeId !== schema.scopeId)
-    throw new Error("原日记作者已不在当前资料中，请重新选择");
-  // 生成只读取所选人物的最新资料，不加载整个作者列表。
-  const people = await data.query({
-    ...scope,
-    sql: "SELECT record_id,name,profile_text FROM phone_characters WHERE record_id=:author",
-    params: { author: selected.id },
-  });
-  if (people.truncated) throw new Error("人物资料查询被截断");
-  if (people.rows.length !== 1) throw new Error("原日记作者已不在当前资料中，请重新选择");
-  const [id, name, profileText] = people.rows[0]!;
-  if (typeof id !== "string" || typeof name !== "string" || typeof profileText !== "string")
-    throw new Error("人物资料字段格式无效");
-  const author = { id, name, profileText, sourceId: schema.sourceId, scopeId: schema.scopeId };
-  const world = await readDiaryWorld(data, scope);
-  signal.throwIfAborted();
+  scope: DataScope,
+  currentRecordId: string,
+  worldTime: string,
+): Promise<Pick<DiaryContext, "chronicles" | "skippedChronicles">> {
   // 只取作者关联且在日记时刻前结束的纪要，先选最近五条，返回时再恢复剧情顺序。
   const chronicles = await data.query({
     ...scope,
@@ -109,7 +98,7 @@ export async function readDiaryContext(
       AND datetime(c.start_time) IS NOT NULL AND datetime(c.end_time) IS NOT NULL
       AND datetime(c.start_time)<=datetime(c.end_time) AND datetime(c.end_time)<=datetime(:now)
       ORDER BY datetime(c.end_time) DESC,c.record_id DESC LIMIT 5`,
-    params: { author: author.id, now: world.worldTime },
+    params: { author: currentRecordId, now: worldTime },
   });
   if (chronicles.truncated) throw new Error("最近纪要查询被截断");
   const invalid = await data.query({
@@ -117,14 +106,9 @@ export async function readDiaryContext(
     sql: `SELECT count(*) FROM phone_chronicles c
       WHERE EXISTS (SELECT 1 FROM phone_chronicle_characters l WHERE l.chronicle_id=c.record_id AND l.character_id=:author)
       AND (datetime(c.start_time) IS NULL OR datetime(c.end_time) IS NULL OR datetime(c.start_time)>datetime(c.end_time))`,
-    params: { author: author.id },
+    params: { author: currentRecordId },
   });
-  const chat = await data.readRecentChat({ ...scope, count: 20 });
-  signal.throwIfAborted();
   return {
-    author,
-    world,
-    chat,
     chronicles: [...chronicles.rows].reverse().map(([title, content, startTime, endTime]) => ({
       title: title!,
       content: content!,
@@ -132,5 +116,53 @@ export async function readDiaryContext(
       endTime: endTime!,
     })),
     skippedChronicles: Number(invalid.rows[0]![0]),
+  };
+}
+
+export async function readDiaryContext(
+  data: DataAppPublic,
+  selected: DiaryAuthor,
+  signal: AbortSignal,
+): Promise<DiaryContext> {
+  const scope = currentDiaryScope(data);
+  const schema = await data.describe(scope);
+  if (selected.sourceId !== schema.sourceId || selected.scopeId !== schema.stableScopeId)
+    throw new Error("原日记作者已不在当前资料中，请重新选择");
+  // 持久作者通过稳定身份找到当前实例；后续关系查询使用此次取得的实例 ID。
+  const people = await data.query({
+    ...scope,
+    sql: "SELECT record_id,name,profile_text FROM phone_characters WHERE stable_record_id=:author",
+    params: { author: selected.id },
+  });
+  if (people.truncated) throw new Error("人物资料查询被截断");
+  if (people.rows.length !== 1) throw new Error("原日记作者已不在当前资料中，请重新选择");
+  const [currentRecordId, name, profileText] = people.rows[0]!;
+  if (
+    typeof currentRecordId !== "string" ||
+    typeof name !== "string" ||
+    typeof profileText !== "string"
+  )
+    throw new Error("人物资料字段格式无效");
+  const author = {
+    id: selected.id,
+    name,
+    profileText,
+    sourceId: schema.sourceId,
+    scopeId: schema.stableScopeId,
+  };
+  const world = await readDiaryWorld(data, scope);
+  signal.throwIfAborted();
+  const history = await readDiaryChronicles(data, scope, currentRecordId, world.worldTime);
+  const chat = await data.readRecentChat({ ...scope, count: 20 });
+  signal.throwIfAborted();
+  // 同一实例空间也可能应用新预设；整份材料必须仍属于作者的稳定空间。
+  const current = await data.describe(scope);
+  if (current.sourceId !== schema.sourceId || current.stableScopeId !== schema.stableScopeId)
+    throw new Error("取材期间稳定资料空间已变化，请重新选择日记作者");
+  return {
+    author,
+    world,
+    chat,
+    ...history,
   };
 }

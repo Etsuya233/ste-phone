@@ -44,7 +44,10 @@ export function DiaryAuthorsPage({ diary, state, navigation }: DiaryPageProps) {
 
         <div className="diary-author-list" role="radiogroup" aria-label="日记作者">
           {state.authors.map((author) => {
-            const selected = state.data.author?.id === author.id;
+            const selected =
+              state.data.author?.sourceId === author.sourceId &&
+              state.data.author.scopeId === author.scopeId &&
+              state.data.author.id === author.id;
             return (
               <label
                 key={author.id}

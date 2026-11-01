@@ -123,10 +123,18 @@ test("background queries paginate complete required data and never query custom-
   const f = fixture();
   try {
     const insert = f.memory.db.prepare(
-      'INSERT INTO characters ("$record_id","$created_at",name,personality,background,current_status) VALUES(?,?,?,?,?,?)',
+      'INSERT INTO characters ("$record_id","$stable_id","$created_at",name,personality,background,current_status) VALUES(?,?,?,?,?,?,?)',
     );
     for (let index = 0; index < 405; index++)
-      insert.run(`extra-${index}`, "2026-10-30", `人物${index}`, "性格", "经历", "近况");
+      insert.run(
+        `extra-${index}`,
+        `extra-${index}`,
+        "2026-10-30",
+        `人物${index}`,
+        "性格",
+        "经历",
+        "近况",
+      );
     const data = await f.source.readBackground(f.source.getSnapshot().context);
     assert.equal(data.characters.length, 408);
     assert.match(data.items[0]!.description, /小蓝/);
@@ -248,6 +256,59 @@ test("same-chat updates mark an in-flight editor result stale without cancelling
     const describes = f.memory.stats.describes;
     await f.database.load(true);
     assert.equal(f.memory.stats.describes, describes + 1);
+  } finally {
+    f.dispose();
+  }
+});
+
+test("missing stable identity capability exposes an upgrade requirement without querying Memory", async () => {
+  const f = fixture();
+  try {
+    Object.assign(f.memory.api, { identity: undefined });
+    f.memory.change();
+    assert.equal(f.source.getSnapshot().context.available, false);
+    assert.match(f.source.getSnapshot().context.message!, /identity v1.*升级 Memory/);
+    await assert.rejects(f.source.describe(f.source.getSnapshot().context), /identity v1/);
+    assert.equal(f.memory.stats.describes, 0);
+  } finally {
+    f.dispose();
+  }
+});
+
+test("stable view identities remain separate from imported space and record query bindings", async () => {
+  const f = fixture();
+  try {
+    const before = f.memory.description;
+    f.memory.setDescription({
+      ...before,
+      space: { ...before.space, id: "imported-space" },
+      schemaKey: "imported-schema",
+    });
+    f.memory.db.exec(`UPDATE characters SET "$record_id"='imported-red' WHERE "$record_id"='red'`);
+    f.memory.change({ spaceId: "imported-space" });
+    const scope = f.source.getSnapshot().context;
+    const schema = await f.source.describe(scope);
+    assert.equal(schema.scopeId, "imported-space");
+    assert.equal(schema.stableScopeId, before.space.stableId);
+    const result = await f.source.query({
+      ...scope,
+      sql: "SELECT scope_id,stable_scope_id,record_id,stable_record_id FROM phone_characters WHERE stable_record_id='red'",
+    });
+    assert.deepEqual(result.rows, [
+      ["imported-space", before.space.stableId, "imported-red", "red"],
+    ]);
+    const alias = await f.source.query({
+      ...scope,
+      sql: "SELECT _phone_stable_scope_id,_phone_stable_record_id FROM src_characters WHERE _phone_record_id='imported-red'",
+    });
+    assert.deepEqual(alias.rows, [[before.space.stableId, "red"]]);
+    const background = await f.source.readBackground(scope);
+    assert.equal(background.stableScopeId, before.space.stableId);
+    assert.ok(background.characters.some((person) => person.id === "red"));
+    await assert.rejects(
+      f.source.describe({ ...scope, scopeId: before.space.stableId }),
+      /聊天已变化/,
+    );
   } finally {
     f.dispose();
   }

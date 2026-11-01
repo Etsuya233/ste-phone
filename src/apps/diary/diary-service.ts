@@ -180,6 +180,16 @@ export class DiaryService {
         },
       });
       if (!this.#ownsTask(task)) return;
+      // 普通资料更新保留已取材料；同实例重建成其他稳定空间时禁止保存旧作者结果。
+      const schema = await this.#dependencies.data.describe(
+        currentDiaryScope(this.#dependencies.data),
+      );
+      if (!this.#ownsTask(task)) return;
+      if (
+        schema.sourceId !== context.author.sourceId ||
+        schema.stableScopeId !== context.author.scopeId
+      )
+        throw new Error("生成期间稳定资料空间已变化，未保存日记");
       const entry = createDiaryEntry(context.author, context.world.worldTime, body);
       await this.#saveEntry(entry, task);
     } catch (error) {

@@ -18,8 +18,10 @@ const column = (
 ): DatabaseColumn => ({ name, description, type });
 const identity = [
   column("source_id", "来源持久身份"),
-  column("scope_id", "来源空间身份"),
-  column("record_id", "来源记录 ID"),
+  column("scope_id", "当前实例空间身份；用于查询归属"),
+  column("stable_scope_id", "稳定空间身份；用于持久引用"),
+  column("record_id", "当前实例记录 ID；用于关系 JOIN"),
+  column("stable_record_id", "稳定记录身份；用于持久引用"),
   column("created_at", "记录创建时间；不代表剧情时间"),
 ];
 
@@ -37,9 +39,11 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
     names.add(key);
     objects.push(object);
   }
-  const idSelect = `${literal("ste-memory")} AS source_id,${literal(schema.space.id)} AS scope_id,r."$record_id" AS record_id,r."$created_at" AS created_at`;
+  const idSelect = `${literal("ste-memory")} AS source_id,${literal(schema.space.id)} AS scope_id,${literal(schema.space.stableId)} AS stable_scope_id,r."$record_id" AS record_id,r."$stable_id" AS stable_record_id,r."$created_at" AS created_at`;
   for (const table of schema.tables) {
     const fields = fieldsFor(table);
+    if (!schema.columns[table.key]!.includes("$stable_id"))
+      throw new Error(`Memory 公开表缺少 $stable_id，请升级 Memory：${table.key}`);
     const columns = fields.map((field): DatabaseColumn => {
       if (!schema.columns[table.key]!.includes(field.key))
         throw new Error(`公开结构缺少列：${table.key}.${field.key}`);
@@ -70,14 +74,16 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
       description: `${table.name} · Memory 公开业务表 ${table.key} 的别名；仅启用字段`,
       columns: [
         column("_phone_source_id", "来源身份"),
-        column("_phone_scope_id", "空间身份"),
-        column("_phone_record_id", "记录 ID"),
+        column("_phone_scope_id", "当前实例空间身份"),
+        column("_phone_stable_scope_id", "稳定空间身份"),
+        column("_phone_record_id", "当前实例记录 ID"),
+        column("_phone_stable_record_id", "稳定记录身份"),
         column("_phone_created_at", "创建时间"),
         column("_phone_updated_at", "更新时间"),
         column("_phone_display_text", "来源显示文本"),
         ...columns,
       ],
-      select: `SELECT ${literal("ste-memory")} AS _phone_source_id,${literal(schema.space.id)} AS _phone_scope_id,"$record_id" AS _phone_record_id,"$created_at" AS _phone_created_at,"$updated_at" AS _phone_updated_at,"$display_text" AS _phone_display_text${fields.map((field) => `,${q(field.key)}`).join("")} FROM ${q(table.key)}`,
+      select: `SELECT ${literal("ste-memory")} AS _phone_source_id,${literal(schema.space.id)} AS _phone_scope_id,${literal(schema.space.stableId)} AS _phone_stable_scope_id,"$record_id" AS _phone_record_id,"$stable_id" AS _phone_stable_record_id,"$created_at" AS _phone_created_at,"$updated_at" AS _phone_updated_at,"$display_text" AS _phone_display_text${fields.map((field) => `,${q(field.key)}`).join("")} FROM ${q(table.key)}`,
     });
   }
 
@@ -222,18 +228,22 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
       objects.some((object) => object.name === name),
     )
   ) {
+    // 悬空引用仍保留实例关系行；只有存在的目标人物才能提供稳定身份。
     add({
       name: "phone_chronicle_characters",
       kind: "view",
       description: "纪要与人物的 ID 关联，完整展开 JSON 多值引用",
       columns: [
         column("source_id", "来源身份"),
-        column("scope_id", "空间身份"),
+        column("scope_id", "当前实例空间身份"),
+        column("stable_scope_id", "稳定空间身份"),
         column("chronicle_id", "纪要 ID"),
-        column("character_id", "人物 ID"),
+        column("character_id", "当前实例人物 ID"),
+        column("stable_chronicle_id", "稳定纪要身份"),
+        column("stable_character_id", "稳定人物身份"),
       ],
       select:
-        "SELECT c.source_id,c.scope_id,c.record_id AS chronicle_id,CAST(j.value AS TEXT) AS character_id FROM phone_chronicles c,json_each(c.related_character_ids) j",
+        "SELECT c.source_id,c.scope_id,c.stable_scope_id,c.record_id AS chronicle_id,CAST(j.value AS TEXT) AS character_id,c.stable_record_id AS stable_chronicle_id,p.stable_record_id AS stable_character_id FROM phone_chronicles c,json_each(c.related_character_ids) j LEFT JOIN phone_characters p ON p.record_id=CAST(j.value AS TEXT)",
     });
     capabilities.push(["phone_chronicle_characters", "supported", "完整多值 ID 关联"]);
   } else
@@ -267,6 +277,7 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
   return {
     sourceId: "ste-memory",
     scopeId: schema.space.id,
+    stableScopeId: schema.space.stableId,
     name: schema.space.name,
     schemaVersion: 1,
     schemaKey: schema.schemaKey,
