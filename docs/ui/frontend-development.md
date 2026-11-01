@@ -12,7 +12,7 @@
 
 基础组件位于 `src/frontend/foundation/`，每个组件的 TSX 与 CSS 分文件存放，`foundation.tsx` 仅显式导出，`foundation.css` 汇总样式。页面使用组件提供的视觉，自己的 CSS 只调整布局；颜色、字体、间距、控件尺寸统一读取 `tokens.css`。
 
-字体优先使用 Apple 平台字体，Inter 西文字体由挂载入口通过 Google Fonts 声明，不打包字体文件；字体网络请求不阻塞手机使用。资料搜索只展示 Placeholder，并保留 `aria-label`，聚焦时不显示 outline。来源信息使用展开的 `GroupedList` 与静态 `ListCell`，属性名居左、属性值居右。
+字体按界面分工：手机外壳使用 Inter 并优先使用 Apple 平台字体；日记界面使用 Noto Serif SC 衬线体，正文与署名使用 LXGW WenKai 手写体。字体由挂载入口通过 Google Fonts 与 jsDelivr 声明，不打包字体文件；字体网络请求不阻塞手机使用，加载失败时回退到 Georgia、楷体或本机衬线字体。资料搜索只展示 Placeholder，并保留 `aria-label`，聚焦时不显示 outline。来源信息使用展开的 `GroupedList` 与静态 `ListCell`，属性名居左、属性值居右。
 
 `Page` 使用 `navBar` 和 `footer` 插槽。导航栏独立使用 `NavBar`，返回文案及行为由调用方传入，右侧操作使用 `right` 插槽。提供底栏时必须指定逻辑像素高度 `footerHeight`，页面据此同步内容 padding、scroll-padding 与底栏高度。`SafeArea` 在 Page 内统一消费底部安全区，业务页面不重复预留。内容层为唯一滚动容器，顶栏、底栏和系统状态栏固定叠放。
 

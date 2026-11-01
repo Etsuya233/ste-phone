@@ -110,7 +110,7 @@
   color: var(--diary-ink-soft);
 }
 :host .diary-body {
-  font-family: var(--diary-serif);
+  font-family: var(--diary-hand);
   font-size: 17px;
   line-height: 1.9;
   letter-spacing: 0.01em;
