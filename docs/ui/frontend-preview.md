@@ -1,5 +1,11 @@
 # 前端开发与验收
 
+## 日记字体（2026-11-01）
+
+日记界面改用 Noto Serif SC 衬线体，正文和署名改用 LXGW WenKai 手写体；状态栏、主屏和其他应用仍使用原有 Inter 与 Apple 系统字体。两套字体由 `src/frontend/host/mount-phone.tsx` 的文档级样式表声明，不进入产物；`src/apps/diary/ui/diary-app.css` 集中定义字体栈，`.diary-app` 的 `--ios-font` 让日记内按钮、导航和设置文字继承衬线体，正文使用 `--diary-hand`。
+
+Edge 独立预览在桌面、390×844 和 320×568 检查列表、详情、写作、作者和设置页：导航、按钮、列表和设置文字为衬线体，正文与署名为手写体，320px 无横向溢出。阻断 Google Fonts 与 jsDelivr 后页面仍可阅读和操作，回退字体生效。typecheck、lint、format:check、91 项 test、build 与 `git diff --check` 通过；截图保存在忽略目录 `tmp/diary-font/`，未在真实 ST 或 iPhone Safari 真机验收。
+
 ## 日记本界面重构（2026-11-01）
 
 日记列表、写作页和详情页改为暖色纸页样式：笔记本封面、人物色调头像、日期章、横线纸页、手写体署名与可读的正文排版。列表按世界日期和作者展示摘要；空态、生成中、保存失败、缺少聊天与资料错误都有独立提示。生成和保存失败时操作放在纸页上方，长正文不会挡住取消或重试。

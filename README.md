@@ -73,7 +73,7 @@ pnpm format:check
 pnpm test              # 串行验证工程接入、资料缓存、远端查询与标准视图 SQL
 ```
 
-生产入口为 `src/frontend/index.ts`，与独立预览共用 `src/bootstrap/create-phone.tsx` 组装设置、资料、数据库工作区与应用页面，入口分别注入宿主或模拟适配器。`src/apps/<应用>/` 集中各应用业务与 `ui/` 页面；`src/frontend/host/mount-phone.tsx` 挂载 React 与 Shadow DOM，`phone-app.tsx` 管理窗口开关。`frontend/device/` 放机身与会话，`frontend/system/` 放状态栏与转场，`frontend/foundation/` 放基础视觉组件，`frontend/apps/home/` 放主屏，`NavigationStack` 提供保留 DOM 的页内导航，`frontend/theme.css` 汇总 CSS 与主题变量。React 随插件打包。字体优先使用 Apple 平台字体，Inter 西文字体通过 Google Fonts 加载，不进入产物；网络不可用时继续使用本机无衬线字体。构建产物的 manifest 版本与运行时版本统一读取 `package.json`。
+生产入口为 `src/frontend/index.ts`，与独立预览共用 `src/bootstrap/create-phone.tsx` 组装设置、资料、数据库工作区与应用页面，入口分别注入宿主或模拟适配器。`src/apps/<应用>/` 集中各应用业务与 `ui/` 页面；`src/frontend/host/mount-phone.tsx` 挂载 React 与 Shadow DOM，`phone-app.tsx` 管理窗口开关。`frontend/device/` 放机身与会话，`frontend/system/` 放状态栏与转场，`frontend/foundation/` 放基础视觉组件，`frontend/apps/home/` 放主屏，`NavigationStack` 提供保留 DOM 的页内导航，`frontend/theme.css` 汇总 CSS 与主题变量。React 随插件打包。手机外壳使用 Inter 并优先使用 Apple 平台字体；日记界面使用 Noto Serif SC 衬线体，正文使用 LXGW WenKai 手写体。字体由挂载入口通过 Google Fonts 与 jsDelivr 声明，不进入产物；网络不可用时回退到 Georgia、楷体或本机衬线字体。构建产物的 manifest 版本与运行时版本统一读取 `package.json`。
 
 全局设置与存储约定位于 `src/apps/settings/`，`public.ts` 提供壁纸读取、模型连接摘要与显式连接配置副本。公共资料、查询结构与来源缓存归 `src/apps/data-source/`，通过 `DataAppPublic` 供其他应用读取；`src/apps/database/` 只持有 SQL 草稿、结果、搜索与滚动等编辑工作区。Memory 数据库连接、协议和视图定义位于 `src/infrastructure/ste-memory/`，ST 设置、图片、AI 传输与聊天通知适配位于 `src/infrastructure/host/`；`src/core/ai/` 和 `src/core/chat/` 声明传输及当前聊天契约。各应用公开读取不依赖页面打开，跨应用仅通过所属模块的 `public.ts` 调用。职责与依赖见 [模块架构](docs/architecture.md)，资料接口与缓存见 [公共数据源](docs/data-source.md)。
 

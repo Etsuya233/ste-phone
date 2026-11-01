@@ -13,12 +13,12 @@
   --diary-accent-soft: #f0d8c8;
   --diary-sheet-line: #e0cfb7;
   --diary-shadow: 0 12px 28px #5d3f280f, 0 2px 6px #5d3f280a;
-  --diary-serif:
-    "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", "SimSun", Georgia, serif;
-  --diary-hand: "Kaiti SC", "STKaiti", "KaiTi", "Kaiti TC", var(--diary-serif);
+  --diary-serif: "Noto Serif SC", Georgia, "Songti SC", "STSong", "Source Han Serif SC", serif;
+  --diary-hand: "LXGW WenKai", "Kaiti SC", "STKaiti", "KaiTi", "Noto Serif SC", Georgia, serif;
   --diary-tone-bg: #eadfd2;
   --diary-tone-ink: #8a6a55;
   --diary-tone-line: #c4a88e;
+  --ios-font: var(--diary-serif);
   --ios-surface: var(--diary-paper);
   --ios-bar: #f8f0e4e6;
   --ios-line: var(--diary-sheet-line);
@@ -32,6 +32,7 @@
   --ios-muted-ink: #7c6959;
   --ios-footer-surface: #faf4ead6;
   --ios-alert-surface: #f9f2e7ed;
+  font-family: var(--diary-serif);
   position: relative;
   height: 100%;
 }
