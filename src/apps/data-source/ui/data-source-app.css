@@ -61,7 +61,3 @@
   font-size: var(--ios-caption-size);
   user-select: text;
 }
-:host .data-app-icon {
-  color: var(--ios-on-accent);
-  background: var(--ios-blue);
-}

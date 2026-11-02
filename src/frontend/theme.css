@@ -2,6 +2,7 @@
 @import "./foundation/foundation.css";
 @import "./device/device.css";
 @import "./system/system.css";
+@import "./system/app-icon.css";
 @import "./apps/home/home.css";
 @import "../apps/stopwatch/ui/stopwatch.css";
 @import "../apps/foundation/ui/foundation-app.css";

@@ -41,17 +41,6 @@
 :host .diary-app .ios-button--filled {
   border-radius: 999px;
 }
-:host .diary-app-icon {
-  background: var(--diary-icon-fill);
-  color: var(--diary-icon-ink);
-}
-:host .diary-app-icon svg {
-  stroke-width: 1.8;
-}
-:host .diary-app-ribbon {
-  fill: var(--diary-icon-ribbon);
-  stroke: none;
-}
 
 :host .diary-page {
   font-size: var(--ios-body-size);
