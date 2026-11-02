@@ -2,6 +2,7 @@ import { Page } from "../../../frontend/foundation/page.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { PersonAvatar, type WechatPageProps } from "./wechat-page.tsx";
+import { PersonIdentity, ProfileFields } from "./wechat-profile.tsx";
 
 export function WechatAccounts({ wechat, state, navigation }: WechatPageProps) {
   return (
@@ -29,7 +30,11 @@ export function WechatAccounts({ wechat, state, navigation }: WechatPageProps) {
           >
             <PersonAvatar name={person.name} />
             <strong>{person.name}</strong>
-            {state.data.account?.id === person.id && <span aria-label="当前帐号">✓</span>}
+            {state.data.account?.id === person.id && (
+              <span className="wechat-row-mark" aria-label="当前帐号">
+                ✓
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -39,20 +44,47 @@ export function WechatAccounts({ wechat, state, navigation }: WechatPageProps) {
     </Page>
   );
 }
+
 export function WechatPerson({ state, navigation, id }: WechatPageProps & { id: string }) {
-  const person = state.people.find((person) => person.id === id);
-  return (
-    <Page navBar={<NavBar title="人物资料" back={{ label: "微信", onClick: navigation.pop }} />}>
-      {person ? (
-        <div className="wechat-profile">
-          <PersonAvatar name={person.name} />
-          <h2>{person.name}</h2>
-          <p>{person.profileText}</p>
-          <Button onClick={() => navigation.push({ page: "chat", id })}>发消息</Button>
-        </div>
+  const person = state.people.find((item) => item.id === id);
+  const self = state.data.account?.id === id;
+  const content = person ? (
+    <>
+      <PersonIdentity name={person.name} />
+      {person.profileText ? (
+        <ProfileFields name={person.name} profileText={person.profileText} />
       ) : (
-        <p className="wechat-notice">当前人物资料不可用。</p>
+        <p className="wechat-notice">暂无人物简介。</p>
       )}
+    </>
+  ) : (
+    <p className="wechat-notice">当前人物资料不可用。</p>
+  );
+  const navBar = (
+    <NavBar
+      title={self ? "个人信息" : "人物资料"}
+      back={{ label: self ? "我" : "微信", onClick: navigation.pop }}
+    />
+  );
+  return self ? (
+    <Page navBar={navBar}>{content}</Page>
+  ) : (
+    <Page
+      navBar={navBar}
+      footerHeight={62}
+      footer={
+        <div className="wechat-action">
+          <Button
+            variant="filled"
+            disabled={!person}
+            onClick={() => navigation.push({ page: "chat", id })}
+          >
+            发消息
+          </Button>
+        </div>
+      }
+    >
+      {content}
     </Page>
   );
 }

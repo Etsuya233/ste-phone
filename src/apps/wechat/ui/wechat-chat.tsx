@@ -3,6 +3,7 @@ import { Page } from "../../../frontend/foundation/page.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { PersonAvatar, type WechatPageProps } from "./wechat-page.tsx";
+import { WechatComposer } from "./wechat-composer.tsx";
 import { conversationId } from "../wechat.ts";
 
 export function WechatChat({
@@ -13,6 +14,7 @@ export function WechatChat({
   active,
 }: WechatPageProps & { id: string; active: boolean }) {
   const [draft, setDraft] = useState(() => wechat.getDraft(id));
+  const [composerHeight, setComposerHeight] = useState(62);
   const end = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
   const conversation = wechat.getConversation(id);
@@ -39,7 +41,7 @@ export function WechatChat({
     };
     content.addEventListener("scroll", scroll);
     return () => content.removeEventListener("scroll", scroll);
-  }, [conversation?.messages.length, active]);
+  }, [conversation?.messages.length, active, composerHeight]);
   async function send() {
     const text = draft;
     await wechat.send(id, text, () => setDraft(""));
@@ -54,28 +56,18 @@ export function WechatChat({
           right={<Button onClick={() => navigation.push({ page: "person", id })}>资料</Button>}
         />
       }
-      footerHeight={62}
+      footerHeight={composerHeight}
       footer={
-        <form
-          className="wechat-composer"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void send();
+        <WechatComposer
+          value={draft}
+          disabled={!available || running}
+          onChange={(text) => {
+            setDraft(text);
+            wechat.setDraft(id, text);
           }}
-        >
-          <textarea
-            aria-label="消息"
-            rows={1}
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              wechat.setDraft(id, event.target.value);
-            }}
-          />
-          <button type="submit" disabled={!available || running || !draft.trim()}>
-            发送
-          </button>
-        </form>
+          onSend={() => void send()}
+          onHeightChange={setComposerHeight}
+        />
       }
     >
       <div className="wechat-messages">

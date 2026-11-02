@@ -2,7 +2,13 @@ import { useState } from "react";
 import { Page } from "../../../frontend/foundation/page.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
+import { GroupedList } from "../../../frontend/foundation/grouped-list.tsx";
+import { Icon } from "../../../frontend/foundation/icon.tsx";
+import { ListCell } from "../../../frontend/foundation/list-cell.tsx";
+import type { CharacterProfile } from "../../data-source/public.ts";
+import type { WechatConversation, WechatPerson } from "../wechat.ts";
 import { PersonAvatar, type WechatPageProps } from "./wechat-page.tsx";
+import { PersonIdentity, ProfilePreview } from "./wechat-profile.tsx";
 
 export function WechatHome({
   wechat,
@@ -12,6 +18,7 @@ export function WechatHome({
 }: WechatPageProps & { onHome(): void }) {
   const [tab, setTab] = useState("微信");
   const account = state.data.account;
+  const self = account ? state.people.find((person) => person.id === account.id) : undefined;
   const conversations = state.data.conversations
     .filter(
       (item) =>
@@ -48,61 +55,26 @@ export function WechatHome({
       ) : (
         <>
           {tab === "微信" && (
-            <div className="wechat-rows">
-              {conversations.length ? (
-                conversations.map((conversation) => {
-                  const other = conversation.people.find((person) => person.id !== account.id)!;
-                  const name =
-                    state.scopeId === other.scopeId
-                      ? (state.people.find((person) => person.id === other.id)?.name ?? other.name)
-                      : other.name;
-                  return (
-                    <button
-                      type="button"
-                      className="wechat-row"
-                      key={conversation.id}
-                      onClick={() => navigation.push({ page: "chat", id: other.id })}
-                    >
-                      <PersonAvatar name={name} />
-                      <span>
-                        <strong>{name}</strong>
-                        <small>{conversation.messages.at(-1)?.content.text}</small>
-                      </span>
-                    </button>
-                  );
-                })
-              ) : (
-                <p className="wechat-notice">还没有聊天，去通讯录找个人说说话。</p>
-              )}
-            </div>
+            <WechatConversations
+              account={account}
+              conversations={conversations}
+              people={state.people}
+              onOpen={(id) => navigation.push({ page: "chat", id })}
+            />
           )}
           {tab === "通讯录" && (
-            <div className="wechat-rows">
-              {state.people
-                .filter((person) => person.id !== account.id)
-                .map((person) => (
-                  <button
-                    type="button"
-                    className="wechat-row"
-                    key={person.id}
-                    onClick={() => navigation.push({ page: "person", id: person.id })}
-                  >
-                    <PersonAvatar name={person.name} />
-                    <strong>{person.name}</strong>
-                  </button>
-                ))}
-            </div>
+            <WechatContacts
+              people={state.people.filter((person) => person.id !== account.id)}
+              onOpen={(id) => navigation.push({ page: "person", id })}
+            />
           )}
           {tab === "我" && (
-            <div className="wechat-profile">
-              <PersonAvatar
-                name={state.people.find((person) => person.id === account.id)?.name ?? account.name}
-              />
-              <h2>
-                {state.people.find((person) => person.id === account.id)?.name ?? account.name}
-              </h2>
-              <Button onClick={() => navigation.push({ page: "accounts" })}>切换帐号</Button>
-            </div>
+            <WechatMe
+              name={self?.name ?? account.name}
+              profileText={self?.profileText ?? ""}
+              onOpenProfile={() => navigation.push({ page: "person", id: account.id })}
+              onSwitchAccount={() => navigation.push({ page: "accounts" })}
+            />
           )}
         </>
       )}
@@ -110,20 +82,166 @@ export function WechatHome({
   );
 }
 
+function WechatConversations({
+  account,
+  conversations,
+  people,
+  onOpen,
+}: {
+  account: WechatPerson;
+  conversations: readonly WechatConversation[];
+  people: readonly CharacterProfile[];
+  onOpen(id: string): void;
+}) {
+  return (
+    <div className="wechat-rows">
+      {conversations.length ? (
+        conversations.map((conversation) => {
+          const other = conversation.people.find((person) => person.id !== account.id)!;
+          const name =
+            other.scopeId === account.scopeId
+              ? (people.find((person) => person.id === other.id)?.name ?? other.name)
+              : other.name;
+          return (
+            <button
+              type="button"
+              className="wechat-row wechat-row--conversation"
+              key={conversation.id}
+              onClick={() => onOpen(other.id)}
+            >
+              <PersonAvatar name={name} />
+              <span>
+                <strong>{name}</strong>
+                <small>{conversation.messages.at(-1)?.content.text}</small>
+              </span>
+            </button>
+          );
+        })
+      ) : (
+        <p className="wechat-notice">还没有聊天，去通讯录找个人说说话。</p>
+      )}
+    </div>
+  );
+}
+
+function WechatContacts({
+  people,
+  onOpen,
+}: {
+  people: readonly CharacterProfile[];
+  onOpen(id: string): void;
+}) {
+  const [query, setQuery] = useState("");
+  const keyword = query.trim().toLocaleLowerCase();
+  const visible = people
+    .filter((person) => person.name.toLocaleLowerCase().includes(keyword))
+    .toSorted((left, right) => left.name.localeCompare(right.name, "zh-Hans-CN"));
+  return (
+    <>
+      <div className="wechat-search">
+        <input
+          type="search"
+          aria-label="搜索联系人"
+          placeholder="搜索联系人"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </div>
+      <div className="wechat-rows">
+        {visible.map((person) => (
+          <button
+            type="button"
+            className="wechat-row"
+            key={person.id}
+            onClick={() => onOpen(person.id)}
+          >
+            <PersonAvatar name={person.name} />
+            <span>
+              <strong>{person.name}</strong>
+            </span>
+          </button>
+        ))}
+        {!visible.length && (
+          <p className="wechat-notice">{keyword ? "没有匹配的联系人。" : "还没有其他人物。"}</p>
+        )}
+      </div>
+    </>
+  );
+}
+
+function WechatMe({
+  name,
+  profileText,
+  onOpenProfile,
+  onSwitchAccount,
+}: {
+  name: string;
+  profileText: string;
+  onOpenProfile(): void;
+  onSwitchAccount(): void;
+}) {
+  return (
+    <>
+      <PersonIdentity name={name} />
+      <ProfilePreview name={name} profileText={profileText} />
+      <GroupedList>
+        <ListCell title="个人资料" onClick={onOpenProfile} />
+        <ListCell title="切换帐号" onClick={onSwitchAccount} />
+      </GroupedList>
+    </>
+  );
+}
+
 function WechatTabs({ tab, onSelect }: { tab: string; onSelect(tab: string): void }) {
+  const tabs = [
+    { name: "微信", icon: <ChatTabIcon /> },
+    { name: "通讯录", icon: <ContactsTabIcon /> },
+    { name: "我", icon: <MeTabIcon /> },
+  ];
   return (
     <nav className="wechat-tabs" aria-label="微信导航">
-      {["微信", "通讯录", "我"].map((name) => (
+      {tabs.map(({ name, icon }) => (
         <button
           type="button"
           key={name}
           aria-current={tab === name ? "page" : undefined}
           onClick={() => onSelect(name)}
         >
-          <span aria-hidden="true">{name === "微信" ? "☏" : name === "通讯录" ? "☷" : "○"}</span>
+          <Icon className="wechat-tab-icon">{icon}</Icon>
           {name}
         </button>
       ))}
     </nav>
+  );
+}
+
+function ChatTabIcon() {
+  return (
+    <svg viewBox="0 0 24 24">
+      <path d="M12 4c-4.7 0-8.5 3-8.5 6.7 0 2.1 1.2 4 3.1 5.2l-.7 2.5 3-1.4c1 .3 2 .4 3.1.4 4.7 0 8.5-3 8.5-6.7S16.7 4 12 4Z" />
+      <circle cx="8.6" cy="10.6" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="10.6" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="15.4" cy="10.6" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function ContactsTabIcon() {
+  return (
+    <svg viewBox="0 0 24 24">
+      <rect x="4.5" y="4" width="15" height="16" rx="2.5" />
+      <path d="M8 4v16" />
+      <circle cx="14" cy="10.2" r="2.2" />
+      <path d="M10.8 16.4c.5-1.5 1.7-2.3 3.2-2.3s2.7.8 3.2 2.3" />
+    </svg>
+  );
+}
+
+function MeTabIcon() {
+  return (
+    <svg viewBox="0 0 24 24">
+      <circle cx="12" cy="8.2" r="3.4" />
+      <path d="M5.3 20c.7-3.4 3.4-5.4 6.7-5.4s6 2 6.7 5.4" />
+    </svg>
   );
 }

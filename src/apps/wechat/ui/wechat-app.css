@@ -20,9 +20,9 @@
   align-content: center;
   gap: 2px;
 }
-:host .wechat-tabs button span {
-  font-size: 22px;
-  line-height: 23px;
+:host .wechat-tabs .wechat-tab-icon {
+  width: 24px;
+  height: 24px;
 }
 :host .wechat-tabs button[aria-current] {
   color: #159b4b;
@@ -32,7 +32,7 @@
 }
 :host .wechat-row {
   width: 100%;
-  min-height: 68px;
+  min-height: 56px;
   padding: 10px 14px;
   display: flex;
   gap: 12px;
@@ -44,13 +44,27 @@
   color: inherit;
   font: inherit;
 }
-:host .wechat-row > span:not(.wechat-avatar) {
+:host .wechat-row--conversation {
+  min-height: 68px;
+}
+:host .wechat-row > span:not(.wechat-avatar):not(.wechat-row-mark) {
   min-width: 0;
   flex: 1;
+}
+:host .wechat-row-mark {
+  flex-shrink: 0;
+  color: #159b4b;
+}
+:host .wechat-row > strong {
+  flex: 1;
+  min-width: 0;
 }
 :host .wechat-row strong {
   font-weight: 500;
   display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 :host .wechat-row small {
   display: block;
@@ -71,19 +85,130 @@
   place-items: center;
   font-size: 20px;
 }
-:host .wechat-profile,
 :host .wechat-welcome {
   padding: 32px 20px;
 }
-:host .wechat-profile > p {
-  white-space: pre-wrap;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
+:host .wechat-identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 16px;
+  background: var(--ios-row-surface);
 }
-:host .wechat-profile > .wechat-avatar {
+:host .wechat-identity .wechat-avatar {
   width: 60px;
   height: 60px;
   font-size: 28px;
+}
+:host .wechat-identity h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+:host .wechat-profile-preview {
+  margin: 0;
+  padding: 0 16px 16px;
+  background: var(--ios-row-surface);
+  color: var(--ios-secondary-ink);
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+:host .wechat-search {
+  padding: 8px 12px;
+  background: var(--ios-surface);
+}
+:host .wechat-search input {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: #e5e5ea;
+  color: var(--ios-ink);
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+}
+:host .wechat-field {
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--ios-line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+:host .wechat-field:last-child {
+  border-bottom: 0;
+}
+:host button.wechat-field:active {
+  background: var(--ios-row-active);
+}
+:host .wechat-field--inline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ios-space-medium);
+}
+:host .wechat-field--block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+:host .wechat-field-label {
+  flex-shrink: 0;
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+}
+:host .wechat-field--inline .wechat-field-label {
+  font-size: inherit;
+}
+:host .wechat-field-value {
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+:host .wechat-field--inline .wechat-field-value {
+  min-width: 0;
+  color: var(--ios-secondary-ink);
+  text-align: right;
+}
+:host .wechat-field--block .wechat-field-value {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+:host .wechat-field--block .wechat-field-value--expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+:host .wechat-field-toggle {
+  align-self: flex-start;
+  color: #576b95;
+  font-size: 13px;
+}
+:host .wechat-action {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 8px 16px;
+}
+:host .wechat-action .ios-button {
+  flex: 1;
+  height: var(--control-size);
+  border-radius: var(--ios-control-radius);
+  background: #07c160;
+  color: var(--ios-on-accent);
 }
 :host .wechat-notice,
 :host .wechat-reply {
@@ -125,8 +250,8 @@
 }
 :host .wechat-composer {
   display: flex;
-  align-items: center;
-  height: 62px;
+  align-items: flex-end;
+  min-height: 62px;
   gap: 8px;
   padding: 8px 10px;
   background: #f7f7f7;
@@ -136,7 +261,8 @@
   flex: 1;
   min-width: 0;
   height: 38px;
-  max-height: 44px;
+  min-height: 38px;
+  max-height: 96px;
   resize: none;
   border: 1px solid #ddd;
   background: white;
@@ -144,6 +270,8 @@
   padding: 8px;
   color: #222;
   font: inherit;
+  line-height: 1.4;
+  overflow-y: hidden;
 }
 :host .wechat-composer button {
   background: #07c160;
