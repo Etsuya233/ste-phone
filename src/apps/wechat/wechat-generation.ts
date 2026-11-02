@@ -10,7 +10,10 @@ export async function generateWechatReply(input: {
   prompt: string;
   signal: AbortSignal;
 }) {
-  const stream = input.transport.createStream(input.connection, { operation: "微信回复" });
+  const stream = input.transport.createStream(input.connection, {
+    operation: "微信回复",
+    app: "wechat",
+  });
   const agent = new Agent({
     initialState: {
       model: createCompletionModel(input.connection.model),

@@ -9,6 +9,8 @@ import { DatabaseWorkspace } from "../apps/database/database-workspace.ts";
 import { DatabaseApp } from "../apps/database/ui/database-app.tsx";
 import { Stopwatch } from "../apps/stopwatch/ui/stopwatch.tsx";
 import { FoundationApp } from "../apps/foundation/ui/foundation-app.tsx";
+import { LogsApp } from "../apps/logs/ui/logs-app.tsx";
+import type { PhoneLog } from "../apps/logs/public.ts";
 import type { AiTransport } from "../core/ai/public.ts";
 import type { ChatContext } from "../core/chat/public.ts";
 import type { AppDefinition } from "../frontend/device/app-lifecycle.ts";
@@ -46,6 +48,7 @@ export function createPhone(dependencies: {
   chat: ChatContext;
   diaryStorage: DiaryStorage;
   wechatStorage: WechatStorage;
+  logs: PhoneLog;
 }): PhoneRuntime {
   const settings = new PhoneSettingsService(dependencies.settingsStorage);
   const data = new PhoneDataService(dependencies.dataProvider);
@@ -97,6 +100,11 @@ export function createPhone(dependencies: {
     "data-source": {
       render: ({ active, onHome }) => (
         <DataSourceApp active={active} source={data} onHome={onHome} />
+      ),
+    },
+    logs: {
+      render: ({ active, onHome }) => (
+        <LogsApp active={active} logs={dependencies.logs} onHome={onHome} />
       ),
     },
     database: {

@@ -6,6 +6,7 @@
 @import "../apps/stopwatch/ui/stopwatch.css";
 @import "../apps/foundation/ui/foundation-app.css";
 @import "../apps/data-source/ui/data-source-app.css";
+@import "../apps/logs/ui/logs-app.css";
 
 @import "../apps/database/ui/database-app.css";
 

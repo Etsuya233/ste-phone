@@ -30,7 +30,7 @@ test("request logs retain the exact malformed response and its original cause", 
       new Response(
         'data: {"choices":[{"delta":{"tool_calls":{},"reasoning_content":"private-thought","content":"private-reply"}}]}\n\n',
       ),
-  }).createStream(connection, { operation: "日记生成" });
+  }).createStream(connection, { operation: "日记生成", app: "diary" });
   const result = await (
     await stream(
       model,
@@ -45,6 +45,7 @@ test("request logs retain the exact malformed response and its original cause", 
     ["request", "response", "error"],
   );
   assert.equal(logs[0]!.operation, "日记生成");
+  assert.equal(logs[0]!.app, "diary");
   assert.equal(logs[0]!.maxTokens, 10240);
   assert.equal(logs[1]!.status, 200);
   assert.equal(logs[0]!.requestId, logs[2]!.requestId);
@@ -65,7 +66,7 @@ test("completed request logs share an id and report output size and finish reaso
     fetchImpl: async () => new Response(wire),
   }).createStream(
     { baseUrl: "https://example.com", apiKey: "", customHeaders: {} },
-    { operation: "连接测试" },
+    { operation: "连接测试", app: "settings" },
   );
   const result = await (await stream(model, { messages: [] })).result();
   assert.equal(result.stopReason, "stop");

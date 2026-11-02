@@ -1,10 +1,19 @@
 import { createAssistantMessageEventStream, type AssistantMessage } from "@earendil-works/pi-ai";
+import type { PhoneLog } from "../../src/apps/logs/public.ts";
 import type { AiTransport } from "../../src/core/ai/public.ts";
 
 /** 预览复用设置的 Agent 流程，仅替换传输，始终不请求配置的模型服务。 */
-export function createPreviewAiTransport(mode: string | null): AiTransport {
+export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): AiTransport {
   return {
-    createStream: () => (model, context, options) => {
+    createStream: (_connection, diagnostics) => (model, context, options) => {
+      const app = diagnostics?.app ?? "system";
+      const operation = diagnostics?.operation ?? "模型请求";
+      logs.info(app, "STE Phone AI", `${operation} 模拟请求`, {
+        simulated: true,
+        model: model.id,
+        mode: mode ?? "normal",
+        messages: context.messages.length,
+      });
       const stream = createAssistantMessageEventStream();
       const output: AssistantMessage = {
         role: "assistant",
@@ -29,6 +38,10 @@ export function createPreviewAiTransport(mode: string | null): AiTransport {
         options?.signal?.removeEventListener("abort", abort);
         output.stopReason = "aborted";
         output.errorMessage = "连接测试已取消";
+        logs.warn(app, "STE Phone AI", `${operation} 模拟取消`, {
+          simulated: true,
+          model: model.id,
+        });
         stream.push({ type: "error", reason: "aborted", error: output });
       };
       const timer = setTimeout(
@@ -37,6 +50,11 @@ export function createPreviewAiTransport(mode: string | null): AiTransport {
           if (mode === "error") {
             output.stopReason = "error";
             output.errorMessage = "模拟测试失败：服务暂不可用，未请求真实服务";
+            logs.error(app, "STE Phone AI", `${operation} 模拟失败`, {
+              simulated: true,
+              model: model.id,
+              message: output.errorMessage,
+            });
             stream.push({ type: "error", reason: "error", error: output });
             return;
           }
@@ -58,6 +76,12 @@ export function createPreviewAiTransport(mode: string | null): AiTransport {
           stream.push({ type: "text_delta", contentIndex: 0, delta: text, partial: output });
           stream.push({ type: "text_end", contentIndex: 0, content: text, partial: output });
           output.stopReason = mode === "length" ? "length" : "stop";
+          logs.info(app, "STE Phone AI", `${operation} 模拟完成`, {
+            simulated: true,
+            model: model.id,
+            stopReason: output.stopReason,
+            textCharacters: text.length,
+          });
           stream.push({ type: "done", reason: output.stopReason, message: output });
         },
         mode === "slow" ? 15_000 : 600,
