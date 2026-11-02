@@ -285,15 +285,6 @@
 :host .wechat-composer button:disabled {
   opacity: 0.4;
 }
-:host .wechat-app-icon {
-  background: linear-gradient(#28dc69, #06b94e);
-}
-:host .wechat-app-icon svg {
-  fill: white;
-  stroke: #07b94f;
-  stroke-width: 1.5;
-}
-
 :host .wechat-send-preferences {
   padding: var(--ios-space-medium);
 }

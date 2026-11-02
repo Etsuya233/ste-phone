@@ -1,0 +1,125 @@
+/**
+ * 应用图标外观。图形位于 app-icon.tsx，这里统一维护 8 枚图标的底色与
+ * 细节，业务应用不再各自覆盖图标样式；新增应用时两处都要补充。
+ *
+ * 造型规则：饱和渐变瓦片 + 白色实心图形，图形在 60 的 viewBox 内保留
+ * 约 8px 安全边。需要强调的第二颜色只用于眼睛、书签、指针等小面积细节。
+ */
+
+:host .ios-icon--app {
+  transition:
+    transform 120ms ease,
+    filter 120ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  :host .ios-icon--app {
+    transition: none;
+  }
+}
+:host .ios-icon--app svg {
+  fill: currentColor;
+  stroke: none;
+}
+
+:host .wechat-app-icon {
+  background: var(--wechat-icon-fill);
+}
+:host .wechat-app-icon svg {
+  fill: currentColor;
+  stroke: var(--wechat-icon-mark);
+  stroke-width: 2.2;
+}
+:host .wechat-app-icon .wechat-dot {
+  fill: var(--wechat-icon-mark);
+  stroke: none;
+}
+
+:host .diary-app-icon {
+  background: var(--diary-icon-fill);
+}
+:host .diary-app-icon .diary-spine {
+  fill: var(--diary-icon-spine);
+}
+:host .diary-app-icon .diary-pages {
+  fill: var(--diary-icon-pages);
+}
+:host .diary-app-icon .diary-ribbon {
+  fill: var(--diary-icon-ribbon);
+}
+
+:host .database-app-icon {
+  background: var(--database-icon-fill);
+}
+:host .database-app-icon .database-ring {
+  fill: none;
+  stroke: var(--database-icon-ring);
+  stroke-width: 2.2;
+}
+
+:host .data-app-icon {
+  background: var(--data-icon-fill);
+}
+:host .data-app-icon .data-mark {
+  fill: var(--data-icon-mark);
+  stroke: none;
+}
+:host .data-app-icon .data-mark-line {
+  fill: none;
+  stroke: var(--data-icon-mark);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+:host .foundation-app-icon {
+  background: var(--foundation-icon-fill);
+}
+:host .settings-app-icon {
+  background: var(--settings-icon-fill);
+}
+:host .stopwatch-icon {
+  background: var(--stopwatch-icon-fill);
+}
+:host .stopwatch-icon .stopwatch-face {
+  fill: var(--stopwatch-icon-face);
+}
+:host .stopwatch-icon .stopwatch-button {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3.4;
+  stroke-linecap: round;
+}
+:host .stopwatch-icon .stopwatch-hand {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+:host .stopwatch-icon .stopwatch-second {
+  fill: none;
+  stroke: var(--stopwatch-icon-accent);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+:host .stopwatch-icon .stopwatch-pin {
+  fill: var(--stopwatch-icon-accent);
+  stroke: none;
+}
+
+:host .app-store-icon {
+  background: var(--store-icon-fill);
+}
+:host .app-store-icon .store-handle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+:host .home-app:active .ios-icon--app {
+  filter: brightness(0.88);
+  transform: scale(0.94);
+}
+:host .expose-app-icon:active .ios-icon--app {
+  filter: brightness(0.88);
+  transform: scale(0.94);
+}
