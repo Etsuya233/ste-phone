@@ -47,11 +47,11 @@ test("v3 migration adds the store and preserves wallpaper and model credentials"
   assert.equal(service.modelConnections.getConnection("model").apiKey, "secret");
 });
 
-test("v4 layout drops app ids missing from the current catalog", () => {
+test("stored layout drops app ids missing from the current catalog", () => {
   const stored = {
     ...defaultSettings,
     homeLayout: {
-      grid: ["diary", "logs", "wechat"],
+      grid: ["diary", "removed-grid", "wechat"],
       dock: ["stopwatch", "removed"],
     },
   } as unknown as PhoneSettings;
