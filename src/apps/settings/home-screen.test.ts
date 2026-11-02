@@ -46,6 +46,26 @@ test("v3 migration adds the store and preserves wallpaper and model credentials"
   assert.equal(service.modelConnections.getConnection("model").apiKey, "secret");
 });
 
+test("v4 layout drops app ids missing from the current catalog", () => {
+  const stored = {
+    ...defaultSettings,
+    homeLayout: {
+      grid: ["diary", "logs", "wechat"],
+      dock: ["stopwatch", "removed"],
+    },
+  } as unknown as PhoneSettings;
+  const storage = storageWith(stored);
+  const service = new PhoneSettingsService(storage);
+  assert.deepEqual(service.getState().homeLayout, {
+    grid: ["diary", "wechat"],
+    dock: ["stopwatch"],
+  });
+  assert.deepEqual((storage.read() as PhoneSettings).homeLayout, {
+    grid: ["diary", "wechat"],
+    dock: ["stopwatch"],
+  });
+});
+
 test("moving between home and dock, uninstalling and reinstalling survive a new session", () => {
   const storage = storageWith();
   const service = new PhoneSettingsService(storage);
