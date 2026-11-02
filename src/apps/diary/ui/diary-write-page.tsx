@@ -1,18 +1,23 @@
 import { useEffect } from "react";
-import type { DiarySnapshot } from "../diary.ts";
+import type { DiaryAuthor, DiarySnapshot } from "../diary.ts";
 import { isDiaryRunning } from "../diary.ts";
+import { sameDiaryAuthor } from "../diary-books.ts";
 import { readDiaryMoment } from "../diary-time.ts";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { DiaryPage, type DiaryPageProps } from "./diary-page.tsx";
 import { DiaryEntryPage } from "./diary-entry-page.tsx";
 import { DiaryAvatar, DiarySheet, DiarySheetHeading, useDiaryCopy } from "./diary-paper.tsx";
 
-export function DiaryWritePage(props: DiaryPageProps) {
-  const { diary, state, navigation } = props;
+export function DiaryWritePage({ diary, state, navigation }: DiaryPageProps) {
   const { generation } = state;
   const writing = isDiaryRunning(generation);
   const busy = state.preparing || writing;
-  const author = state.data.author;
+  const savedAuthor = state.data.author;
+  const author =
+    savedAuthor &&
+    (state.preparing || state.authors.some((candidate) => sameDiaryAuthor(candidate, savedAuthor)))
+      ? savedAuthor
+      : null;
   const moment = readDiaryMoment(state.worldTime);
   // 保存失败时把重试放在纸页上方，长正文不会把它挤出首屏。
   const actionsAbove = generation.status === "save-error";
@@ -25,7 +30,13 @@ export function DiaryWritePage(props: DiaryPageProps) {
 
   if (generation.status === "complete") {
     return (
-      <DiaryEntryPage {...props} entry={generation.entry} onWrite={() => void diary.generate()} />
+      <DiaryEntryPage
+        diary={diary}
+        state={state}
+        navigation={navigation}
+        entry={generation.entry}
+        onWrite={() => void diary.generate()}
+      />
     );
   }
 
@@ -33,6 +44,7 @@ export function DiaryWritePage(props: DiaryPageProps) {
     <WriteActions
       diary={diary}
       state={state}
+      author={author}
       busy={busy}
       onChooseAuthor={() => navigation.push({ page: "authors" })}
     />
@@ -54,30 +66,36 @@ export function DiaryWritePage(props: DiaryPageProps) {
     >
       <div className="diary-writer">
         <div className="diary-writer-meta">
-          <button
-            type="button"
-            className="diary-writer-author"
-            disabled={busy}
-            onClick={() => navigation.push({ page: "authors" })}
-          >
-            {author ? (
+          {author ? (
+            <div className="diary-writer-author diary-writer-author--static">
               <DiaryAvatar name={author.name} size="small" />
-            ) : (
+              <span className="diary-writer-author-copy">
+                <span className="diary-writer-label">执笔</span>
+                <span className="diary-writer-name">{author.name}</span>
+              </span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="diary-writer-author"
+              disabled={busy}
+              onClick={() => navigation.push({ page: "authors" })}
+            >
               <span
                 className="diary-avatar diary-avatar--small diary-avatar--blank"
                 aria-hidden="true"
               >
                 ?
               </span>
-            )}
-            <span className="diary-writer-author-copy">
-              <span className="diary-writer-label">{author ? "执笔" : "还没有执笔人"}</span>
-              <span className="diary-writer-name">{author?.name ?? "选择一位"}</span>
-            </span>
-            <span className="diary-writer-change" aria-hidden="true">
-              ›
-            </span>
-          </button>
+              <span className="diary-writer-author-copy">
+                <span className="diary-writer-label">还没有执笔人</span>
+                <span className="diary-writer-name">选择一位</span>
+              </span>
+              <span className="diary-writer-change" aria-hidden="true">
+                ›
+              </span>
+            </button>
+          )}
           <span className="diary-writer-time">
             {moment?.clock ? `此刻 ${moment.clock}` : "此刻"}
           </span>
@@ -87,7 +105,7 @@ export function DiaryWritePage(props: DiaryPageProps) {
 
         <DiarySheet toneName={author?.name ?? "日记"} className="diary-sheet--writing">
           <DiarySheetHeading worldTime={state.worldTime} />
-          <WritingContent state={state} />
+          <WritingContent state={state} author={author} />
         </DiarySheet>
 
         {actionsAbove ? null : actions}
@@ -96,8 +114,8 @@ export function DiaryWritePage(props: DiaryPageProps) {
   );
 }
 
-function WritingContent({ state }: { state: DiarySnapshot }) {
-  const { generation, preparing, data } = state;
+function WritingContent({ state, author }: { state: DiarySnapshot; author: DiaryAuthor | null }) {
+  const { generation, preparing } = state;
   if (preparing || generation.status === "reading") {
     return <WritingStatus>正在翻开今天的记忆</WritingStatus>;
   }
@@ -112,7 +130,7 @@ function WritingContent({ state }: { state: DiarySnapshot }) {
     }
     return (
       <WritingStatus>
-        {generation.thinking && data.author ? `${data.author.name}思考中` : "正在落笔"}
+        {generation.thinking && author ? `${author.name}思考中` : "正在落笔"}
       </WritingStatus>
     );
   }
@@ -129,8 +147,8 @@ function WritingContent({ state }: { state: DiarySnapshot }) {
   }
   return (
     <p className="diary-writing-placeholder">
-      {data.author
-        ? `让 ${data.author.name} 记下此刻的心情、遇见的人，和还没说出口的话。`
+      {author
+        ? `让 ${author.name} 记下此刻的心情、遇见的人，和还没说出口的话。`
         : "先选一位执笔的人，再翻开今天这一页。"}
     </p>
   );
@@ -150,15 +168,17 @@ function WritingStatus({ children }: { children: string }) {
 function WriteActions({
   diary,
   state,
+  author,
   busy,
   onChooseAuthor,
 }: {
   diary: DiaryPageProps["diary"];
   state: DiarySnapshot;
+  author: DiaryAuthor | null;
   busy: boolean;
   onChooseAuthor: () => void;
 }) {
-  const { generation, data, chatId } = state;
+  const { generation, chatId } = state;
 
   if (generation.status === "save-error") {
     return <SaveErrorActions body={generation.entry.body} onRetry={() => void diary.retrySave()} />;
@@ -174,7 +194,7 @@ function WriteActions({
   }
   return (
     <div className="diary-write-actions">
-      {data.author ? (
+      {author ? (
         <Button variant="filled" disabled={!chatId} onClick={() => void diary.generate()}>
           写下这一页
         </Button>
