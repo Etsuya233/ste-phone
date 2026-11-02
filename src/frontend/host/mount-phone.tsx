@@ -28,6 +28,7 @@ export function mountPhone(options: ComponentProps<typeof PhoneApp>): void {
   // 生产和预览均把 style.css 放在入口 bundle 旁边。
   stylesheet.href = new URL("./style.css", import.meta.url).href;
   const container = document.createElement("div");
+  container.className = "phone-root";
   shadow.append(stylesheet, container);
   createRoot(container).render(<PhoneApp {...options} />);
 }

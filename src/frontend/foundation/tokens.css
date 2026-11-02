@@ -95,6 +95,11 @@
   font: 17px/1.4 var(--ios-font);
   color: var(--ios-ink);
 }
+/* ST 的全局文字阴影会覆盖 :host 的重置，再通过继承进入 Shadow DOM。
+   在内部根容器切断继承，主屏等局部样式仍可声明自己的阴影。 */
+:host .phone-root {
+  text-shadow: none;
+}
 :host *,
 :host *::before,
 :host *::after {

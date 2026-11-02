@@ -4,6 +4,8 @@
 
 插件在独立 Shadow DOM 内挂载，样式通过 bundle 同目录的 `style.css` 加载。manifest 也声明该样式，所有选择器必须以 `:host` 限定，确保 ST 在全局加载同一文件时不会影响宿主。手机弹层使用原生 dialog，内部内容位于同一 Shadow DOM。新增浮层也保持这条边界。
 
+Shadow DOM 内部仍会继承宿主节点的可继承属性。ST 的全局文字阴影规则可覆盖 `:host` 上的重置，因此 `tokens.css` 在内部 React 根容器 `.phone-root` 清除 `text-shadow`，主屏名称等局部阴影由各自样式显式声明。新增页面沿用该根容器，无需逐页清除宿主阴影。
+
 生产入口位于 ST 魔法棒菜单 `#extensionsMenu`，通过 `host/st-entry.tsx` 的 React portal 挂载到宿主文档，使用 ST 原生 `list-group-item`、图标和文字样式，不应用 Phone 的 CSS。`index.ts` 在加载时校验宿主菜单及按钮，将节点经 `mountPhone` 的 `menuEntry` 传给 `PhoneApp`。打开前通过魔法棒按钮关闭宿主菜单，关闭手机后焦点回到该按钮。独立预览省略 `menuEntry`，保留右下角入口与原来的焦点恢复行为。
 
 独立预览入口为 `docs/ui/frontend-preview.tsx`，与生产共用挂载、React 组件和样式，禁止在生产中引用预览或 tmp 资源。
