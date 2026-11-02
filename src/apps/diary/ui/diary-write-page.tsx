@@ -14,8 +14,8 @@ export function DiaryWritePage(props: DiaryPageProps) {
   const busy = state.preparing || writing;
   const author = state.data.author;
   const moment = readDiaryMoment(state.worldTime);
-  // 生成和保存失败时把操作放在纸页上方，长正文不会把取消或重试挤出首屏。
-  const actionsAbove = writing || generation.status === "save-error";
+  // 保存失败时把重试放在纸页上方，长正文不会把它挤出首屏。
+  const actionsAbove = generation.status === "save-error";
 
   useEffect(() => {
     if (navigation.current) {
@@ -29,18 +29,29 @@ export function DiaryWritePage(props: DiaryPageProps) {
     );
   }
 
-  const actions = (
+  const actions = writing ? null : (
     <WriteActions
       diary={diary}
       state={state}
       busy={busy}
-      writing={writing}
       onChooseAuthor={() => navigation.push({ page: "authors" })}
     />
   );
 
   return (
-    <DiaryPage state={state} title="写日记" onBack={navigation.pop} backLabel="日记本">
+    <DiaryPage
+      state={state}
+      title="写日记"
+      onBack={navigation.pop}
+      backLabel="日记本"
+      right={
+        writing ? (
+          <Button disabled={generation.status === "saving"} onClick={() => diary.cancel()}>
+            {generation.status === "saving" ? "正在收好…" : "停下笔"}
+          </Button>
+        ) : undefined
+      }
+    >
       <div className="diary-writer">
         <div className="diary-writer-meta">
           <button
@@ -80,7 +91,6 @@ export function DiaryWritePage(props: DiaryPageProps) {
         </DiarySheet>
 
         {actionsAbove ? null : actions}
-        {state.notice ? <p className="diary-note">{state.notice}</p> : null}
       </div>
     </DiaryPage>
   );
@@ -92,13 +102,18 @@ function WritingContent({ state }: { state: DiarySnapshot }) {
     return <WritingStatus>正在翻开今天的记忆</WritingStatus>;
   }
   if (generation.status === "generating") {
-    return generation.text ? (
-      <div className="diary-body diary-body--live">
-        {generation.text}
-        <span className="diary-caret" aria-hidden="true" />
-      </div>
-    ) : (
-      <WritingStatus>正在落笔</WritingStatus>
+    if (generation.text) {
+      return (
+        <div className="diary-body diary-body--live">
+          {generation.text}
+          <span className="diary-caret" aria-hidden="true" />
+        </div>
+      );
+    }
+    return (
+      <WritingStatus>
+        {generation.thinking && data.author ? `${data.author.name}思考中` : "正在落笔"}
+      </WritingStatus>
     );
   }
   if (generation.status === "saving") {
@@ -136,32 +151,17 @@ function WriteActions({
   diary,
   state,
   busy,
-  writing,
   onChooseAuthor,
 }: {
   diary: DiaryPageProps["diary"];
   state: DiarySnapshot;
   busy: boolean;
-  writing: boolean;
   onChooseAuthor: () => void;
 }) {
   const { generation, data, chatId } = state;
 
   if (generation.status === "save-error") {
     return <SaveErrorActions body={generation.entry.body} onRetry={() => void diary.retrySave()} />;
-  }
-  if (writing) {
-    return (
-      <div className="diary-write-actions">
-        <Button
-          variant="danger"
-          disabled={generation.status === "saving"}
-          onClick={() => diary.cancel()}
-        >
-          {generation.status === "saving" ? "正在收好…" : "停下笔"}
-        </Button>
-      </div>
-    );
   }
   if (busy) {
     return (

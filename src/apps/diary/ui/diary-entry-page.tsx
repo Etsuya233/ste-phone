@@ -2,8 +2,10 @@ import { useState } from "react";
 import type { DiaryEntry } from "../diary.ts";
 import { isDiaryRunning } from "../diary.ts";
 import { formatWrittenAt } from "../diary-time.ts";
+import { ActionSheet } from "../../../frontend/foundation/action-sheet.tsx";
 import { Alert } from "../../../frontend/foundation/alert.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
+import { Icon } from "../../../frontend/foundation/icon.tsx";
 import { DiaryPage, type DiaryPageProps } from "./diary-page.tsx";
 import { DiarySheet, DiarySheetHeading, useDiaryCopy } from "./diary-paper.tsx";
 
@@ -34,6 +36,7 @@ export function DiaryEntryPage({
   onWrite: () => void;
 }) {
   const [deleting, setDeleting] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { message: copyMessage, copy } = useDiaryCopy(entry.body);
   const busy = state.preparing || isDiaryRunning(state.generation);
@@ -56,8 +59,25 @@ export function DiaryEntryPage({
         title="日记"
         onBack={navigation.pop}
         backLabel="日记本"
-        inert={deleting}
+        inert={deleting || actionsOpen}
         error={error}
+        right={
+          <Button
+            className="diary-more"
+            aria-label="更多操作"
+            aria-haspopup="dialog"
+            aria-expanded={actionsOpen}
+            onClick={() => setActionsOpen(true)}
+          >
+            <Icon className="diary-more-icon">
+              <svg viewBox="0 0 24 24">
+                <circle cx="5" cy="12" r="1.8" />
+                <circle cx="12" cy="12" r="1.8" />
+                <circle cx="19" cy="12" r="1.8" />
+              </svg>
+            </Icon>
+          </Button>
+        }
       >
         <div className="diary-reader">
           <DiarySheet toneName={entry.author.name} className="diary-sheet--reading">
@@ -69,15 +89,6 @@ export function DiaryEntryPage({
             </p>
           </DiarySheet>
           <p className="diary-written-at">{formatWrittenAt(entry.createdAt)}</p>
-          <div className="diary-read-actions">
-            <Button onClick={() => void copy()}>复制这一页</Button>
-            <Button disabled={busy} onClick={onWrite}>
-              再写一篇
-            </Button>
-            <Button variant="danger" disabled={busy} onClick={() => setDeleting(true)}>
-              删除
-            </Button>
-          </div>
           {copyMessage ? (
             <p className="diary-copy-status" role="status">
               {copyMessage}
@@ -85,6 +96,17 @@ export function DiaryEntryPage({
           ) : null}
         </div>
       </DiaryPage>
+      {actionsOpen ? (
+        <ActionSheet
+          active={navigation.current}
+          actions={[
+            { label: "复制这一页", onClick: () => void copy() },
+            { label: "再写一篇", disabled: busy, onClick: onWrite },
+            { label: "删除", destructive: true, disabled: busy, onClick: () => setDeleting(true) },
+          ]}
+          onDismiss={() => setActionsOpen(false)}
+        />
+      ) : null}
       {deleting ? (
         <Alert
           title="删除这一页？"

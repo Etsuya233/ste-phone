@@ -10,6 +10,12 @@ export function DiaryListPage({ diary, state, navigation, onHome }: DiaryPagePro
   const running = isDiaryRunning(state.generation);
   const busy = state.preparing || running;
   const entryCount = state.data.entries.length;
+  let runningTitle = "正在落笔…";
+  if (state.generation.status === "saving") {
+    runningTitle = "正在收好这一页…";
+  } else if (state.generation.status === "generating" && state.generation.thinking && author) {
+    runningTitle = `${author.name}思考中…`;
+  }
 
   function openWriter() {
     diary.startWriting();
@@ -88,9 +94,7 @@ export function DiaryListPage({ diary, state, navigation, onHome }: DiaryPagePro
         <button type="button" className="diary-running" onClick={openWriter}>
           <span className="diary-running-ink" aria-hidden="true" />
           <span className="diary-running-copy">
-            <span className="diary-running-title">
-              {state.generation.status === "saving" ? "正在收好这一页…" : "正在落笔…"}
-            </span>
+            <span className="diary-running-title">{runningTitle}</span>
             <span className="diary-running-sub">点开看看写到哪儿了</span>
           </span>
           <span className="diary-running-arrow" aria-hidden="true">

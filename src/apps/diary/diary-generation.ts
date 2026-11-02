@@ -12,6 +12,7 @@ export async function generateDiaryText(input: {
   settings: DiarySettings;
   prompt: string;
   signal: AbortSignal;
+  onThinking(): void;
   onText(text: string): void;
 }): Promise<string> {
   const stream = input.transport.createStream(input.connection, { operation: "日记生成" });
@@ -40,13 +41,13 @@ export async function generateDiaryText(input: {
           agent.abort();
         }
       }
-      if (
-        event.type === "message_update" &&
-        event.message.role === "assistant" &&
-        event.assistantMessageEvent.type === "text_delta"
-      ) {
-        text += event.assistantMessageEvent.delta;
-        input.onText(text);
+      if (event.type === "message_update" && event.message.role === "assistant") {
+        if (event.assistantMessageEvent.type === "thinking_delta") {
+          input.onThinking();
+        } else if (event.assistantMessageEvent.type === "text_delta") {
+          text += event.assistantMessageEvent.delta;
+          input.onText(text);
+        }
       }
     },
   });

@@ -72,6 +72,14 @@
 :host .diary-page .ios-nav .ios-button {
   color: var(--diary-accent-deep);
 }
+:host .diary-page .ios-nav .diary-more-icon {
+  width: 24px;
+  height: 24px;
+}
+:host .diary-page .ios-nav .diary-more-icon svg {
+  fill: currentColor;
+  stroke: none;
+}
 
 :host .diary-notices {
   padding: 0 18px;
@@ -93,18 +101,13 @@
   border-radius: 10px;
   background: #f7e0d8;
 }
-:host .diary-message,
-:host .diary-note {
+:host .diary-message {
   margin: 0;
   padding: 12px 18px;
   color: var(--diary-ink-soft);
   font-size: 12px;
   line-height: 1.6;
   overflow-wrap: anywhere;
-}
-:host .diary-note {
-  padding-top: 0;
-  text-align: center;
 }
 
 :host .diary-write-actions {

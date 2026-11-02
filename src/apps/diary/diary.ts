@@ -40,7 +40,7 @@ export function createEmptyDiary(): DiaryData {
 export type DiaryGeneration =
   | { readonly status: "idle" }
   | { readonly status: "reading" }
-  | { readonly status: "generating"; readonly text: string }
+  | { readonly status: "generating"; readonly text: string; readonly thinking: boolean }
   | { readonly status: "saving"; readonly entry: DiaryEntry }
   | { readonly status: "complete"; readonly entry: DiaryEntry }
   | { readonly status: "error"; readonly error: Error }
@@ -54,7 +54,6 @@ export interface DiarySnapshot {
   readonly preparing: boolean;
   readonly preparationError: Error | null;
   readonly generation: DiaryGeneration;
-  readonly notice: string | null;
 }
 
 export function isDiaryRunning(generation: DiaryGeneration): boolean {

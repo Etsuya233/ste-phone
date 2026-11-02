@@ -14,6 +14,7 @@ import type { DiaryStorage } from "./ports/diary-storage.ts";
 import { generateDiaryText } from "./diary-generation.ts";
 import {
   currentDiaryScope,
+  type DiaryContext,
   readDiaryAuthors,
   readDiaryWorld,
   readDiaryContext,
@@ -57,7 +58,6 @@ export class DiaryService {
       preparing: false,
       preparationError: null,
       generation: { status: "idle" },
-      notice: null,
     };
     this.#sourceScopeKey = this.#currentSourceScopeKey();
     this.#sourceId = dependencies.data.getSnapshot().sourceId;
@@ -100,7 +100,7 @@ export class DiaryService {
   /** 从列表开始写下一篇；后台运行和待保存的正文继续保留。 */
   startWriting(): void {
     if (this.#snapshot.generation.status === "complete") {
-      this.#publish({ generation: { status: "idle" }, notice: null });
+      this.#publish({ generation: { status: "idle" } });
     }
   }
 
@@ -163,7 +163,6 @@ export class DiaryService {
       generation: { status: "reading" },
       preparing: false,
       preparationError: null,
-      notice: null,
     });
     try {
       const { connections, transport } = this.#dependencies;
@@ -183,15 +182,7 @@ export class DiaryService {
       }
       this.#publish({
         worldTime: context.world.worldTime,
-        generation: { status: "generating", text: "" },
-        notice: [
-          context.chat.cleaning.enabled
-            ? `清洗：${context.chat.cleaning.ruleName}`
-            : "未启用聊天清洗",
-          ...(context.skippedChronicles
-            ? [`已跳过 ${context.skippedChronicles} 条剧情时间无效的纪要`]
-            : []),
-        ].join("；"),
+        generation: { status: "generating", text: "", thinking: false },
       });
       const body = await generateDiaryText({
         transport,
@@ -199,30 +190,12 @@ export class DiaryService {
         settings,
         prompt: buildDiaryPrompt(context),
         signal: task.controller.signal,
-        onText: (text) => {
-          if (this.#ownsTask(task)) {
-            this.#publish({ generation: { status: "generating", text } });
-          }
-        },
+        ...this.#generationProgress(task),
       });
       if (!this.#ownsTask(task)) {
         return;
       }
-      // 普通资料更新保留已取材料；同实例重建成其他稳定空间时禁止保存旧作者结果。
-      const schema = await this.#dependencies.data.describe(
-        currentDiaryScope(this.#dependencies.data),
-      );
-      if (!this.#ownsTask(task)) {
-        return;
-      }
-      if (
-        schema.sourceId !== context.author.sourceId ||
-        schema.stableScopeId !== context.author.scopeId
-      ) {
-        throw new Error("生成期间稳定资料空间已变化，未保存日记");
-      }
-      const entry = createDiaryEntry(context.author, context.world.worldTime, body);
-      await this.#saveEntry(entry, task);
+      await this.#saveGeneratedDiary(context, body, task);
     } catch (error) {
       if (this.#ownsTask(task)) {
         this.#publish({ generation: { status: "error", error: error as Error } });
@@ -284,6 +257,49 @@ export class DiaryService {
     );
   }
 
+  #generationProgress(task: DiaryTask): {
+    onThinking(): void;
+    onText(text: string): void;
+  } {
+    return {
+      // 思考提示只占据正文为空的首段，正文到达后由正文接管。
+      onThinking: () => {
+        const generation = this.#snapshot.generation;
+        if (
+          this.#ownsTask(task) &&
+          generation.status === "generating" &&
+          !generation.text &&
+          !generation.thinking
+        ) {
+          this.#publish({ generation: { ...generation, thinking: true } });
+        }
+      },
+      onText: (text) => {
+        if (this.#ownsTask(task)) {
+          this.#publish({ generation: { status: "generating", text, thinking: false } });
+        }
+      },
+    };
+  }
+
+  async #saveGeneratedDiary(context: DiaryContext, body: string, task: DiaryTask): Promise<void> {
+    // 普通资料更新保留已取材料；同实例重建成其他稳定空间时禁止保存旧作者结果。
+    const schema = await this.#dependencies.data.describe(
+      currentDiaryScope(this.#dependencies.data),
+    );
+    if (!this.#ownsTask(task)) {
+      return;
+    }
+    if (
+      schema.sourceId !== context.author.sourceId ||
+      schema.stableScopeId !== context.author.scopeId
+    ) {
+      throw new Error("生成期间稳定资料空间已变化，未保存日记");
+    }
+    const entry = createDiaryEntry(context.author, context.world.worldTime, body);
+    await this.#saveEntry(entry, task);
+  }
+
   async #saveEntry(entry: DiaryEntry, task: DiaryTask): Promise<void> {
     this.#publish({ generation: { status: "saving", entry } });
     try {
@@ -331,7 +347,6 @@ export class DiaryService {
         : createEmptyDiary(),
       authors: [],
       worldTime: null,
-      notice: null,
       preparationError: null,
     });
   };
@@ -343,7 +358,7 @@ export class DiaryService {
       (this.#sourceId !== null && sourceId !== null && sourceId !== this.#sourceId)
     ) {
       this.cancel();
-      this.#publish({ authors: [], worldTime: null, notice: null, preparationError: null });
+      this.#publish({ authors: [], worldTime: null, preparationError: null });
     }
     this.#sourceScopeKey = binding;
     this.#sourceId = sourceId;

@@ -27,7 +27,6 @@ export interface DiaryContext {
   readonly world: DiaryWorld;
   readonly chronicles: readonly DiaryChronicle[];
   readonly chat: RecentChatSnapshot;
-  readonly skippedChronicles: number;
 }
 
 export function currentDiaryScope(data: DataAppPublic): DataScope {
@@ -97,7 +96,7 @@ async function readDiaryChronicles(
   scope: DataScope,
   currentRecordId: string,
   worldTime: string,
-): Promise<Pick<DiaryContext, "chronicles" | "skippedChronicles">> {
+): Promise<readonly DiaryChronicle[]> {
   // 只取作者关联且在日记时刻前结束的纪要，先选最近五条，返回时再恢复剧情顺序。
   const chronicles = await data.query({
     ...scope,
@@ -111,22 +110,12 @@ async function readDiaryChronicles(
   if (chronicles.truncated) {
     throw new Error("最近纪要查询被截断");
   }
-  const invalid = await data.query({
-    ...scope,
-    sql: `SELECT count(*) FROM phone_chronicles c
-      WHERE EXISTS (SELECT 1 FROM phone_chronicle_characters l WHERE l.chronicle_id=c.record_id AND l.character_id=:author)
-      AND (datetime(c.start_time) IS NULL OR datetime(c.end_time) IS NULL OR datetime(c.start_time)>datetime(c.end_time))`,
-    params: { author: currentRecordId },
-  });
-  return {
-    chronicles: [...chronicles.rows].reverse().map(([title, content, startTime, endTime]) => ({
-      title: title!,
-      content: content!,
-      startTime: startTime!,
-      endTime: endTime!,
-    })),
-    skippedChronicles: Number(invalid.rows[0]![0]),
-  };
+  return [...chronicles.rows].reverse().map(([title, content, startTime, endTime]) => ({
+    title: title!,
+    content: content!,
+    startTime: startTime!,
+    endTime: endTime!,
+  }));
 }
 
 export async function readDiaryContext(
@@ -168,7 +157,7 @@ export async function readDiaryContext(
   };
   const world = await readDiaryWorld(data, scope);
   signal.throwIfAborted();
-  const history = await readDiaryChronicles(data, scope, currentRecordId, world.worldTime);
+  const chronicles = await readDiaryChronicles(data, scope, currentRecordId, world.worldTime);
   const chat = await data.readRecentChat({ ...scope, count: 20 });
   signal.throwIfAborted();
   // 同一实例空间也可能应用新预设；整份材料必须仍属于作者的稳定空间。
@@ -179,7 +168,7 @@ export async function readDiaryContext(
   return {
     author,
     world,
+    chronicles,
     chat,
-    ...history,
   };
 }

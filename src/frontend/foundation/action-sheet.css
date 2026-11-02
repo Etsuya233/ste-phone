@@ -1,0 +1,70 @@
+:host .ios-action-sheet-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: var(--ios-space-small);
+  padding-bottom: calc(var(--safe-bottom) + var(--ios-space-small));
+  background: var(--ios-alert-scrim);
+}
+:host .ios-action-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ios-space-small);
+  animation: ios-action-sheet-rise 200ms ease-out;
+}
+:host .ios-action-sheet-group {
+  border-radius: 10px;
+  background: var(--ios-alert-surface);
+  backdrop-filter: blur(var(--ios-bar-blur));
+}
+:host .ios-action-sheet-action {
+  display: block;
+  width: 100%;
+  min-height: var(--control-size);
+  padding: var(--ios-space-medium) var(--ios-space-large);
+  border: 0;
+  background: transparent;
+  color: var(--ios-blue);
+  font-size: var(--ios-body-size);
+}
+:host .ios-action-sheet-action + .ios-action-sheet-action {
+  border-top: var(--ios-hairline) solid var(--ios-line);
+}
+:host .ios-action-sheet-action:first-child {
+  border-start-start-radius: inherit;
+  border-start-end-radius: inherit;
+}
+:host .ios-action-sheet-action:last-child {
+  border-end-start-radius: inherit;
+  border-end-end-radius: inherit;
+}
+:host .ios-action-sheet-action--destructive {
+  color: var(--ios-red);
+}
+:host .ios-action-sheet-action--cancel {
+  font-weight: 600;
+}
+:host .ios-action-sheet-action:active {
+  background: var(--ios-row-active);
+}
+:host .ios-action-sheet-action:disabled {
+  opacity: var(--ios-disabled-opacity);
+}
+@keyframes ios-action-sheet-rise {
+  from {
+    opacity: 0.5;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :host .ios-action-sheet {
+    animation: none;
+  }
+}

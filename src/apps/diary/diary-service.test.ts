@@ -199,7 +199,6 @@ test("diary selects recent finished author chronicles, cleaned chat and explicit
       ["纪要22", "纪要23", "纪要24", "纪要25", "纪要26"],
     );
     assert.equal(prompt.最近聊天[0].正文, "清洗后的海边散步正文");
-    assert.match(app.service.getSnapshot().notice!, /正文.*跳过 1 条/);
     assert.equal(app.service.getSnapshot().data.entries[0]!.worldTime, "2026-10-31 23:00:00");
     assert.equal(app.saved.get("phone-A")!.entries.length, 1);
     await app.service.generate();
@@ -213,7 +212,7 @@ test("diary selects recent finished author chronicles, cleaned chat and explicit
   }
 });
 
-test("diary saves the final answer from a reasoning model without storing its thoughts", async () => {
+test("diary reports a reasoning phase and saves only the final answer", async () => {
   const app = fixture(
     async () =>
       new Response(
@@ -225,7 +224,14 @@ test("diary saves the final answer from a reasoning model without storing its th
   try {
     await app.service.prepare();
     await app.service.selectAuthor("author");
+    let sawThinking = false;
+    const unsubscribe = app.service.subscribe(() => {
+      const generation = app.service.getSnapshot().generation;
+      sawThinking ||= generation.status === "generating" && generation.thinking;
+    });
     await app.service.generate();
+    unsubscribe();
+    assert.ok(sawThinking);
     assert.equal(app.service.getSnapshot().generation.status, "complete");
     assert.equal(app.saved.get("phone-A")!.entries[0]!.body, "今天的海风让人安心。");
     assert.ok(!JSON.stringify(app.saved.get("phone-A")).includes("private-thought"));
@@ -349,6 +355,7 @@ test("diary timeout aborts the Pi request with the configured total deadline", a
       settings: { timeoutSeconds: 0.01, maxTokens: 10240 },
       prompt: "日记",
       signal: new AbortController().signal,
+      onThinking: () => {},
       onText: () => {},
     }),
     /超时/,
