@@ -222,7 +222,7 @@
   background: #ededed;
 }
 :host .wechat-messages {
-  padding: 16px 12px 0;
+  padding: 16px 12px 12px;
   display: flex;
   flex-direction: column;
   gap: 18px;
