@@ -1,11 +1,12 @@
 import type { WallpaperReader, HomeScreenSettings } from "../apps/settings/public.ts";
 import type { AppDefinition } from "./device/app-lifecycle.ts";
 import type { AppId } from "./device/app-session.ts";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
 import { PhoneDevice } from "./device/phone-device.tsx";
 import { StEntry } from "./host/st-entry.tsx";
 import type { StMenuEntry } from "./host/st-entry.tsx";
+import { usePhoneInputVisibility, usePhoneViewport } from "./device/use-phone-viewport.ts";
 
 const DEVICE_WIDTH = 430;
 const DEVICE_HEIGHT = 886;
@@ -39,20 +40,15 @@ export function PhoneApp({
   } | null>(null);
   const [open, setOpen] = useState(false);
   const [started, setStarted] = useState(false);
-  const [viewport, setViewport] = useState(() => ({
-    width: window.visualViewport?.width ?? window.innerWidth,
-    height: window.visualViewport?.height ?? window.innerHeight,
-    left: window.visualViewport?.offsetLeft ?? 0,
-    top: window.visualViewport?.offsetTop ?? 0,
-  }));
+  const { layout, visible: viewport } = usePhoneViewport(panel, open);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const fullscreen = responsive && viewport.width <= 480;
+  const fullscreen = responsive && layout.width <= 480;
   const scale = fullscreen
     ? 1
     : Math.min(
         1,
-        (viewport.width - VIEWPORT_GAP * 2) / DEVICE_WIDTH,
-        (viewport.height - VIEWPORT_GAP * 2) / DEVICE_HEIGHT,
+        (layout.width - VIEWPORT_GAP * 2) / DEVICE_WIDTH,
+        (layout.height - VIEWPORT_GAP * 2) / DEVICE_HEIGHT,
       );
   const width = fullscreen ? viewport.width : DEVICE_WIDTH * scale;
   const height = fullscreen ? viewport.height : DEVICE_HEIGHT * scale;
@@ -60,23 +56,7 @@ export function PhoneApp({
   const verticalTravel = Math.max(0, (viewport.height - height) / 2 - VIEWPORT_GAP);
   const x = fullscreen ? 0 : Math.max(-horizontalTravel, Math.min(horizontalTravel, position.x));
   const y = fullscreen ? 0 : Math.max(-verticalTravel, Math.min(verticalTravel, position.y));
-  useEffect(() => {
-    const resize = () =>
-      setViewport({
-        width: window.visualViewport?.width ?? window.innerWidth,
-        height: window.visualViewport?.height ?? window.innerHeight,
-        left: window.visualViewport?.offsetLeft ?? 0,
-        top: window.visualViewport?.offsetTop ?? 0,
-      });
-    window.addEventListener("resize", resize);
-    window.visualViewport?.addEventListener("resize", resize);
-    window.visualViewport?.addEventListener("scroll", resize);
-    return () => {
-      window.removeEventListener("resize", resize);
-      window.visualViewport?.removeEventListener("resize", resize);
-      window.visualViewport?.removeEventListener("scroll", resize);
-    };
-  }, []);
+  usePhoneInputVisibility(panel, open, viewport, scale);
   const startDrag = (event: PointerEvent<HTMLDivElement>) => {
     if (!draggable || fullscreen || event.button !== 0) {
       return;
@@ -140,7 +120,7 @@ export function PhoneApp({
             width,
             height,
             left: viewport.left + (viewport.width - width) / 2 + x,
-            top: viewport.top + (viewport.height - height) / 2 + y,
+            top: `calc(${viewport.top + (viewport.height - height) / 2 + y}px + var(--phone-input-offset, 0px))`,
             "--device-scale": scale,
           } as CSSProperties
         }
