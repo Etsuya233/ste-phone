@@ -149,10 +149,13 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
     return `CAST(${value} AS TEXT)`;
   }
   function profile(table: MemoryTable): string {
-    const parts = fieldsFor(table).map((field) => {
-      const value = renderValue(field, "r", []);
-      return `CASE WHEN ${value} IS NULL OR ${value}='' THEN '' ELSE ${literal(field.name + "：")}||${value}||char(10) END`;
-    });
+    // 总结归属仅用于 summary；其映射缺失不影响既有纪要和日记读取。
+    const parts = fieldsFor(table)
+      .filter((field) => !(table.key === "chronicle" && field.key === "plot_summary"))
+      .map((field) => {
+        const value = renderValue(field, "r", []);
+        return `CASE WHEN ${value} IS NULL OR ${value}='' THEN '' ELSE ${literal(field.name + "：")}||${value}||char(10) END`;
+      });
     return `rtrim(${parts.join("||")},char(10))`;
   }
   const capabilities: string[][] = [];
@@ -178,6 +181,12 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
           field.referenceTableId !== schema.tables.find((table) => table.key === "characters")?.id
         ) {
           throw new Error(`引用目标不兼容：${tableKey}.${key}`);
+        }
+        if (
+          key === "plot_summary" &&
+          field.referenceTableId !== schema.tables.find((item) => item.key === "plot_summaries")?.id
+        ) {
+          throw new Error("纪要所属总结的引用目标须为 plot_summaries");
         }
         return {
           ...column(name, field.name),
@@ -228,6 +237,29 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
     ["end_time", "end_time", "datetime"],
     ["related_character_ids", "related_characters", "multi_reference"],
   ]);
+  standard(
+    "phone_plot_summaries",
+    "plot_summaries",
+    [
+      ["title", "summary", "short_text"],
+      ["content", "details", "long_text"],
+      ["start_time", "start_time", "datetime"],
+      ["end_time", "end_time", "datetime"],
+    ],
+    false,
+  );
+  standard(
+    "phone_summary_sources",
+    "chronicle",
+    [
+      ["title", "summary", "short_text"],
+      ["content", "details", "long_text"],
+      ["start_time", "start_time", "datetime"],
+      ["end_time", "end_time", "datetime"],
+      ["summary_id", "plot_summary", "single_reference"],
+    ],
+    false,
+  );
   standard("phone_items", "items", [
     ["name", "name", "short_text"],
     ["description", "key_attributes", "long_text"],

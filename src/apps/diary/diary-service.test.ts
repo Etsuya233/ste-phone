@@ -72,6 +72,9 @@ function fixture(fetchImpl: typeof fetch = async () => reply()) {
   };
   let stableScopeId = "scope";
   const data: DataAppPublic = {
+    readSummary: async () => {
+      throw new Error("日记不应读取剧情总结");
+    },
     getSnapshot: () => snapshot,
     subscribe: (listener) => {
       sourceListeners.add(listener);

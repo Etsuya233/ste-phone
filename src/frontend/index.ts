@@ -5,6 +5,7 @@ import { createStChatContext } from "../infrastructure/host/chat-context.ts";
 import { mountPhone } from "./host/mount-phone.tsx";
 import { MemoryDatabaseProvider } from "../infrastructure/ste-memory/memory-database-provider.ts";
 import { createStDiaryStorage } from "../infrastructure/host/diary-storage.ts";
+import { createStWechatStorage } from "../infrastructure/host/wechat-storage.ts";
 
 declare const __STE_PHONE_VERSION__: string;
 
@@ -24,6 +25,7 @@ const phone = createPhone({
   aiTransport: createStAiTransport(() => window.SillyTavern.getContext().getRequestHeaders()),
   chat,
   diaryStorage: createStDiaryStorage(() => window.SillyTavern.getContext(), chat),
+  wechatStorage: createStWechatStorage(() => window.SillyTavern.getContext(), chat),
 });
 mountPhone({
   apps: phone.apps,

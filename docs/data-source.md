@@ -1,5 +1,11 @@
 # 手机公共资料与数据库
 
+## 公共剧情总结
+
+`DataAppPublic.readSummary({ chatIdentity, scopeId })` 按需返回完整剧情回顾文本，资料页「剧情总结」与微信使用同一接口。STE Memory 的 `plot_summaries` 映射为 `phone_plot_summaries`，纪要的 `plot_summary` 归属映射为 `phone_summary_sources.summary_id`。依次读取全部大总结和所有归属为空的纪要，保留标题、起止时间、正文；各组按创建时间与记录 ID 分页读取，不按人物过滤，不另调模型压缩。
+
+已归属总结的纪要不会重复加入，悬空归属、缺失映射和查询截断明确报错，两组均空正常返回空文本。总结映射按需检查，缺少能力不阻止既有人物、纪要和日记读取；纪要展示正文不追加总结归属字段。组装规则在 `src/apps/data-source/story-summary.ts`，来源字段映射在 `src/infrastructure/ste-memory/map-database.ts`。
+
 ## 清洗后的最近聊天
 
 `DataAppPublic.readRecentChat({ chatIdentity, scopeId, count })` 经资料来源适配器调用 Memory 可选 `chat v1.readRecent({ chatIdentity, count })`。请求中的聊天身份属于资料来源，与 Core 的聊天文件身份分别校验。返回原始楼层、发送者、消息类型、清洗后正文及清洗规则摘要的固定副本，不经过 Memory SQL，不复制聊天到 Phone 数据库。

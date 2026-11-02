@@ -1,3 +1,4 @@
+import { readStorySummary } from "./story-summary.ts";
 import type { DatabaseProvider } from "./ports/database-provider.ts";
 import { BackgroundDataSource } from "./data-source.ts";
 import { QueryBackgroundProvider } from "./query-background-provider.ts";
@@ -48,6 +49,9 @@ export class PhoneDataService implements DataAppPublic {
     const result = await this.#background.load({ force: request.force });
     this.#assertScope(request);
     return result;
+  }
+  readSummary(request: DataScope): Promise<string> {
+    return readStorySummary(this, { ...request });
   }
   async readRecentChat(request: DataScope & { readonly count: number }) {
     request = { ...request };

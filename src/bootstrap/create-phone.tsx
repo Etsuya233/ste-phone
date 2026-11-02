@@ -23,6 +23,9 @@ import type {
   HomeScreenSettings,
 } from "../apps/settings/public.ts";
 import { AppStore } from "../apps/app-store/ui/app-store.tsx";
+import { WechatService } from "../apps/wechat/wechat-service.ts";
+import { WechatApp } from "../apps/wechat/ui/wechat-app.tsx";
+import type { WechatStorage } from "../apps/wechat/ports/wechat-storage.ts";
 
 export interface PhoneRuntime {
   readonly apps: Record<AppId, AppDefinition>;
@@ -32,6 +35,7 @@ export interface PhoneRuntime {
   readonly data: DataAppPublic;
   readonly chat: ChatContext;
   readonly diary: DiaryService;
+  readonly wechat: WechatService;
 }
 
 /** 生产和预览共享组装；页面、后台消费者始终使用同一数据所有者。 */
@@ -41,6 +45,7 @@ export function createPhone(dependencies: {
   aiTransport: AiTransport;
   chat: ChatContext;
   diaryStorage: DiaryStorage;
+  wechatStorage: WechatStorage;
 }): PhoneRuntime {
   const settings = new PhoneSettingsService(dependencies.settingsStorage);
   const data = new PhoneDataService(dependencies.dataProvider);
@@ -53,7 +58,18 @@ export function createPhone(dependencies: {
     connections: settings.modelConnections,
     transport: dependencies.aiTransport,
   });
+  const wechat = new WechatService({
+    storage: dependencies.wechatStorage,
+    data,
+    chat: dependencies.chat,
+    connections: settings.modelConnections,
+    transport: dependencies.aiTransport,
+  });
   const apps: Record<AppId, AppDefinition> = {
+    wechat: {
+      render: ({ active, onHome }) => <WechatApp active={active} wechat={wechat} onHome={onHome} />,
+      onQuit: () => wechat.cancel(),
+    },
     diary: {
       render: ({ active, onHome }) => <DiaryApp active={active} diary={diary} onHome={onHome} />,
       onQuit: () => diary.quit(),
@@ -103,5 +119,6 @@ export function createPhone(dependencies: {
     data,
     chat: dependencies.chat,
     diary,
+    wechat,
   };
 }

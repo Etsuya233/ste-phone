@@ -38,6 +38,7 @@ export interface DataAppPublic {
   getSnapshot(): DataSourceSnapshot;
   subscribe(listener: () => void): () => void;
   readBackground(request: BackgroundRead): Promise<PhoneBackground>;
+  readSummary(request: DataScope): Promise<string>;
   describe(request: DataScope, options?: { readonly force?: boolean }): Promise<DatabaseSchema>;
   query(request: DataQuery): Promise<QueryResult>;
   readRecentChat(request: DataScope & { readonly count: number }): Promise<RecentChatSnapshot>;

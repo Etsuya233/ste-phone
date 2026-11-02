@@ -1,5 +1,6 @@
 /** 内置应用目录。安装只改变可用入口，业务数据仍由各应用拥有。 */
 export const appCatalog = {
+  wechat: { name: "微信", description: "切换人物帐号，与故事中的好友聊天", removable: true },
   diary: { name: "日记", description: "以人物的视角记录故事与回忆", removable: true },
   database: {
     name: "Fake DBeaver",
@@ -22,6 +23,6 @@ export interface HomeLayout {
   readonly dock: readonly AppId[];
 }
 export const defaultHomeLayout: HomeLayout = {
-  grid: ["diary", "database", "data-source", "foundation", "settings", "app-store"],
+  grid: ["diary", "wechat", "database", "data-source", "foundation", "settings", "app-store"],
   dock: ["stopwatch"],
 };

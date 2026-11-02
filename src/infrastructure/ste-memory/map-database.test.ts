@@ -4,6 +4,25 @@ import { memoryDatabaseFixture } from "../../../tests/fixtures/memory-database.t
 import { mapMemoryDatabase } from "./map-database.ts";
 import { memorySnapshotFixture } from "../../../tests/fixtures/memory-snapshot.ts";
 
+test("missing summary mapping does not disable existing characters or chronicles", () => {
+  const f = memoryDatabaseFixture();
+  try {
+    const schema = mapMemoryDatabase({
+      ...f.description,
+      tables: f.description.tables.filter((table) => table.key !== "plot_summaries"),
+    });
+    for (const name of ["phone_characters", "phone_chronicles"]) {
+      assert.ok(schema.objects.some((object) => object.name === name));
+    }
+    assert.equal(
+      schema.objects.some((object) => object.name === "phone_plot_summaries"),
+      false,
+    );
+  } finally {
+    f.dispose();
+  }
+});
+
 test("generated views execute directly on source tables, with current references, raw JSON and world date", async () => {
   const f = memoryDatabaseFixture();
   try {
