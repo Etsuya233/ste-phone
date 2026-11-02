@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Page } from "../../../frontend/foundation/page.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
-import { PersonAvatar, type WechatPageProps } from "./wechat-page.tsx";
+import type { WechatPageProps } from "./wechat-page.tsx";
 import { WechatComposer } from "./wechat-composer.tsx";
 import { conversationId } from "../wechat.ts";
+import { WechatMessages } from "./wechat-messages.tsx";
 
 export function WechatChat({
   wechat,
@@ -12,6 +13,8 @@ export function WechatChat({
   navigation,
   id,
   active,
+  stickers,
+  stickerState,
 }: WechatPageProps & { id: string; active: boolean }) {
   const [draft, setDraft] = useState(() => wechat.getDraft(id));
   const [composerHeight, setComposerHeight] = useState(62);
@@ -72,26 +75,20 @@ export function WechatChat({
           }}
           onSend={() => void send()}
           onHeightChange={setComposerHeight}
+          packs={stickerState.packs}
+          stickers={stickers}
+          onSendSticker={(marker) => void wechat.send(id, marker, { preserveDraft: true })}
+          onManageStickers={() => navigation.push({ page: "stickers" })}
         />
       }
     >
-      <div className="wechat-messages">
-        {conversation?.messages.map((message) => {
-          const mine = message.senderId === state.data.account?.id;
-          const sender =
-            state.people.find((person) => person.id === message.senderId)?.name ??
-            conversation.people.find((person) => person.id === message.senderId)!.name;
-          return (
-            <div
-              key={message.id}
-              className={`wechat-message ${mine ? "wechat-message--mine" : ""}`}
-            >
-              <PersonAvatar name={sender} />
-              <p>{message.content.text}</p>
-            </div>
-          );
-        })}
-      </div>
+      <WechatMessages
+        conversation={conversation}
+        accountId={state.data.account?.id}
+        people={state.people}
+        packs={stickerState.packs}
+        stickers={stickers}
+      />
       {!available && (
         <p className="wechat-notice">{state.error ?? "当前人物资料不可用，仍可阅读历史。"}</p>
       )}

@@ -26,6 +26,8 @@ import { AppStore } from "../apps/app-store/ui/app-store.tsx";
 import { WechatService } from "../apps/wechat/wechat-service.ts";
 import { WechatApp } from "../apps/wechat/ui/wechat-app.tsx";
 import type { WechatStorage } from "../apps/wechat/ports/wechat-storage.ts";
+import { WechatStickerLibrary } from "../apps/wechat/wechat-sticker-library.ts";
+import type { WechatStickerStorage } from "../apps/wechat/wechat-stickers.ts";
 
 export interface PhoneRuntime {
   readonly apps: Record<AppId, AppDefinition>;
@@ -46,6 +48,7 @@ export function createPhone(dependencies: {
   chat: ChatContext;
   diaryStorage: DiaryStorage;
   wechatStorage: WechatStorage;
+  wechatStickerStorage: WechatStickerStorage;
 }): PhoneRuntime {
   const settings = new PhoneSettingsService(dependencies.settingsStorage);
   const data = new PhoneDataService(dependencies.dataProvider);
@@ -58,7 +61,9 @@ export function createPhone(dependencies: {
     connections: settings.modelConnections,
     transport: dependencies.aiTransport,
   });
+  const stickers = new WechatStickerLibrary(dependencies.wechatStickerStorage);
   const wechat = new WechatService({
+    stickers,
     storage: dependencies.wechatStorage,
     data,
     chat: dependencies.chat,
@@ -67,7 +72,9 @@ export function createPhone(dependencies: {
   });
   const apps: Record<AppId, AppDefinition> = {
     wechat: {
-      render: ({ active, onHome }) => <WechatApp active={active} wechat={wechat} onHome={onHome} />,
+      render: ({ active, onHome }) => (
+        <WechatApp active={active} wechat={wechat} stickers={stickers} onHome={onHome} />
+      ),
       onQuit: () => wechat.cancel(),
     },
     diary: {

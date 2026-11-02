@@ -13,6 +13,7 @@ import {
 } from "./wechat.ts";
 import { createWechatReplies } from "./wechat-reply.ts";
 import { readWechatRoster } from "./wechat-context.ts";
+import type { WechatStickerLibrary } from "./wechat-sticker-library.ts";
 
 interface Dependencies {
   storage: WechatStorage;
@@ -20,6 +21,7 @@ interface Dependencies {
   data: DataAppPublic;
   connections: ModelConnectionsReader;
   transport: AiTransport;
+  stickers: WechatStickerLibrary;
 }
 interface ReplyTask {
   controller: AbortController;
@@ -127,7 +129,11 @@ export class WechatService {
     return JSON.stringify([chatId, scopeId, data.account?.id, otherId]);
   }
 
-  async send(otherId: string, text: string, onSent?: () => void): Promise<boolean> {
+  async send(
+    otherId: string,
+    text: string,
+    options: { onSent?: () => void; preserveDraft?: boolean } = {},
+  ): Promise<boolean> {
     if (this.#task) {
       throw new Error("请等待当前回复完成");
     }
@@ -143,7 +149,10 @@ export class WechatService {
     });
     const next = { ...conversation, messages: [...conversation.messages, message] };
     const task = this.#startTask();
-    this.setDraft(otherId, "");
+    // 从面板发送表情不占用文字草稿，保存失败时也不把表情标记写回输入框。
+    if (!options.preserveDraft) {
+      this.setDraft(otherId, "");
+    }
     // 整份聊天保存需要一次 HTTP 往返，先把这条消息放进快照，避免保存期间只看到回复状态。
     this.#publish({
       data: this.#dataWithConversation(next),
@@ -153,7 +162,9 @@ export class WechatService {
       try {
         await this.#saveConversation(next);
       } catch (error) {
-        this.setDraft(otherId, text);
+        if (!options.preserveDraft) {
+          this.setDraft(otherId, text);
+        }
         if (this.#snapshot.chatId === task.chatId) {
           this.#dropOptimisticMessage(conversation.id, message.id, created);
         }
@@ -162,7 +173,7 @@ export class WechatService {
         }
         return false;
       }
-      onSent?.();
+      options.onSent?.();
       if (!this.#owns(task)) {
         return true;
       }
@@ -260,6 +271,7 @@ export class WechatService {
       sender,
       recipient,
       conversation,
+      stickerPacks: this.#dependencies.stickers.getSnapshot().packs,
       signal: task.controller.signal,
     });
     if (!this.#owns(task)) {

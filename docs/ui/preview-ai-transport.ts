@@ -46,7 +46,12 @@ export function createPreviewAiTransport(mode: string | null): AiTransport {
               : JSON.stringify({
                   messages: [
                     { type: "text", text: "【模拟回复】刚看到消息。" },
-                    { type: "text", text: "明天一起去图书馆吧，稿件我会带上。" },
+                    {
+                      type: "text",
+                      text:
+                        previewWechatSticker(context.messages) ??
+                        "明天一起去图书馆吧，稿件我会带上。",
+                    },
                   ],
                 })
             : context.systemPrompt?.includes("日记")
@@ -69,4 +74,18 @@ export function createPreviewAiTransport(mode: string | null): AiTransport {
       return stream;
     },
   };
+}
+
+/** 预览只从本轮实际传入的清单选表情，便于验证开关与双方发送，仍不请求模型。 */
+function previewWechatSticker(messages: readonly unknown[]): string | undefined {
+  const user = messages.at(-1) as { content: string | { type: string; text?: string }[] };
+  const text =
+    typeof user.content === "string"
+      ? user.content
+      : user.content
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join("");
+  const prompt = JSON.parse(text) as { 可用表情: { marker: string }[] };
+  return prompt.可用表情[0]?.marker;
 }

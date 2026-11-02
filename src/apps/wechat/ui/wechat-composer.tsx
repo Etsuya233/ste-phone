@@ -1,4 +1,7 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { WechatStickerPanel } from "./wechat-sticker-panel.tsx";
+import type { WechatStickerLibrary } from "../wechat-sticker-library.ts";
+import type { WechatStickerPack } from "../wechat-stickers.ts";
 
 const MIN_HEIGHT = 38;
 const MAX_HEIGHT = 96;
@@ -10,15 +13,24 @@ export function WechatComposer({
   onChange,
   onSend,
   onHeightChange,
+  packs,
+  stickers,
+  onSendSticker,
+  onManageStickers,
 }: {
   value: string;
   disabled: boolean;
   onChange(value: string): void;
   onSend(): void;
   onHeightChange(height: number): void;
+  packs: readonly WechatStickerPack[];
+  stickers: WechatStickerLibrary;
+  onSendSticker(marker: string): void;
+  onManageStickers(): void;
 }) {
-  const form = useRef<HTMLFormElement>(null);
+  const form = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
+  const [showStickers, setShowStickers] = useState(false);
   useLayoutEffect(() => {
     const element = textarea.current;
     if (!element) {
@@ -45,24 +57,47 @@ export function WechatComposer({
     return () => observer.disconnect();
   }, [onHeightChange]);
   return (
-    <form
-      ref={form}
-      className="wechat-composer"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSend();
-      }}
-    >
-      <textarea
-        ref={textarea}
-        aria-label="消息"
-        rows={1}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      <button type="submit" disabled={disabled || !value.trim()}>
-        发送
-      </button>
-    </form>
+    <div ref={form}>
+      <form
+        className="wechat-composer"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSend();
+        }}
+      >
+        <textarea
+          ref={textarea}
+          aria-label="消息"
+          rows={1}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onFocus={() => setShowStickers(false)}
+        />
+        <button
+          type="button"
+          className="wechat-sticker-toggle"
+          aria-label="表情"
+          aria-expanded={showStickers}
+          onClick={() => {
+            textarea.current!.blur();
+            setShowStickers(!showStickers);
+          }}
+        >
+          ☺
+        </button>
+        <button type="submit" disabled={disabled || !value.trim()}>
+          发送
+        </button>
+      </form>
+      {showStickers && (
+        <WechatStickerPanel
+          packs={packs}
+          stickers={stickers}
+          disabled={disabled}
+          onSend={onSendSticker}
+          onManage={onManageStickers}
+        />
+      )}
+    </div>
   );
 }

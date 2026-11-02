@@ -3,6 +3,7 @@ import { createPreviewAiTransport } from "./preview-ai-transport.ts";
 import { createPreviewChatContext } from "./preview-chat-context.ts";
 import { createPreviewDiaryStorage } from "./preview-diary-storage.ts";
 import { createPreviewWechatStorage } from "./preview-wechat-storage.ts";
+import { createPreviewWechatStickerStorage } from "./preview-wechat-stickers.ts";
 import { createPhone } from "../../src/bootstrap/create-phone.tsx";
 import { mountPhone } from "../../src/frontend/host/mount-phone.tsx";
 import { createPreviewMemory } from "./data-source-fixture.ts";
@@ -20,6 +21,7 @@ const phone = createPhone({
   dataProvider: new MemoryDatabaseProvider(),
   diaryStorage: createPreviewDiaryStorage(options.get("diary-test")),
   wechatStorage: createPreviewWechatStorage(options.get("wechat-test")),
+  wechatStickerStorage: await createPreviewWechatStickerStorage(),
 });
 mountPhone({
   apps: phone.apps,

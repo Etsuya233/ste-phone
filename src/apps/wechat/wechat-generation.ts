@@ -3,12 +3,14 @@ import { createCompletionModel, runAgent } from "../../core/ai/agent-run.ts";
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { ModelConnectionSnapshot } from "../settings/public.ts";
 import { wechatSystemPrompt, parseWechatReply } from "./wechat-prompt.ts";
+import type { wechatStickerCatalog } from "./wechat-stickers.ts";
 
 export async function generateWechatReply(input: {
   transport: AiTransport;
   connection: ModelConnectionSnapshot;
   prompt: string;
   signal: AbortSignal;
+  stickers: ReturnType<typeof wechatStickerCatalog>;
 }) {
   const stream = input.transport.createStream(input.connection, { operation: "微信回复" });
   const agent = new Agent({
@@ -55,5 +57,5 @@ export async function generateWechatReply(input: {
     .filter((part) => part.type === "text")
     .map((part) => part.text)
     .join("");
-  return parseWechatReply(text);
+  return parseWechatReply(text, input.stickers);
 }

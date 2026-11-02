@@ -2,6 +2,7 @@ import type { DataAppPublic, DataScope, CharacterProfile } from "../data-source/
 import { buildWechatPrompt } from "./wechat-prompt.ts";
 import type { WechatConversation } from "./wechat.ts";
 import type { WechatPerson } from "./wechat.ts";
+import type { wechatStickerCatalog } from "./wechat-stickers.ts";
 
 /** 当前范围的帐号候选全部来自 Memory；删除或换范围后不按姓名重绑。 */
 export async function readWechatRoster(data: DataAppPublic, account: WechatPerson | null) {
@@ -31,6 +32,7 @@ export async function readWechatPrompt(
   sender: CharacterProfile,
   recipient: CharacterProfile,
   conversation: WechatConversation,
+  stickers: ReturnType<typeof wechatStickerCatalog> = [],
 ): Promise<string> {
   const summary = await data.readSummary(scope);
   const related = await data.readRelatedBackground({
@@ -47,5 +49,6 @@ export async function readWechatPrompt(
     recent,
     world,
     conversation,
+    stickers,
   });
 }

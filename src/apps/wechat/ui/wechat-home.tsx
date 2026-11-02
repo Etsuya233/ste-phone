@@ -74,6 +74,7 @@ export function WechatHome({
               profileText={self?.profileText ?? ""}
               onOpenProfile={() => navigation.push({ page: "person", id: account.id })}
               onSwitchAccount={() => navigation.push({ page: "accounts" })}
+              onOpenStickers={() => navigation.push({ page: "stickers" })}
             />
           )}
         </>
@@ -174,11 +175,13 @@ function WechatMe({
   profileText,
   onOpenProfile,
   onSwitchAccount,
+  onOpenStickers,
 }: {
   name: string;
   profileText: string;
   onOpenProfile(): void;
   onSwitchAccount(): void;
+  onOpenStickers(): void;
 }) {
   return (
     <>
@@ -187,6 +190,7 @@ function WechatMe({
       <GroupedList>
         <ListCell title="个人资料" onClick={onOpenProfile} />
         <ListCell title="切换帐号" onClick={onSwitchAccount} />
+        <ListCell title="表情包" onClick={onOpenStickers} />
       </GroupedList>
     </>
   );

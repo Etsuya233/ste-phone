@@ -5,17 +5,22 @@ import type { WechatRoute } from "./wechat-page.tsx";
 import { WechatHome } from "./wechat-home.tsx";
 import { WechatAccounts, WechatPerson } from "./wechat-people.tsx";
 import { WechatChat } from "./wechat-chat.tsx";
+import { WechatStickers } from "./wechat-stickers.tsx";
+import type { WechatStickerLibrary } from "../wechat-sticker-library.ts";
 
 export function WechatApp({
   wechat,
+  stickers,
   active,
   onHome,
 }: {
   wechat: WechatService;
+  stickers: WechatStickerLibrary;
   active: boolean;
   onHome(): void;
 }) {
   const state = useSyncExternalStore(wechat.subscribe, wechat.getSnapshot);
+  const stickerState = useSyncExternalStore(stickers.subscribe, stickers.getSnapshot);
   useEffect(() => {
     void wechat.prepare();
   }, [wechat, state.chatId]);
@@ -27,12 +32,14 @@ export function WechatApp({
         initialRoutes={[{ page: "home" }]}
       >
         {(route, navigation) => {
-          const props = { wechat, state, navigation };
+          const props = { wechat, state, navigation, stickers, stickerState };
           switch (route.page) {
             case "home":
               return <WechatHome {...props} onHome={onHome} />;
             case "accounts":
               return <WechatAccounts {...props} />;
+            case "stickers":
+              return <WechatStickers {...props} />;
             case "person":
               return <WechatPerson {...props} id={route.id} />;
             case "chat":

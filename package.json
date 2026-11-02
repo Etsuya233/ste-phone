@@ -28,6 +28,7 @@
   "dependencies": {
     "@earendil-works/pi-agent-core": "0.83.0",
     "@earendil-works/pi-ai": "0.83.0",
+    "jszip": "3.10.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

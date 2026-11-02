@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { WechatService } from "./wechat-service.ts";
+import { WechatStickerLibrary } from "./wechat-sticker-library.ts";
 import type { WechatData } from "./wechat.ts";
 import type { DataAppPublic, DataSourceSnapshot } from "../data-source/public.ts";
 import { createStAiTransport } from "../../infrastructure/host/ai-transport.ts";
@@ -81,6 +82,19 @@ function fixture() {
   let finishReason = "stop";
   let calls = 0;
   let prompt = "";
+  let replySticker = false;
+  const stickers = new WechatStickerLibrary({
+    read: () => [
+      {
+        name: "日常",
+        enabled: true,
+        stickers: [{ label: "开心", description: "开心地挥手", image: "/happy.gif" }],
+      },
+    ],
+    save: () => {},
+    upload: async () => "/happy.gif",
+    imageUrl: (path) => path,
+  });
   const connection = {
     id: "test",
     name: "模拟",
@@ -90,6 +104,7 @@ function fixture() {
     customHeaders: {},
   };
   const service = new WechatService({
+    stickers,
     data,
     chat: { getSnapshot: () => ({ id: "st-chat", name: "聊天" }), subscribe: () => () => {} },
     storage: {
@@ -122,7 +137,7 @@ function fixture() {
           : JSON.stringify({
               messages: [
                 { type: "text", text: "一条回复" },
-                { type: "text", text: "第二条" },
+                { type: "text", text: replySticker ? "[[sticker:日常:开心]]" : "第二条" },
               ],
             });
         return new Response(
@@ -133,6 +148,7 @@ function fixture() {
   });
   return {
     service,
+    stickers,
     data,
     get stored() {
       return stored;
@@ -162,6 +178,9 @@ function fixture() {
     truncate() {
       finishReason = "length";
     },
+    replyWithSticker() {
+      replySticker = true;
+    },
   };
 }
 
@@ -170,9 +189,11 @@ test("send persists explicit identities and account switch reads the same two-wa
   await f.service.prepare();
   await f.service.selectAccount("a");
   let sent = false;
-  await f.service.send("b", "你好", () => {
-    sent = true;
-    assert.equal(f.stored!.conversations[0]!.messages.length, 1);
+  await f.service.send("b", "你好", {
+    onSent: () => {
+      sent = true;
+      assert.equal(f.stored!.conversations[0]!.messages.length, 1);
+    },
   });
   assert.equal(sent, true);
   assert.equal(f.service.getConversation("b")!.messages.length, 3);
@@ -191,6 +212,44 @@ test("send persists explicit identities and account switch reads the same two-wa
       .map((message) => message.senderId),
     ["b", "a", "a"],
   );
+  f.service.dispose();
+});
+
+test("panel send and AI reply persist original stickers, preserve draft and exclude disabled packs", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  f.service.setDraft("b", "稍后发送的文字");
+  f.replyWithSticker();
+  await f.service.send("b", "[[sticker:日常:开心]]", { preserveDraft: true });
+  assert.equal(f.service.getDraft("b"), "稍后发送的文字");
+  assert.deepEqual(
+    f.stored!.conversations[0]!.messages.map((message) => [message.senderId, message.content.text]),
+    [
+      ["a", "[[sticker:日常:开心]]"],
+      ["b", "一条回复"],
+      ["b", "[[sticker:日常:开心]]"],
+    ],
+  );
+  assert.match(f.prompt, /开心地挥手/);
+  f.stickers.setEnabled("日常", false);
+  await f.service.send("b", "继续聊");
+  assert.equal(f.service.getSnapshot().reply.status, "error");
+  assert.doesNotMatch(f.prompt, /开心地挥手/);
+  assert.equal(f.stored!.conversations[0]!.messages.length, 4);
+  f.service.dispose();
+});
+
+test("failed panel send leaves text draft untouched and does not request a reply", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  f.service.setDraft("b", "保留文字");
+  f.failSave(true);
+  assert.equal(await f.service.send("b", "[[sticker:日常:开心]]", { preserveDraft: true }), false);
+  assert.equal(f.service.getDraft("b"), "保留文字");
+  assert.equal(f.service.getConversation("b"), undefined);
+  assert.equal(f.calls, 0);
   f.service.dispose();
 });
 test("user message is visible while the chat save is still pending", async () => {
