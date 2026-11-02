@@ -7,6 +7,7 @@ import { GroupedList } from "../../../frontend/foundation/grouped-list.tsx";
 import { ListCell } from "../../../frontend/foundation/list-cell.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Page } from "../../../frontend/foundation/page.tsx";
+import { StorySummaryPage } from "./story-summary-page.tsx";
 
 type Category = "characters" | "chronicles" | "items";
 const categoryNames = { characters: "人物", chronicles: "纪要", items: "物品" } as const;
@@ -18,7 +19,7 @@ const statusNames = {
   error: "读取失败",
 } as const;
 
-type Route = { category: Category | null; selectedId: string | null };
+type Route = { category: Category | null; selectedId: string | null; summary?: boolean };
 export function DataSourceApp({
   source,
   onHome,
@@ -40,15 +41,19 @@ export function DataSourceApp({
       active={active}
       initialRoutes={[{ category: null, selectedId: null }]}
     >
-      {(route, navigation) => (
-        <DataBrowser
-          source={source}
-          state={state}
-          onHome={onHome}
-          route={route}
-          navigation={navigation}
-        />
-      )}
+      {(route, navigation) =>
+        route.summary ? (
+          <StorySummaryPage source={source} onBack={navigation.pop} />
+        ) : (
+          <DataBrowser
+            source={source}
+            state={state}
+            onHome={onHome}
+            route={route}
+            navigation={navigation}
+          />
+        )
+      }
     </NavigationStack>
   );
 }
@@ -174,6 +179,16 @@ function DataBrowser({
                 <ListCell title="最近读取" subtitle={new Date(state.loadedAt).toLocaleString()} />
               ) : null}
             </GroupedList>
+            {state.context.available ? (
+              <GroupedList title="剧情">
+                <ListCell
+                  title="剧情总结"
+                  onClick={() =>
+                    navigation.push({ category: null, selectedId: null, summary: true })
+                  }
+                />
+              </GroupedList>
+            ) : null}
             {state.data && !state.data.backgroundError ? (
               <GroupedList
                 title="背景资料"

@@ -59,7 +59,7 @@ test("moving between home and dock, uninstalling and reinstalling survive a new 
   service.setWallpaper({ kind: "image", path: "/new.png" }, true);
   home.install("database");
   assert.deepEqual(home.getSnapshot(), {
-    grid: ["foundation", "stopwatch", "diary", "data-source", "app-store", "database"],
+    grid: ["foundation", "stopwatch", "diary", "wechat", "data-source", "app-store", "database"],
     dock: ["settings"],
   });
   assert.deepEqual(new PhoneSettingsService(storage).homeScreen.getSnapshot(), home.getSnapshot());

@@ -2,6 +2,18 @@ import type { AppId } from "../device/app-session.ts";
 import { Icon } from "../foundation/icon.tsx";
 
 export function AppIcon({ app }: { app: AppId }) {
+  if (app === "wechat") {
+    return (
+      <Icon appearance="app" className="wechat-app-icon">
+        <svg viewBox="0 0 60 60">
+          <path d="M39 28c0 9-9 16-20 16l-9 5 2-10C2 28 10 14 25 14c8 0 14 6 14 14Z" />
+          <path d="M55 38c0 7-6 12-15 12l-7 3 1-7c-8-8-2-19 10-19 6 0 11 5 11 11Z" />
+          <circle fill="#07b94f" cx="19" cy="26" r="2" />
+          <circle fill="#07b94f" cx="29" cy="26" r="2" />
+        </svg>
+      </Icon>
+    );
+  }
   if (app === "app-store") {
     return (
       <Icon appearance="app" className="app-store-icon">

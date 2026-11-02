@@ -247,4 +247,6 @@ flowchart TD
 
 ## 主屏与应用商店
 
+微信位于 `src/apps/wechat/`，独立拥有按聊天的帐号选择、双向会话、草稿、发送与回复任务。取材经过资料的 `readSummary/readRelatedBackground/readWorldState/readRecentChat`，模型连接由设置提供；`wechat-context.ts` 读取固定材料，`wechat-reply.ts` 组织一轮生成并创建消息，`wechat-generation.ts` 管理 Pi Agent 和输出协议，`wechat-service.ts` 负责保存顺序与普通取消。人物稳定身份到实例身份的转换、关系/持有物品/重要事件筛选和一跳第三人读取归资料模块，微信不持有来源 SQL 或 Memory 字段规则。界面分别使用根页、帐号、人物和聊天路由；宿主存储独立写入 `chatMetadata.ste_phone.wechat`，保留其他子字段，首期不引入跨 App 保存队列或极限操作协调。
+
 内置应用的稳定 ID 和静态目录定义在 `core/launcher/catalog.ts`，供设置、外壳和商店共同使用；页面与运行定义仍由 bootstrap 组装。设置模块持有 v4 全局配置，通过 `HomeScreenSettings` 提供布局快照与安装、卸载、移动命令。两个有序数组记录主屏与 Dock，成员表示已安装；商店不再持有第二份安装状态。卸载不会删除应用的业务数据，主屏在设置保存成功后请求外壳退出对应会话；商店安装成功后将入口追加到主屏，通过注入的 `onOpen` 请求系统打开应用。运行中应用的 `onQuit` 与既有 Expose 退出规则相同，资料、设置、App Store 的卸载权限由目录与设置命令共同约束。
