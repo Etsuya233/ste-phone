@@ -4,6 +4,7 @@ import type {
   DatabaseSchema,
 } from "../../apps/data-source/database.ts";
 import { identifierKey, quoteIdentifier as q } from "../../apps/data-source/database.ts";
+import { standardViewDefinitions } from "./standard-view-definitions.ts";
 import type {
   MemoryDatabaseDescription,
   MemoryField,
@@ -177,7 +178,7 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
           throw new Error(`字段缺失或类型不符：${tableKey}.${key}（需要 ${type}）`);
         }
         if (
-          (key === "owner" || key === "related_characters") &&
+          ["owner", "related_characters", "character_a", "character_b"].includes(key) &&
           field.referenceTableId !== schema.tables.find((table) => table.key === "characters")?.id
         ) {
           throw new Error(`引用目标不兼容：${tableKey}.${key}`);
@@ -190,7 +191,7 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
         }
         return {
           ...column(name, field.name),
-          ...(key === "owner" || key === "related_characters"
+          ...(["owner", "related_characters", "character_a", "character_b"].includes(key)
             ? {
                 reference: {
                   table: "phone_characters",
@@ -224,61 +225,9 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
       ]);
     }
   }
-  standard("phone_characters", "characters", [
-    ["name", "name", "short_text"],
-    ["personality", "personality", "long_text"],
-    ["background", "background", "long_text"],
-    ["current_status", "current_status", "long_text"],
-  ]);
-  standard("phone_chronicles", "chronicle", [
-    ["title", "summary", "short_text"],
-    ["content", "details", "long_text"],
-    ["start_time", "start_time", "datetime"],
-    ["end_time", "end_time", "datetime"],
-    ["related_character_ids", "related_characters", "multi_reference"],
-  ]);
-  standard(
-    "phone_plot_summaries",
-    "plot_summaries",
-    [
-      ["title", "summary", "short_text"],
-      ["content", "details", "long_text"],
-      ["start_time", "start_time", "datetime"],
-      ["end_time", "end_time", "datetime"],
-    ],
-    false,
-  );
-  standard(
-    "phone_summary_sources",
-    "chronicle",
-    [
-      ["title", "summary", "short_text"],
-      ["content", "details", "long_text"],
-      ["start_time", "start_time", "datetime"],
-      ["end_time", "end_time", "datetime"],
-      ["summary_id", "plot_summary", "single_reference"],
-    ],
-    false,
-  );
-  standard("phone_items", "items", [
-    ["name", "name", "short_text"],
-    ["description", "key_attributes", "long_text"],
-    ["owner_id", "owner", "single_reference"],
-    ["status", "status", "long_text"],
-  ]);
-  standard(
-    "phone_world_state",
-    "story_state",
-    [
-      ["name", "name", "short_text"],
-      ["world_time", "current_time", "datetime"],
-      ["current_location", "current_location", "short_text"],
-      ["weather", "weather", "short_text"],
-      ["clothing", "clothing", "short_text"],
-      ["other_scenes", "other_scenes", "long_text"],
-    ],
-    false,
-  );
+  for (const definition of standardViewDefinitions) {
+    standard(definition.name, definition.table, definition.columns, definition.profile ?? true);
+  }
   if (
     ["phone_characters", "phone_chronicles"].every((name) =>
       objects.some((object) => object.name === name),

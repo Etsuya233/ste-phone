@@ -1,5 +1,6 @@
 import sqlite3InitModule from "@sqlite.org/sqlite-wasm";
 import { memorySnapshotFixture } from "../../tests/fixtures/memory-snapshot.ts";
+import { relatedBackgroundSnapshot } from "../../tests/fixtures/related-background-snapshot.ts";
 import type { DatabaseObject, SqlValue } from "../../src/apps/data-source/public.ts";
 import type {
   MemoryDatabaseDescription,
@@ -9,7 +10,8 @@ import { SqliteDatabase } from "./preview-sqlite.ts";
 
 /** 独立预览的 Memory capability；SQLite 和样例 records 仅进入预览 bundle。 */
 export function createPreviewMemory(mode: string | null): MemoryReadApi {
-  const fixture = memorySnapshotFixture(mode === "empty");
+  const fixture =
+    mode === "related" ? relatedBackgroundSnapshot(true) : memorySnapshotFixture(mode === "empty");
   const tables = fixture.tables;
   const fields = fixture.fields.filter(
     (field) => field.enabled && !(mode === "unsupported" && field.key === "details"),

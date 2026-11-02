@@ -41,6 +41,11 @@ function fixture() {
       items: [],
     }),
     readSummary: async () => "全部剧情总结",
+    readWorldState: async () => [{ worldTime: "2026-11-02", location: "图书馆", weather: "晴" }],
+    readRelatedBackground: async (request) => {
+      assert.deepEqual([...request.participantIds].sort(), ["a", "b"]);
+      return { relationships: [], heldItems: [], importantEvents: [], otherCharacters: [] };
+    },
     describe: async () => ({
       sourceId: "ste-memory",
       scopeId: "instance",

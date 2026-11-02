@@ -72,6 +72,12 @@ function fixture(fetchImpl: typeof fetch = async () => reply()) {
   };
   let stableScopeId = "scope";
   const data: DataAppPublic = {
+    readWorldState: async () => {
+      throw new Error("日记使用自己的世界状态取材");
+    },
+    readRelatedBackground: async () => {
+      throw new Error("日记不应依赖关联资料能力");
+    },
     readSummary: async () => {
       throw new Error("日记不应读取剧情总结");
     },

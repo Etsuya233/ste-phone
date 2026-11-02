@@ -28,6 +28,20 @@ export function memorySnapshotFixture(empty = false): MemorySnapshot {
       start_time: "datetime",
       end_time: "datetime",
     },
+    relationships: {
+      character_a: "single_reference",
+      character_b: "single_reference",
+      summary: "long_text",
+      key_facts: "long_text",
+    },
+    important_events: {
+      name: "short_text",
+      details: "long_text",
+      start_time: "datetime",
+      end_time: "datetime",
+      related_characters: "multi_reference",
+      outcome: "long_text",
+    },
     items: {
       name: "short_text",
       key_attributes: "long_text",
@@ -56,6 +70,8 @@ export function memorySnapshotFixture(empty = false): MemorySnapshot {
     characters: "人物",
     chronicle: "纪要",
     plot_summaries: "剧情总结",
+    relationships: "人际关系",
+    important_events: "重要事件",
     items: "物品",
     story_state: "世界状态",
     custom_notes: "自定义研究笔记",
@@ -69,10 +85,16 @@ export function memorySnapshotFixture(empty = false): MemorySnapshot {
     prompt: "",
     enabled: true,
     position,
-    displayStrategy: {
-      type: "field" as const,
-      fieldId: `${key}.${["chronicle", "plot_summaries"].includes(key) ? "summary" : key === "custom_notes" ? "title" : "name"}`,
-    },
+    displayStrategy:
+      key === "relationships"
+        ? {
+            type: "template" as const,
+            template: "{relationships.character_a} / {relationships.character_b}",
+          }
+        : {
+            type: "field" as const,
+            fieldId: `${key}.${["chronicle", "plot_summaries"].includes(key) ? "summary" : key === "custom_notes" ? "title" : "name"}`,
+          },
     createdAt: timestamp,
     updatedAt: timestamp,
   }));

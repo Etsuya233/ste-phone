@@ -1,4 +1,7 @@
 import { readStorySummary } from "./story-summary.ts";
+import { readRelatedBackground } from "./read-related-background.ts";
+import type { RelatedBackgroundRequest } from "./related-background.ts";
+import { readWorldState } from "./world-state.ts";
 import type { DatabaseProvider } from "./ports/database-provider.ts";
 import { BackgroundDataSource } from "./data-source.ts";
 import { QueryBackgroundProvider } from "./query-background-provider.ts";
@@ -52,6 +55,12 @@ export class PhoneDataService implements DataAppPublic {
   }
   readSummary(request: DataScope): Promise<string> {
     return readStorySummary(this, { ...request });
+  }
+  readRelatedBackground(request: RelatedBackgroundRequest) {
+    return readRelatedBackground(this, { ...request, participantIds: [...request.participantIds] });
+  }
+  readWorldState(request: DataScope) {
+    return readWorldState(this, { ...request });
   }
   async readRecentChat(request: DataScope & { readonly count: number }) {
     request = { ...request };

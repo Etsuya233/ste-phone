@@ -1,5 +1,15 @@
 # 手机公共资料与数据库
 
+## 人物关联背景与世界状态
+
+`DataAppPublic.readRelatedBackground({ chatIdentity, scopeId, participantIds })` 提供可复用的完整关联取材，`participantIds` 是当前资料范围内的稳定人物 ID。先在 `phone_characters` 找到当前实例记录 ID，再比较关系 A/B、物品持有者和事件人物引用。返回记录和人物引用均使用稳定身份，同名人物不合并。筛选仅锚定原始参与人物；关系与事件直接涉及的第三人去重、排除参与者，不继续查第三人的其他关系、物品或事件，也不从文本姓名猜测关联。
+
+返回的 `RelatedBackground` 分别包含 `relationships`、`heldItems`、`importantEvents` 和 `otherCharacters`。关系保留原记录 A/B 顺序、描述和关键事实；物品保留持有/保管者、描述、状态，不推断所有权；重要事件保留说明、时间和进展结果，未来、延期、取消及已结束事件均可入选。第三人简介直接使用姓名、性格、过往背景和近况字段，保留空值和原文，不调模型概括或按固定字数截断。背景相关不保证角色知情，资料中的事实归属与不确定性继续保留。
+
+三类记录与第三人资料均按创建时间及记录 ID 完整分页读取；缺表、字段类型或引用目标错误由对应能力明确报告，缺失参与者、悬空直接人物引用和意外分页截断报错。正常空表返回空数组。新增 `phone_relationships`、`phone_important_events` 能力按需检查，不影响既有日记、summary 或人物展示。来源字段声明集中在 `src/infrastructure/ste-memory/standard-view-definitions.ts`，查询、身份转换和一跳筛选在 `src/apps/data-source/read-related-background.ts`，只读结构在 `related-background.ts`。
+
+`readWorldState({ chatIdentity, scopeId })` 返回具有 `worldTime/location/weather` 命名字段的世界状态数组，未记录的值保留 null；SQL 和字段校验归资料模块。微信仅消费这些公开能力并组织提示词，继续分别读取完整 summary、最近 10 条清洗后 ST 消息和最近 30 条当前微信消息，不增加检索工具、额外 AI 摘要或保存协调机制。
+
 ## 公共剧情总结
 
 `DataAppPublic.readSummary({ chatIdentity, scopeId })` 按需返回完整剧情回顾文本，资料页「剧情总结」与微信使用同一接口。STE Memory 的 `plot_summaries` 映射为 `phone_plot_summaries`，纪要的 `plot_summary` 归属映射为 `phone_summary_sources.summary_id`。依次读取全部大总结和所有归属为空的纪要，保留标题、起止时间、正文；各组按创建时间与记录 ID 分页读取，不按人物过滤，不另调模型压缩。

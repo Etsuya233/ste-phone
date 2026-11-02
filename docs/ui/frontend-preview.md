@@ -1,5 +1,15 @@
 # 前端开发与验收
 
+## 微信关联背景取材（2026-11-02）
+
+资料模块新增 `readRelatedBackground`，按原始参与人物的显式引用读取关系、当前持有物品、重要事件和一跳第三人简介。关系 A/B 与各自态度、物品持有与所有权区别、事件安排和进展结果均保留；不递归读取第三人的其他资料，不调用模型另作摘要。世界状态 SQL 同步移入资料公开 `readWorldState`，微信仅组织提示词，原有完整 summary、10 条清洗后 ST 与 30 条微信窗口保持。
+
+独立验收脚本使用真实 SQLite Memory 公开 capability，经过正式 MemoryDatabaseProvider、PhoneDataService、WechatService、Pi/createStAiTransport 到模拟 fetch 和消息保存。所有人物实例 ID 为 `instance-*`，稳定 ID 保持原值；最终模型 payload 含双方不同态度、直接第三人、双方持有物品、取消事件、清洗后 ST 正文及本次微信，排除第三人继续向外的关系/事件和无关物品、人物。两条 AI 回复按对方稳定身份保存。迁移世界状态接口后再次通过；报告为忽略目录 `tmp/wechat-related-acceptance/report.json`，脚本在 `tmp/wechat-acceptance/related-integration.mjs`，未请求网络模型。
+
+Edge `/?wechat=1&data-state=related` 使用克隆实例样例，恢复已有帐号与历史，发送“朗读会延期了吗？我的笔记本还在你那里吗？”后收到两条模拟回复、输入清空，无 console error。截图在 `tmp/wechat-related-acceptance/preview.png`。这项操作确认新增取材未阻塞发送；固定模拟回复无法证明模型按背景作答，内容依据以前述实际 payload 检查和 SQL/prompt 集成测试为准。本轮未验证完整 Memory/ST 宿主界面联合生成或真实模型质量，未修改用户 ST 聊天。
+
+typecheck、lint、format:check、115 项完整测试、build 与 git diff --check 通过；构建约 577.4 KB JS、53.6 KB CSS。新增测试使用真实 SQLite 公开适配，覆盖双方任一关联、原 A/B 顺序、持有物品、延期与已结束事件、同名第三人去重和一跳排除、克隆身份、三类记录及第三人超过 200 条分页、缺表/错类型/错引用目标不影响旧背景和 summary，以及最终 prompt 的完整 summary 与 10/30 窗口。资料取材文件 208 行，来源映射 293 行；微信服务沿用已审查的 351 行，未继续增加取材职责。
+
 ## 微信与公共剧情总结（2026-11-02）
 
 微信新增人物帐号选择、微信/通讯录/我三个 Tab、独立人物与单聊详情、双向会话及多条文本回复。用户消息先保存，生成失败可重试回复，完整 JSON 校验后保存 AI 消息；Home 与关闭手机继续生成，切帐号、ST 聊天或 Expose 退出时取消。公共 summary 完整读取全部大总结和未总结纪要，资料页独立展示；混合资料、排除已总结纪要、跨 200 条分页、悬空归属和缺失映射由 SQL 测试覆盖。微信数据与预览存储分别归宿主聊天和 localStorage。

@@ -2,6 +2,17 @@ import type { PhoneBackground } from "./background.ts";
 import type { SourceContext } from "./ports/background-provider.ts";
 import type { DatabaseSchema, QueryResult, SqlValue } from "./database.ts";
 import type { RecentChatSnapshot } from "./recent-chat.ts";
+import type { RelatedBackground, RelatedBackgroundRequest } from "./related-background.ts";
+import type { WorldState } from "./world-state.ts";
+export type { WorldState } from "./world-state.ts";
+export type {
+  RelatedBackground,
+  RelatedBackgroundRequest,
+  BackgroundRelationship,
+  HeldItem,
+  ImportantEvent,
+  BackgroundPersonBrief,
+} from "./related-background.ts";
 export type { RecentChatSnapshot, RecentChatMessage } from "./recent-chat.ts";
 export type { CharacterProfile, Chronicle, ItemProfile, PhoneBackground } from "./background.ts";
 export type { SourceContext } from "./ports/background-provider.ts";
@@ -39,6 +50,8 @@ export interface DataAppPublic {
   subscribe(listener: () => void): () => void;
   readBackground(request: BackgroundRead): Promise<PhoneBackground>;
   readSummary(request: DataScope): Promise<string>;
+  readRelatedBackground(request: RelatedBackgroundRequest): Promise<RelatedBackground>;
+  readWorldState(request: DataScope): Promise<readonly WorldState[]>;
   describe(request: DataScope, options?: { readonly force?: boolean }): Promise<DatabaseSchema>;
   query(request: DataQuery): Promise<QueryResult>;
   readRecentChat(request: DataScope & { readonly count: number }): Promise<RecentChatSnapshot>;

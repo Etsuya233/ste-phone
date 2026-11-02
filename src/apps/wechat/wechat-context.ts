@@ -33,13 +33,19 @@ export async function readWechatPrompt(
   conversation: WechatConversation,
 ): Promise<string> {
   const summary = await data.readSummary(scope);
-  const recent = await data.readRecentChat({ ...scope, count: 10 });
-  const world = await data.query({
+  const related = await data.readRelatedBackground({
     ...scope,
-    sql: "SELECT world_time,current_location,weather FROM phone_world_state",
+    participantIds: [sender.id, recipient.id],
   });
-  if (world.truncated) {
-    throw new Error("世界状态读取被截断");
-  }
-  return buildWechatPrompt({ sender, recipient, summary, recent, world: world.rows, conversation });
+  const recent = await data.readRecentChat({ ...scope, count: 10 });
+  const world = await data.readWorldState(scope);
+  return buildWechatPrompt({
+    sender,
+    recipient,
+    summary,
+    related,
+    recent,
+    world,
+    conversation,
+  });
 }

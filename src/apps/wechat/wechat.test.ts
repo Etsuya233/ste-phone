@@ -33,6 +33,7 @@ test("prompt limits this conversation to thirty including latest and carries exp
       sender: { id: "A", name: "甲", profileText: "人物甲" },
       recipient: { id: "B", name: "乙", profileText: "人物乙" },
       summary: "全部总结",
+      related: { relationships: [], heldItems: [], importantEvents: [], otherCharacters: [] },
       recent: {
         chatIdentity: "chat",
         cleaning: { enabled: false, ruleId: null, ruleName: null },
