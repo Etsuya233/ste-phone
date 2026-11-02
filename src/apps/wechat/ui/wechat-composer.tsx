@@ -70,7 +70,13 @@ export function WechatComposer({
             setShowStickers(!showStickers);
           }}
         >
-          ☺
+          {/* 使用矢量笑脸，避免系统将字符渲染为彩色 Emoji。 */}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <circle cx="8.5" cy="9" r="1" className="wechat-smile-eye" />
+            <circle cx="15.5" cy="9" r="1" className="wechat-smile-eye" />
+            <path d="M7.5 13.5a4.7 4.7 0 0 0 9 0" />
+          </svg>
         </button>
         {/* 两个动作使用独立节点，避免停止后切回 submit 导致同一次点击提交草稿。 */}
         {replying ? (
