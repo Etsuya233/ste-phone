@@ -74,6 +74,9 @@ function fixture() {
   };
   let stored: WechatData | null = null;
   let failSave = false;
+  let holdSave = false;
+  let saveStarted: (() => void) | null = null;
+  let releaseSave: (() => void) | null = null;
   let invalid = false;
   let finishReason = "stop";
   let calls = 0;
@@ -92,6 +95,13 @@ function fixture() {
     storage: {
       read: () => stored,
       write: async (_, value) => {
+        if (holdSave) {
+          holdSave = false;
+          saveStarted?.();
+          await new Promise<void>((resolve) => {
+            releaseSave = resolve;
+          });
+        }
         if (failSave) {
           throw new Error("磁盘失败");
         }
@@ -136,6 +146,16 @@ function fixture() {
     failSave(value: boolean) {
       failSave = value;
     },
+    holdNextSave() {
+      holdSave = true;
+      return new Promise<void>((resolve) => {
+        saveStarted = resolve;
+      });
+    },
+    releaseSave() {
+      releaseSave?.();
+      releaseSave = null;
+    },
     invalid(value: boolean) {
       invalid = value;
     },
@@ -173,6 +193,22 @@ test("send persists explicit identities and account switch reads the same two-wa
   );
   f.service.dispose();
 });
+test("user message is visible while the chat save is still pending", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const started = f.holdNextSave();
+  const sending = f.service.send("b", "你好");
+  await started;
+  assert.equal(f.service.getConversation("b")!.messages.length, 1);
+  assert.equal(f.service.getSnapshot().reply.status, "sending");
+  assert.equal(f.service.getDraft("b"), "");
+  f.releaseSave();
+  assert.equal(await sending, true);
+  assert.equal(f.service.getConversation("b")!.messages.length, 3);
+  assert.equal(f.service.getSnapshot().reply.status, "idle");
+  f.service.dispose();
+});
 test("invalid generation can retry without appending user message again", async () => {
   const f = fixture();
   await f.service.prepare();
@@ -194,6 +230,7 @@ test("user persistence failure retains draft and never starts AI", async () => {
   f.service.setDraft("b", "保留输入");
   f.failSave(true);
   assert.equal(await f.service.send("b", "保留输入"), false);
+  assert.equal(f.service.getConversation("b"), undefined);
   assert.equal(f.service.getDraft("b"), "保留输入");
   assert.equal(f.calls, 0);
   assert.equal(f.service.getSnapshot().reply.status, "error");

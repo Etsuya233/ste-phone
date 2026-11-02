@@ -27,6 +27,7 @@ export function WechatChat({
   const reply =
     state.reply.status !== "idle" && state.reply.conversationId === currentId ? state.reply : null;
   const running = state.reply.status === "running";
+  const sending = state.reply.status === "sending";
   const available = !!person && !!state.data.account && !state.error && !state.loading;
   useEffect(() => {
     const content = end.current?.closest(".ios-page-content");
@@ -44,7 +45,11 @@ export function WechatChat({
   }, [conversation?.messages.length, active, composerHeight]);
   async function send() {
     const text = draft;
-    await wechat.send(id, text, () => setDraft(""));
+    setDraft("");
+    // 保存失败时服务会恢复草稿，这里同步恢复输入框，避免消息被撤回后正文也丢失。
+    if (!(await wechat.send(id, text))) {
+      setDraft(text);
+    }
   }
   return (
     <Page
@@ -60,7 +65,7 @@ export function WechatChat({
       footer={
         <WechatComposer
           value={draft}
-          disabled={!available || running}
+          disabled={!available || running || sending}
           onChange={(text) => {
             setDraft(text);
             wechat.setDraft(id, text);

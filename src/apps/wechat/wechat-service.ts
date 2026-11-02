@@ -131,42 +131,55 @@ export class WechatService {
     if (this.#task) {
       throw new Error("请等待当前回复完成");
     }
-    if (!text.trim()) {
+    const value = text.trim();
+    if (!value) {
       return false;
     }
     const conversation = this.#newConversation(otherId);
-    const task = this.#startTask(conversation.id);
+    const created = !this.getConversation(otherId);
     const message = createWechatMessage(this.#snapshot.data.account!.id, {
       type: "text",
-      text: text.trim(),
+      text: value,
     });
-    let saved = false;
+    const next = { ...conversation, messages: [...conversation.messages, message] };
+    const task = this.#startTask();
+    this.setDraft(otherId, "");
+    // 整份聊天保存需要一次 HTTP 往返，先把这条消息放进快照，避免保存期间只看到回复状态。
+    this.#publish({
+      data: this.#dataWithConversation(next),
+      reply: { status: "sending", conversationId: conversation.id },
+    });
     try {
-      const next = { ...conversation, messages: [...conversation.messages, message] };
-      await this.#saveConversation(next);
-      saved = true;
-      this.setDraft(otherId, "");
+      try {
+        await this.#saveConversation(next);
+      } catch (error) {
+        this.setDraft(otherId, text);
+        if (this.#snapshot.chatId === task.chatId) {
+          this.#dropOptimisticMessage(conversation.id, message.id, created);
+        }
+        if (this.#owns(task)) {
+          this.#failReply(conversation.id, error, false);
+        }
+        return false;
+      }
       onSent?.();
-      if (this.#owns(task)) {
+      if (!this.#owns(task)) {
+        return true;
+      }
+      this.#publish({ reply: { status: "running", conversationId: conversation.id } });
+      try {
         await this.#reply(next, task);
+      } catch (error) {
+        if (this.#owns(task)) {
+          this.#failReply(conversation.id, error, true);
+        }
       }
-    } catch (error) {
-      if (this.#owns(task)) {
-        this.#publish({
-          reply: {
-            status: "error",
-            conversationId: conversation.id,
-            error: (error as Error).message,
-            retry: saved,
-          },
-        });
-      }
+      return true;
     } finally {
       if (this.#task === task) {
         this.#task = null;
       }
     }
-    return saved;
   }
 
   async retry(otherId: string): Promise<void> {
@@ -174,25 +187,30 @@ export class WechatService {
     if (!conversation || this.#task) {
       throw new Error("当前没有可重试的回复");
     }
-    const task = this.#startTask(conversation.id);
+    const task = this.#startTask();
+    this.#publish({ reply: { status: "running", conversationId: conversation.id } });
     try {
       await this.#reply(conversation, task);
     } catch (error) {
       if (this.#owns(task)) {
-        this.#publish({
-          reply: {
-            status: "error",
-            conversationId: conversation.id,
-            error: (error as Error).message,
-            retry: true,
-          },
-        });
+        this.#failReply(conversation.id, error, true);
       }
     } finally {
       if (this.#task === task) {
         this.#task = null;
       }
     }
+  }
+
+  #failReply(conversationId: string, error: unknown, retry: boolean): void {
+    this.#publish({
+      reply: {
+        status: "error",
+        conversationId,
+        error: (error as Error).message,
+        retry,
+      },
+    });
   }
 
   #newConversation(otherId: string): WechatConversation {
@@ -215,14 +233,13 @@ export class WechatService {
       }
     );
   }
-  #startTask(conversationId: string): ReplyTask {
+  #startTask(): ReplyTask {
     const chatId = this.#snapshot.chatId;
     if (!chatId) {
       throw new Error("请先打开一个 ST 聊天");
     }
     const task = { chatId, controller: new AbortController() };
     this.#task = task;
-    this.#publish({ reply: { status: "running", conversationId } });
     return task;
   }
 
@@ -272,14 +289,36 @@ export class WechatService {
     }
   }
 
-  async #saveConversation(conversation: WechatConversation): Promise<void> {
-    await this.#save({
-      ...this.#snapshot.data,
+  #dataWithConversation(conversation: WechatConversation): WechatData {
+    const { data } = this.#snapshot;
+    return {
+      ...data,
       conversations: [
-        ...this.#snapshot.data.conversations.filter((item) => item.id !== conversation.id),
+        ...data.conversations.filter((item) => item.id !== conversation.id),
         conversation,
       ],
-    });
+    };
+  }
+
+  /** 保存失败时只撤回这条本地先显示的消息，保留期间发生的其他资料变化。 */
+  #dropOptimisticMessage(conversationId: string, messageId: string, created: boolean): void {
+    const { data } = this.#snapshot;
+    const current = data.conversations.find((item) => item.id === conversationId);
+    if (!current?.messages.some((message) => message.id === messageId)) {
+      return;
+    }
+    const messages = current.messages.filter((message) => message.id !== messageId);
+    const conversations =
+      created && messages.length === 0
+        ? data.conversations.filter((item) => item.id !== conversationId)
+        : data.conversations.map((item) =>
+            item.id === conversationId ? { ...current, messages } : item,
+          );
+    this.#publish({ data: { ...data, conversations } });
+  }
+
+  async #saveConversation(conversation: WechatConversation): Promise<void> {
+    await this.#save(this.#dataWithConversation(conversation));
   }
   async #save(value: WechatData): Promise<void> {
     const chatId = this.#snapshot.chatId;
