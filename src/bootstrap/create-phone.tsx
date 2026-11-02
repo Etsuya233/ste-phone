@@ -64,6 +64,7 @@ export function createPhone(dependencies: {
   const stickers = new WechatStickerLibrary(dependencies.wechatStickerStorage);
   const wechat = new WechatService({
     stickers,
+    preferences: settings.wechatPreferences,
     storage: dependencies.wechatStorage,
     data,
     chat: dependencies.chat,
@@ -73,7 +74,13 @@ export function createPhone(dependencies: {
   const apps: Record<AppId, AppDefinition> = {
     wechat: {
       render: ({ active, onHome }) => (
-        <WechatApp active={active} wechat={wechat} stickers={stickers} onHome={onHome} />
+        <WechatApp
+          preferences={settings.wechatPreferences}
+          active={active}
+          wechat={wechat}
+          stickers={stickers}
+          onHome={onHome}
+        />
       ),
       onQuit: () => wechat.cancel(),
     },

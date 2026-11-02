@@ -274,6 +274,7 @@
   overflow-y: hidden;
 }
 :host .wechat-composer button {
+  flex-shrink: 0;
   background: #07c160;
   border: 0;
   color: white;
@@ -291,4 +292,12 @@
   fill: white;
   stroke: #07b94f;
   stroke-width: 1.5;
+}
+
+:host .wechat-send-preferences {
+  padding: var(--ios-space-medium);
+}
+:host .wechat-composer--delayed .wechat-send {
+  background: white;
+  color: #079f4e;
 }

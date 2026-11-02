@@ -1,3 +1,4 @@
+import { WechatSendPreferences } from "./wechat-send-preferences.tsx";
 import { useState } from "react";
 import { Page } from "../../../frontend/foundation/page.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
@@ -15,6 +16,7 @@ export function WechatHome({
   state,
   navigation,
   onHome,
+  preferences,
 }: WechatPageProps & { onHome(): void }) {
   const [tab, setTab] = useState("微信");
   const account = state.data.account;
@@ -70,6 +72,7 @@ export function WechatHome({
           )}
           {tab === "我" && (
             <WechatMe
+              preferences={preferences}
               name={self?.name ?? account.name}
               profileText={self?.profileText ?? ""}
               onOpenProfile={() => navigation.push({ page: "person", id: account.id })}
@@ -171,12 +174,14 @@ function WechatContacts({
 }
 
 function WechatMe({
+  preferences,
   name,
   profileText,
   onOpenProfile,
   onSwitchAccount,
   onOpenStickers,
 }: {
+  preferences: WechatPageProps["preferences"];
   name: string;
   profileText: string;
   onOpenProfile(): void;
@@ -192,6 +197,7 @@ function WechatMe({
         <ListCell title="切换帐号" onClick={onSwitchAccount} />
         <ListCell title="表情包" onClick={onOpenStickers} />
       </GroupedList>
+      <WechatSendPreferences preferences={preferences} />
     </>
   );
 }

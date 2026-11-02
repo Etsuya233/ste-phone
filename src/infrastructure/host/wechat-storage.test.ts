@@ -80,3 +80,41 @@ test("group save uses the group endpoint and HTTP errors remain observable", asy
   assert.equal(calls[0]!.body.id, "story-a");
   assert.equal(calls[0]!.body.force, false);
 });
+
+test("canceling an acknowledged save rolls back the captured target after chat switch", async () => {
+  let finish!: (value: Response) => void;
+  const calls: { url: string; body: Record<string, unknown> }[] = [];
+  const f = fixture((async (url, init) => {
+    calls.push({ url: String(url), body: JSON.parse(init!.body as string) });
+    if (calls.length === 1) {
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    }
+    return new Response(null, { status: 200 });
+  }) as typeof fetch);
+  const before = structuredClone(f.context.chatMetadata);
+  const controller = new AbortController();
+  const saving = f.storage.write("a", emptyWechat(), controller.signal);
+  controller.abort();
+  f.switchChat();
+  finish(new Response(null, { status: 200 }));
+  await assert.rejects(saving, { name: "AbortError" });
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1]!.body.file_name, "story-a");
+  assert.deepEqual((calls[1]!.body.chat as { chat_metadata: unknown }[])[0]!.chat_metadata, before);
+  assert.deepEqual(f.context.chatMetadata, before);
+});
+
+test("failed rollback remains an observable error and failed saves do not mutate host metadata", async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  const f = fixture((async () => {
+    calls++;
+    controller.abort();
+    return new Response(null, { status: calls === 1 ? 200 : 409 });
+  }) as typeof fetch);
+  const before = structuredClone(f.context.chatMetadata);
+  await assert.rejects(f.storage.write("a", emptyWechat(), controller.signal), /撤回保存失败/);
+  assert.deepEqual(f.context.chatMetadata, before);
+});

@@ -19,7 +19,13 @@ export function WechatAccounts({ wechat, state, navigation }: WechatPageProps) {
             type="button"
             className="wechat-row"
             key={person.id}
-            disabled={state.loading || !!state.error}
+            disabled={
+              state.loading ||
+              !!state.error ||
+              state.reply.status === "sending" ||
+              state.reply.status === "saving" ||
+              state.reply.status === "stopping"
+            }
             onClick={() =>
               void wechat.selectAccount(person.id).then((saved) => {
                 if (saved && person.id === state.data.account?.id) {

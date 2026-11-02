@@ -1,3 +1,4 @@
+import type { WechatPreferences } from "../../settings/public.ts";
 import { useEffect, useSyncExternalStore } from "react";
 import { NavigationStack } from "../../../frontend/foundation/navigation-stack.tsx";
 import type { WechatService } from "../wechat-service.ts";
@@ -10,15 +11,18 @@ import type { WechatStickerLibrary } from "../wechat-sticker-library.ts";
 
 export function WechatApp({
   wechat,
+  preferences,
   stickers,
   active,
   onHome,
 }: {
   wechat: WechatService;
+  preferences: WechatPreferences;
   stickers: WechatStickerLibrary;
   active: boolean;
   onHome(): void;
 }) {
+  const sendMode = useSyncExternalStore(preferences.subscribe, preferences.getSnapshot);
   const state = useSyncExternalStore(wechat.subscribe, wechat.getSnapshot);
   const stickerState = useSyncExternalStore(stickers.subscribe, stickers.getSnapshot);
   useEffect(() => {
@@ -32,7 +36,15 @@ export function WechatApp({
         initialRoutes={[{ page: "home" }]}
       >
         {(route, navigation) => {
-          const props = { wechat, state, navigation, stickers, stickerState };
+          const props = {
+            wechat,
+            state,
+            navigation,
+            stickers,
+            stickerState,
+            sendMode,
+            preferences,
+          };
           switch (route.page) {
             case "home":
               return <WechatHome {...props} onHome={onHome} />;

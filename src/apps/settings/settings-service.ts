@@ -4,6 +4,7 @@ import type {
   ModelConnectionsReader,
   ModelConnectionsSnapshot,
   HomeScreenSettings,
+  WechatPreferences,
 } from "./public.ts";
 import { appCatalog, defaultHomeLayout } from "../../core/launcher/catalog.ts";
 import type { HomeLayout } from "../../core/launcher/catalog.ts";
@@ -20,13 +21,15 @@ export type {
   PhoneSettings,
   PhoneSettingsV2,
   PhoneSettingsV3,
+  PhoneSettingsV4,
   LegacyPhoneSettings,
   SettingsStorage,
   Wallpaper,
   WallpaperImage,
 } from "./ports/settings-storage.ts";
 export const defaultSettings: PhoneSettings = {
-  version: 4,
+  version: 5,
+  wechatSendMode: "delayed",
   wallpaper: { kind: "gradient" },
   blur: false,
   modelConnections: [],
@@ -94,6 +97,16 @@ export class PhoneSettingsService {
       this.save({ ...this.state, homeLayout: next });
     },
   };
+  readonly wechatPreferences: WechatPreferences = {
+    getSnapshot: () => this.state.wechatSendMode,
+    subscribe: (listener) => this.subscribe(listener),
+    setSendMode: (mode) => {
+      if (mode !== "immediate" && mode !== "delayed") {
+        throw new Error("不支持的微信发送模式");
+      }
+      this.save({ ...this.state, wechatSendMode: mode });
+    },
+  };
   readonly wallpaper: WallpaperReader = {
     getSnapshot: () => this.wallpaperSnapshot,
     subscribe: (listener) => this.subscribe(listener),
@@ -122,17 +135,30 @@ export class PhoneSettingsService {
       this.state = { ...defaultSettings, wallpaper: stored.wallpaper, blur: stored.blur };
       storage.save(this.state);
     } else if (stored.version === 3) {
-      this.state = { ...stored, version: 4, homeLayout: defaultHomeLayout };
+      this.state = {
+        ...stored,
+        version: 5,
+        homeLayout: defaultHomeLayout,
+        wechatSendMode: "delayed",
+      };
       storage.save(this.state);
-    } else if (stored.version === 4) {
+    } else if (stored.version === 4 || stored.version === 5) {
       // 其他分支或旧构建可能保存过当前目录没有的应用 ID，主屏无法渲染，加载时丢弃。
       const grid = stored.homeLayout.grid.filter((id) => Object.hasOwn(appCatalog, id));
       const dock = stored.homeLayout.dock.filter((id) => Object.hasOwn(appCatalog, id));
       const changed =
         grid.length !== stored.homeLayout.grid.length ||
         dock.length !== stored.homeLayout.dock.length;
-      this.state = changed ? { ...stored, homeLayout: { grid, dock } } : stored;
-      if (changed) {
+      this.state = {
+        ...stored,
+        version: 5,
+        homeLayout: { grid, dock },
+        wechatSendMode: stored.version === 4 ? "delayed" : stored.wechatSendMode,
+      };
+      if (this.state.wechatSendMode !== "immediate" && this.state.wechatSendMode !== "delayed") {
+        throw new Error("不支持的微信发送模式");
+      }
+      if (changed || stored.version === 4) {
         storage.save(this.state);
       }
     } else {

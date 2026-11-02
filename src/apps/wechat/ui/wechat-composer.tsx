@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { WechatStickerPanel } from "./wechat-sticker-panel.tsx";
 import type { WechatStickerLibrary } from "../wechat-sticker-library.ts";
@@ -10,6 +11,10 @@ const MAX_HEIGHT = 96;
 export function WechatComposer({
   value,
   disabled,
+  replying,
+  onStop,
+  delayed,
+  onQueue,
   onChange,
   onSend,
   onHeightChange,
@@ -20,6 +25,10 @@ export function WechatComposer({
 }: {
   value: string;
   disabled: boolean;
+  replying: boolean;
+  onStop(): void;
+  delayed: boolean;
+  onQueue(): void;
   onChange(value: string): void;
   onSend(): void;
   onHeightChange(height: number): void;
@@ -31,38 +40,16 @@ export function WechatComposer({
   const form = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const [showStickers, setShowStickers] = useState(false);
-  useLayoutEffect(() => {
-    const element = textarea.current;
-    if (!element) {
-      return;
-    }
-    element.style.height = "auto";
-    const next = Math.min(element.scrollHeight + 2, MAX_HEIGHT);
-    element.style.height = `${Math.max(next, MIN_HEIGHT)}px`;
-    element.style.overflowY = element.scrollHeight + 2 > MAX_HEIGHT ? "auto" : "hidden";
-  }, [value]);
-  useLayoutEffect(() => {
-    const element = form.current;
-    if (!element) {
-      return;
-    }
-    const observer = new ResizeObserver(() => {
-      // 页面隐藏在导航栈中时尺寸为零，保留上一次的前台高度。
-      if (element.offsetHeight > 0) {
-        onHeightChange(element.offsetHeight);
-      }
-    });
-    observer.observe(element);
-    onHeightChange(element.offsetHeight);
-    return () => observer.disconnect();
-  }, [onHeightChange]);
+  useComposerHeight(textarea, form, value, onHeightChange);
   return (
     <div ref={form}>
       <form
-        className="wechat-composer"
+        className={`wechat-composer ${delayed ? "wechat-composer--delayed" : ""}`}
         onSubmit={(event) => {
           event.preventDefault();
-          onSend();
+          if (!disabled) {
+            onSend();
+          }
         }}
       >
         <textarea
@@ -85,9 +72,27 @@ export function WechatComposer({
         >
           ☺
         </button>
-        <button type="submit" disabled={disabled || !value.trim()}>
-          发送
-        </button>
+        {/* 两个动作使用独立节点，避免停止后切回 submit 导致同一次点击提交草稿。 */}
+        {replying ? (
+          <button key="stop" type="button" onClick={onStop}>
+            停止
+          </button>
+        ) : (
+          <button key="send" type="submit" className="wechat-send" disabled={disabled}>
+            发送
+          </button>
+        )}
+        {delayed && (
+          <button
+            type="button"
+            className="wechat-queue-message"
+            aria-label="加入消息队列"
+            disabled={disabled || !value.trim()}
+            onClick={onQueue}
+          >
+            队列
+          </button>
+        )}
       </form>
       {showStickers && (
         <WechatStickerPanel
@@ -100,4 +105,38 @@ export function WechatComposer({
       )}
     </div>
   );
+}
+
+/** 统一维护输入框增高、底栏测量和隐藏页面的尺寸约定。 */
+function useComposerHeight(
+  textarea: RefObject<HTMLTextAreaElement | null>,
+  form: RefObject<HTMLDivElement | null>,
+  value: string,
+  onHeightChange: (height: number) => void,
+) {
+  useLayoutEffect(() => {
+    const element = textarea.current;
+    if (!element) {
+      return;
+    }
+    element.style.height = "auto";
+    const next = Math.min(element.scrollHeight + 2, MAX_HEIGHT);
+    element.style.height = `${Math.max(next, MIN_HEIGHT)}px`;
+    element.style.overflowY = element.scrollHeight + 2 > MAX_HEIGHT ? "auto" : "hidden";
+  }, [value, textarea]);
+  useLayoutEffect(() => {
+    const element = form.current;
+    if (!element) {
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      // 页面隐藏在导航栈中时尺寸为零，保留上一次的前台高度。
+      if (element.offsetHeight > 0) {
+        onHeightChange(element.offsetHeight);
+      }
+    });
+    observer.observe(element);
+    onHeightChange(element.offsetHeight);
+    return () => observer.disconnect();
+  }, [onHeightChange, form]);
 }

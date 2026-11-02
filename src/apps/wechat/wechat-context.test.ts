@@ -39,6 +39,7 @@ test("SQL-backed prompt includes one-hop context while preserving summary and te
         { id: sender.id, name: sender.name, scopeId: roster.stableScopeId },
         { id: recipient.id, name: recipient.name, scopeId: roster.stableScopeId },
       ],
+      pendingReplies: { [sender.id]: "34" },
       messages: Array.from({ length: 35 }, (_, index) => ({
         id: String(index),
         senderId: sender.id,

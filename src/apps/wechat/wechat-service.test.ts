@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { WechatService } from "./wechat-service.ts";
 import { WechatStickerLibrary } from "./wechat-sticker-library.ts";
+import { pendingWechatMessages } from "./wechat.ts";
 import type { WechatData } from "./wechat.ts";
 import type { DataAppPublic, DataSourceSnapshot } from "../data-source/public.ts";
 import { createStAiTransport } from "../../infrastructure/host/ai-transport.ts";
@@ -74,6 +75,9 @@ function fixture() {
     },
   };
   let stored: WechatData | null = null;
+  const saved = new Map<string, WechatData>();
+  let chatId = "st-chat";
+  const chatListeners = new Set<() => void>();
   let failSave = false;
   let holdSave = false;
   let saveStarted: (() => void) | null = null;
@@ -83,6 +87,9 @@ function fixture() {
   let calls = 0;
   let prompt = "";
   let replySticker = false;
+  let releaseModel: (() => void) | null = null;
+  let modelStarted: (() => void) | null = null;
+  let holdModel = false;
   const stickers = new WechatStickerLibrary({
     read: () => [
       {
@@ -103,13 +110,31 @@ function fixture() {
     apiKey: "",
     customHeaders: {},
   };
-  const service = new WechatService({
+  let sendMode: "immediate" | "delayed" = "immediate";
+  const preferences = {
+    getSnapshot: () => sendMode,
+    subscribe: () => () => {},
+    setSendMode: (mode: "immediate" | "delayed") => {
+      sendMode = mode;
+    },
+  };
+  const dependencies: ConstructorParameters<typeof WechatService>[0] = {
+    preferences,
     stickers,
     data,
-    chat: { getSnapshot: () => ({ id: "st-chat", name: "聊天" }), subscribe: () => () => {} },
+    chat: {
+      getSnapshot: () => ({ id: chatId, name: "聊天" }),
+      subscribe: (listener) => {
+        chatListeners.add(listener);
+        return () => {
+          chatListeners.delete(listener);
+        };
+      },
+    },
     storage: {
-      read: () => stored,
-      write: async (_, value) => {
+      read: (id) => saved.get(id) ?? null,
+      write: async (id, value, signal) => {
+        const before = saved.get(id);
         if (holdSave) {
           holdSave = false;
           saveStarted?.();
@@ -121,6 +146,16 @@ function fixture() {
           throw new Error("磁盘失败");
         }
         stored = structuredClone(value);
+        saved.set(id, stored);
+        if (signal?.aborted) {
+          stored = before ?? null;
+          if (before) {
+            saved.set(id, before);
+          } else {
+            saved.delete(id);
+          }
+          signal.throwIfAborted();
+        }
       },
     },
     connections: {
@@ -132,6 +167,14 @@ function fixture() {
       fetchImpl: async (_, init) => {
         calls++;
         prompt = init!.body as string;
+        if (holdModel) {
+          holdModel = false;
+          modelStarted?.();
+          // 故意忽略 signal，验证取消后迟到的上游结果不会落库。
+          await new Promise<void>((resolve) => {
+            releaseModel = resolve;
+          });
+        }
         const content = invalid
           ? "invalid JSON"
           : JSON.stringify({
@@ -145,13 +188,31 @@ function fixture() {
         );
       },
     }),
-  });
+  };
+  const service = new WechatService(dependencies);
   return {
     service,
+    restore: () => new WechatService(dependencies),
+    holdModel() {
+      holdModel = true;
+      return new Promise<void>((resolve) => {
+        modelStarted = resolve;
+      });
+    },
+    releaseModel() {
+      releaseModel?.();
+    },
+    preferences,
     stickers,
     data,
+    switchChat(id: string) {
+      chatId = id;
+      for (const listener of chatListeners) {
+        listener();
+      }
+    },
     get stored() {
-      return stored;
+      return saved.get(chatId) ?? null;
     },
     get calls() {
       return calls;
@@ -277,7 +338,7 @@ test("invalid generation can retry without appending user message again", async 
   assert.equal(f.service.getSnapshot().reply.status, "error");
   assert.equal(f.service.getConversation("b")!.messages.length, 1);
   f.invalid(false);
-  await f.service.retry("b");
+  await f.service.requestReply("b");
   assert.equal(f.service.getConversation("b")!.messages.length, 3);
   assert.equal(f.calls, 2);
   f.service.dispose();
@@ -311,5 +372,221 @@ test("truncated valid JSON never persists AI messages", async () => {
   if (state.status === "error") {
     assert.match(state.error, /输出上限/);
   }
+  f.service.dispose();
+});
+
+test("delayed mode persists text and stickers, restores pending messages and requests one batch", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "第一条");
+  f.service.setDraft("b", "未提交的草稿");
+  await f.service.enqueue("b", "[[sticker:日常:开心]]", { preserveDraft: true });
+  assert.equal(f.calls, 0);
+  assert.equal(f.service.getDraft("b"), "未提交的草稿");
+  assert.equal(f.stored!.conversations[0]!.messages.length, 2);
+  const restored = f.restore();
+  await restored.prepare();
+  assert.equal(pendingWechatMessages(restored.getConversation("b")!, "a").length, 2);
+  await restored.requestReply("b");
+  assert.equal(f.calls, 1);
+  assert.equal(f.stored!.conversations[0]!.messages.length, 4);
+  assert.equal(pendingWechatMessages(restored.getConversation("b")!, "a").length, 0);
+  assert.match(f.prompt, /第一条/);
+  restored.dispose();
+  f.service.dispose();
+});
+
+test("mode changes never auto-submit pending messages and failed appends restore their boundary", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "保留的消息");
+  const boundary = f.service.getConversation("b")!.pendingReplies!.a;
+  f.failSave(true);
+  await f.service.enqueue("b", "失败的消息");
+  assert.equal(f.service.getConversation("b")!.pendingReplies!.a, boundary);
+  assert.equal(pendingWechatMessages(f.service.getConversation("b")!, "a").length, 1);
+  f.preferences.setSendMode("immediate");
+  assert.equal(f.calls, 0);
+  f.failSave(false);
+  await f.service.send("b", "立即发送的新消息");
+  assert.equal(f.calls, 1);
+  assert.match(f.prompt, /保留的消息/);
+  f.service.dispose();
+});
+
+test("cancel discards a late reply, retains pending messages and permits a new batch", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "第一条");
+  const started = f.holdModel();
+  const replying = f.service.requestReply("b");
+  await started;
+  f.service.cancel();
+  await f.service.enqueue("b", "补充一条");
+  f.releaseModel();
+  await replying;
+  assert.equal(f.service.getConversation("b")!.messages.length, 2);
+  assert.equal(f.service.getSnapshot().reply.status, "idle");
+  await f.service.requestReply("b");
+  assert.equal(f.service.getConversation("b")!.messages.length, 4);
+  assert.equal(f.calls, 2);
+  f.service.dispose();
+});
+
+test("cancel during reply persistence waits for rollback before releasing the write lock", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "你好");
+  const started = f.holdNextSave();
+  const replying = f.service.requestReply("b");
+  await started;
+  f.service.cancel();
+  assert.equal(f.service.getSnapshot().reply.status, "stopping");
+  await assert.rejects(f.service.enqueue("b", "过早发送"), /等待/);
+  f.releaseSave();
+  await replying;
+  assert.equal(f.stored!.conversations[0]!.messages.length, 1);
+  assert.equal(f.service.getConversation("b")!.messages.length, 1);
+  assert.equal(f.service.getSnapshot().reply.status, "idle");
+  await f.service.requestReply("b");
+  assert.equal(f.stored!.conversations[0]!.messages.length, 3);
+  f.service.dispose();
+});
+
+test("switching accounts cancels the old reply and retains each sender's pending messages", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "甲的消息");
+  const started = f.holdModel();
+  const replying = f.service.requestReply("b");
+  await started;
+  await f.service.selectAccount("b");
+  await f.service.enqueue("a", "乙的消息");
+  f.releaseModel();
+  await replying;
+  assert.equal(f.service.getSnapshot().data.account!.id, "b");
+  assert.equal(f.service.getConversation("a")!.messages.length, 2);
+  assert.equal(pendingWechatMessages(f.service.getConversation("a")!, "a").length, 1);
+  assert.equal(pendingWechatMessages(f.service.getConversation("a")!, "b").length, 1);
+  f.service.dispose();
+});
+
+test("late results cannot overwrite a chat after switching away and back", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "原聊天消息");
+  const started = f.holdModel();
+  const replying = f.service.requestReply("b");
+  await started;
+  f.switchChat("another-chat");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "其他聊天消息");
+  f.switchChat("st-chat");
+  await f.service.prepare();
+  f.releaseModel();
+  await replying;
+  assert.deepEqual(
+    f.service.getConversation("b")!.messages.map((message) => message.content.text),
+    ["原聊天消息"],
+  );
+  assert.equal(f.service.getSnapshot().reply.status, "idle");
+  f.service.dispose();
+});
+
+test("quitting during a failed user save restores the message and leaves a usable pending boundary", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "已保存");
+  const started = f.holdNextSave();
+  const sending = f.service.enqueue("b", "保存失败的正文");
+  await started;
+  f.service.cancel();
+  f.failSave(true);
+  f.releaseSave();
+  assert.equal(await sending, false);
+  assert.equal(f.service.getDraft("b"), "保存失败的正文");
+  assert.deepEqual(
+    pendingWechatMessages(f.service.getConversation("b")!, "a").map(
+      (message) => message.content.text,
+    ),
+    ["已保存"],
+  );
+  assert.equal(f.service.getSnapshot().reply.status, "error");
+  f.service.dispose();
+});
+
+test("send submits pending messages with the current text and empty send starts a proactive reply", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "排队的消息");
+  await f.service.send("b", "当前输入框的消息");
+  assert.equal(f.calls, 1);
+  assert.deepEqual(
+    f.stored!.conversations[0]!.messages.slice(0, 2).map((message) => message.content.text),
+    ["排队的消息", "当前输入框的消息"],
+  );
+  const before = f.stored!.conversations[0]!.messages.length;
+  await f.service.send("b", "");
+  assert.equal(f.calls, 2);
+  assert.equal(f.stored!.conversations[0]!.messages.length, before + 2);
+  const request = JSON.parse(f.prompt) as { messages: { role: string; content: string }[] };
+  const payload = JSON.parse(
+    request.messages.findLast((message) => message.role === "user")!.content,
+  );
+  assert.equal(payload.本轮任务, "主动发起聊天");
+  f.service.dispose();
+});
+
+test("empty send can open a new conversation without a blank user message or trigger id", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.send("b", "   ");
+  const messages = f.stored!.conversations[0]!.messages;
+  assert.equal(messages.length, 2);
+  assert.ok(
+    messages.every(
+      (message) =>
+        message.senderId === "b" && message.reply && message.reply.triggerMessageId === undefined,
+    ),
+  );
+  assert.equal(pendingWechatMessages(f.service.getConversation("b")!, "a").length, 0);
+  f.service.dispose();
+});
+
+test("a user save completed after switching away and back remains in the active conversation", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const started = f.holdNextSave();
+  const sending = f.service.enqueue("b", "切换期间保存的消息");
+  await started;
+  f.switchChat("another-chat");
+  f.switchChat("st-chat");
+  await f.service.prepare();
+  f.releaseSave();
+  assert.equal(await sending, true);
+  assert.equal(f.service.getConversation("b")!.messages[0]!.content.text, "切换期间保存的消息");
+  assert.equal(f.calls, 0);
+  await f.service.enqueue("b", "下一条消息");
+  assert.equal(f.stored!.conversations[0]!.messages.length, 2);
   f.service.dispose();
 });

@@ -37,3 +37,10 @@ export interface ModelConnectionsReader {
   /** Explicitly copies credentials for a caller-owned request. */
   getConnection(id: string): ModelConnectionSnapshot;
 }
+
+export type WechatSendMode = "immediate" | "delayed";
+export interface WechatPreferences {
+  getSnapshot(): WechatSendMode;
+  subscribe(listener: () => void): () => void;
+  setSendMode(mode: WechatSendMode): void;
+}

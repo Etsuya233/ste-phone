@@ -34,38 +34,69 @@ export function createStWechatStorage(
       }
       return structuredClone(phone.wechat);
     },
-    async write(chatId, data) {
+    async write(chatId, data, signal) {
+      signal?.throwIfAborted();
       const context = current(chatId);
-      const phone = context.chatMetadata.ste_phone as Record<string, unknown> | undefined;
-      context.chatMetadata.ste_phone = { ...phone, wechat: structuredClone(data) };
-      const header = {
-        chat_metadata: context.chatMetadata,
-        user_name: "unused",
-        character_name: "unused",
+      const metadata = context.chatMetadata;
+      const save = captureWechatSave(context, data);
+      const send = async (body: string) => {
+        const response = await request(save.endpoint, {
+          method: "POST",
+          headers: save.headers,
+          body,
+        });
+        if (!response.ok) {
+          throw new Error(`微信保存失败（${response.status}）`);
+        }
       };
-      const messages = [header, ...context.chat];
-      const group = context.groupId != null;
-      const character = group ? null : context.characters[Number(context.characterId)]!;
-      const body = JSON.stringify(
-        group
-          ? { id: context.chatId, chat: messages, force: false }
-          : {
-              ch_name: character!.name,
-              file_name: context.chatId,
-              avatar_url: character!.avatar,
-              chat: messages,
-              force: false,
-            },
-      );
-      // Use the same ST save endpoints, retaining its integrity check and observable HTTP failures.
-      const response = await request(group ? "/api/chats/group/save" : "/api/chats/save", {
-        method: "POST",
-        headers: context.getRequestHeaders(),
-        body,
-      });
-      if (!response.ok) {
-        throw new Error(`微信保存失败（${response.status}）`);
+      // 保存请求一旦发出就等待结果；取消 HTTP 无法证明服务端没有写入。
+      await send(save.body);
+      if (signal?.aborted) {
+        try {
+          await send(save.rollbackBody);
+        } catch (error) {
+          throw new Error(`取消回复后撤回保存失败：${(error as Error).message}`, { cause: error });
+        }
+        signal.throwIfAborted();
+      }
+      // 先确认持久化再发布元数据，失败与取消都不会留下本地半提交内容。
+      if (chat.getSnapshot()?.id === chatId && getContext().chatMetadata === metadata) {
+        const phone = metadata.ste_phone as Record<string, unknown> | undefined;
+        metadata.ste_phone = { ...phone, wechat: structuredClone(data) };
       }
     },
+  };
+}
+
+/** 请求与撤回使用同一个已固定目标，切换聊天后仍能完成原任务的清理。 */
+function captureWechatSave(context: StWechatContext, data: WechatData) {
+  const phone = context.chatMetadata.ste_phone as Record<string, unknown> | undefined;
+  const header = {
+    chat_metadata: context.chatMetadata,
+    user_name: "unused",
+    character_name: "unused",
+  };
+  const messages = [header, ...context.chat];
+  const group = context.groupId != null;
+  const character = group ? null : context.characters[Number(context.characterId)]!;
+  const payload = group
+    ? { id: context.chatId, chat: messages, force: false }
+    : {
+        ch_name: character!.name,
+        file_name: context.chatId,
+        avatar_url: character!.avatar,
+        chat: messages,
+        force: false,
+      };
+  const rollbackBody = JSON.stringify(payload);
+  const nextHeader = {
+    ...header,
+    chat_metadata: { ...context.chatMetadata, ste_phone: { ...phone, wechat: data } },
+  };
+  return {
+    endpoint: group ? "/api/chats/group/save" : "/api/chats/save",
+    headers: context.getRequestHeaders(),
+    body: JSON.stringify({ ...payload, chat: [nextHeader, ...context.chat] }),
+    rollbackBody,
   };
 }

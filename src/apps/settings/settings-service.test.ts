@@ -250,3 +250,23 @@ test("public readers are stable and credential copies cannot change settings", (
   assert.equal(summary.connections.length, 1);
   assert.throws(() => service.modelConnections.getConnection("public"), /不存在/);
 });
+
+test("v4 settings migrate to delayed sending and the preference survives unrelated edits", () => {
+  const legacy = { ...defaultSettings };
+  Reflect.deleteProperty(legacy, "wechatSendMode");
+  let stored: ReturnType<SettingsStorage["read"]> = { ...legacy, version: 4 };
+  const storage: SettingsStorage = {
+    ...library,
+    read: () => stored,
+    save: (value) => {
+      stored = value;
+    },
+  };
+  const service = new PhoneSettingsService(storage);
+  assert.equal(service.wechatPreferences.getSnapshot(), "delayed");
+  service.wechatPreferences.setSendMode("immediate");
+  service.setWallpaper({ kind: "gradient" }, true);
+  service.saveModelConnection(connection);
+  assert.equal(new PhoneSettingsService(storage).wechatPreferences.getSnapshot(), "immediate");
+  assert.equal(service.getState().version, 5);
+});

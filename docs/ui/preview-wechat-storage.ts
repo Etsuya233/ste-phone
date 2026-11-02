@@ -15,7 +15,8 @@ export function createPreviewWechatStorage(mode: string | null): WechatStorage {
       }
       return data;
     },
-    async write(chatId, data) {
+    async write(chatId, data, signal) {
+      signal?.throwIfAborted();
       if (mode === "save-error") {
         throw new Error("模拟微信保存失败");
       }

@@ -1,15 +1,20 @@
+import type { WechatSendMode } from "../public.ts";
 import type { ModelConnection } from "../model-connections.ts";
 import type { HomeLayout } from "../../../core/launcher/catalog.ts";
 export type Wallpaper = { kind: "gradient" } | { kind: "image"; path: string };
 export interface PhoneSettings {
-  version: 4;
+  version: 5;
+  wechatSendMode: WechatSendMode;
   wallpaper: Wallpaper;
   blur: boolean;
   modelConnections: ModelConnection[];
   defaultModelConnectionId: string | null;
   homeLayout: HomeLayout;
 }
-export interface PhoneSettingsV3 extends Omit<PhoneSettings, "version" | "homeLayout"> {
+export interface PhoneSettingsV4 extends Omit<PhoneSettings, "version" | "wechatSendMode"> {
+  version: 4;
+}
+export interface PhoneSettingsV3 extends Omit<PhoneSettingsV4, "version" | "homeLayout"> {
   version: 3;
 }
 export interface PhoneSettingsV2 {
@@ -28,7 +33,13 @@ export interface WallpaperImage {
   url: string;
 }
 export interface SettingsStorage {
-  read: () => PhoneSettings | PhoneSettingsV3 | PhoneSettingsV2 | LegacyPhoneSettings | undefined;
+  read: () =>
+    | PhoneSettings
+    | PhoneSettingsV4
+    | PhoneSettingsV3
+    | PhoneSettingsV2
+    | LegacyPhoneSettings
+    | undefined;
   save: (settings: PhoneSettings) => void;
   listWallpapers: () => Promise<WallpaperImage[]>;
   uploadWallpaper: (image: Blob) => Promise<WallpaperImage>;

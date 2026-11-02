@@ -27,7 +27,7 @@ test("reply boundaries come only from valid explicit text messages", () => {
     assert.throws(() => parseWechatReply(invalid));
   }
 });
-test("prompt limits this conversation to thirty including latest and carries explicit background", () => {
+test("prompt retains all pending messages and carries explicit background", () => {
   const prompt = JSON.parse(
     buildWechatPrompt({
       sender: { id: "A", name: "甲", profileText: "人物甲" },
@@ -55,8 +55,8 @@ test("prompt limits this conversation to thirty including latest and carries exp
       },
     }),
   );
-  assert.equal(prompt.当前微信对话.length, 30);
-  assert.equal(prompt.当前微信对话[0].text, "消息1");
+  assert.equal(prompt.当前微信对话.length, 31);
+  assert.equal(prompt.当前微信对话[0].text, "消息0");
   assert.equal(prompt.当前微信对话.at(-1).text, "消息30");
   assert.equal(prompt.剧情总结, "全部总结");
 });

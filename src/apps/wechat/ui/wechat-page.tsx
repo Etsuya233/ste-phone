@@ -1,3 +1,4 @@
+import type { WechatPreferences, WechatSendMode } from "../../settings/public.ts";
 import type { Navigation } from "../../../frontend/foundation/navigation-stack.tsx";
 import type { WechatService } from "../wechat-service.ts";
 import type { WechatSnapshot } from "../wechat.ts";
@@ -7,6 +8,8 @@ export type WechatRoute =
   { page: "home" | "accounts" | "stickers" } | { page: "chat" | "person"; id: string };
 export interface WechatPageProps {
   wechat: WechatService;
+  preferences: WechatPreferences;
+  sendMode: WechatSendMode;
   state: WechatSnapshot;
   navigation: Navigation<WechatRoute>;
   stickers: WechatStickerLibrary;

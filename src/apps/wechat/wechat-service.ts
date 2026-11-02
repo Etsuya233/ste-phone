@@ -1,6 +1,7 @@
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { ChatContext } from "../../core/chat/public.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
+import type { WechatPreferences } from "../settings/public.ts";
 import type { ModelConnectionsReader } from "../settings/public.ts";
 import type { WechatStorage } from "./ports/wechat-storage.ts";
 import {
@@ -10,22 +11,21 @@ import {
   type WechatConversation,
   type WechatData,
   type WechatSnapshot,
+  appendWechatMessage,
+  rollbackWechatMessage,
 } from "./wechat.ts";
-import { createWechatReplies } from "./wechat-reply.ts";
+import { WechatReplySession } from "./wechat-reply-session.ts";
 import { readWechatRoster } from "./wechat-context.ts";
 import type { WechatStickerLibrary } from "./wechat-sticker-library.ts";
 
 interface Dependencies {
   storage: WechatStorage;
+  preferences: WechatPreferences;
   chat: ChatContext;
   data: DataAppPublic;
   connections: ModelConnectionsReader;
   transport: AiTransport;
   stickers: WechatStickerLibrary;
-}
-interface ReplyTask {
-  controller: AbortController;
-  chatId: string;
 }
 
 /** 消息以人物身份持久化，帐号切换仅改变阅读与操作视角。 */
@@ -35,7 +35,9 @@ export class WechatService {
   readonly #unsubscribe: (() => void)[];
   readonly #drafts = new Map<string, string>();
   #snapshot: WechatSnapshot;
-  #task: ReplyTask | null = null;
+  readonly #replies: WechatReplySession;
+  #sending = false;
+  #operation = 0;
   #preparation = 0;
   #sourceKey: string;
   #sourceRevision: number;
@@ -52,6 +54,10 @@ export class WechatService {
       error: null,
       reply: { status: "idle" },
     };
+    this.#replies = new WechatReplySession({
+      ...dependencies,
+      publish: (reply) => this.#publish({ reply }),
+    });
     this.#sourceKey = this.#binding();
     this.#sourceRevision = dependencies.data.getSnapshot().revision;
     this.#unsubscribe = [
@@ -93,6 +99,9 @@ export class WechatService {
   }
 
   async selectAccount(id: string): Promise<boolean> {
+    if (this.#sending || this.#replies.committing) {
+      throw new Error("请等待消息保存完成");
+    }
     this.cancel();
     const person = this.#snapshot.people.find((person) => person.id === id);
     if (!person || !this.#snapshot.scopeId) {
@@ -129,102 +138,119 @@ export class WechatService {
     return JSON.stringify([chatId, scopeId, data.account?.id, otherId]);
   }
 
+  /** 发送始终触发回复；空输入不创建用户消息，可让对方主动开口。 */
   async send(
     otherId: string,
     text: string,
     options: { onSent?: () => void; preserveDraft?: boolean } = {},
   ): Promise<boolean> {
-    if (this.#task) {
-      throw new Error("请等待当前回复完成");
+    const operation = this.#operation;
+    const sent = text.trim() ? await this.#appendMessage(otherId, text, options) : true;
+    if (sent && operation === this.#operation) {
+      await this.requestReply(otherId);
+    }
+    return sent;
+  }
+
+  /** 延迟模式逐条加入队列，已经保存的消息在触发回复前保持可见。 */
+  async enqueue(
+    otherId: string,
+    text: string,
+    options: { preserveDraft?: boolean } = {},
+  ): Promise<boolean> {
+    if (this.#dependencies.preferences.getSnapshot() !== "delayed") {
+      throw new Error("请切换为延迟发送后加入消息队列");
+    }
+    return this.#appendMessage(otherId, text, options);
+  }
+
+  /** 消息先显示再持久化；失败撤回本条消息，保留原会话和新草稿。 */
+  async #appendMessage(
+    otherId: string,
+    text: string,
+    options: { onSent?: () => void; preserveDraft?: boolean } = {},
+  ): Promise<boolean> {
+    if (this.#sending || this.#replies.busy) {
+      throw new Error("请等待当前消息处理完成");
     }
     const value = text.trim();
     if (!value) {
       return false;
     }
-    const conversation = this.#newConversation(otherId);
-    const created = !this.getConversation(otherId);
+    const conversation = this.#conversationForSending(otherId);
     const message = createWechatMessage(this.#snapshot.data.account!.id, {
       type: "text",
       text: value,
     });
-    const next = { ...conversation, messages: [...conversation.messages, message] };
-    const task = this.#startTask();
-    // 从面板发送表情不占用文字草稿，保存失败时也不把表情标记写回输入框。
+    const next = appendWechatMessage(conversation, message);
+    const operation = this.#operation;
+    const chatId = this.#snapshot.chatId;
+    const draftKey = this.#draftKey(otherId);
+    this.#sending = true;
     if (!options.preserveDraft) {
       this.setDraft(otherId, "");
     }
-    // 整份聊天保存需要一次 HTTP 往返，先把这条消息放进快照，避免保存期间只看到回复状态。
     this.#publish({
       data: this.#dataWithConversation(next),
       reply: { status: "sending", conversationId: conversation.id },
     });
     try {
-      try {
-        await this.#saveConversation(next);
-      } catch (error) {
-        if (!options.preserveDraft) {
-          this.setDraft(otherId, text);
-        }
-        if (this.#snapshot.chatId === task.chatId) {
-          this.#dropOptimisticMessage(conversation.id, message.id, created);
-        }
-        if (this.#owns(task)) {
-          this.#failReply(conversation.id, error, false);
-        }
-        return false;
-      }
-      options.onSent?.();
-      if (!this.#owns(task)) {
-        return true;
-      }
-      this.#publish({ reply: { status: "running", conversationId: conversation.id } });
-      try {
-        await this.#reply(next, task);
-      } catch (error) {
-        if (this.#owns(task)) {
-          this.#failReply(conversation.id, error, true);
-        }
+      await this.#save(this.#dataWithConversation(next));
+      if (operation === this.#operation) {
+        this.#publish({ reply: { status: "idle" } });
+        options.onSent?.();
       }
       return true;
-    } finally {
-      if (this.#task === task) {
-        this.#task = null;
-      }
-    }
-  }
-
-  async retry(otherId: string): Promise<void> {
-    const conversation = this.getConversation(otherId);
-    if (!conversation || this.#task) {
-      throw new Error("当前没有可重试的回复");
-    }
-    const task = this.#startTask();
-    this.#publish({ reply: { status: "running", conversationId: conversation.id } });
-    try {
-      await this.#reply(conversation, task);
     } catch (error) {
-      if (this.#owns(task)) {
-        this.#failReply(conversation.id, error, true);
+      // 保存拥有发起时的草稿归属；切聊天或退出应用不能让失败正文丢失。
+      if (!options.preserveDraft && !this.#drafts.get(draftKey)) {
+        this.#drafts.set(draftKey, text);
       }
+      if (
+        this.#snapshot.chatId === chatId &&
+        this.#snapshot.data.account?.id === message.senderId
+      ) {
+        const current = this.getConversation(otherId);
+        if (current?.messages.some((item) => item.id === message.id)) {
+          this.#publish({
+            data: rollbackWechatMessage(this.#snapshot.data, conversation, message.id),
+          });
+        }
+        this.#publish({
+          reply: {
+            status: "error",
+            conversationId: conversation.id,
+            error: (error as Error).message,
+            retry: false,
+          },
+        });
+      }
+      return false;
     } finally {
-      if (this.#task === task) {
-        this.#task = null;
+      this.#sending = false;
+      if (this.#snapshot.reply.status === "sending") {
+        this.#publish({ reply: { status: "idle" } });
       }
     }
   }
 
-  #failReply(conversationId: string, error: unknown, retry: boolean): void {
-    this.#publish({
-      reply: {
-        status: "error",
-        conversationId,
-        error: (error as Error).message,
-        retry,
-      },
+  async requestReply(otherId: string): Promise<void> {
+    if (this.#sending || this.#replies.busy) {
+      throw new Error("请等待当前消息处理完成");
+    }
+    const conversation = this.#conversationForSending(otherId);
+    const account = this.#snapshot.data.account!;
+    const sender = this.#snapshot.people.find((person) => person.id === account.id)!;
+    const recipient = this.#snapshot.people.find((person) => person.id === otherId)!;
+    await this.#replies.generateAndSave({
+      conversation,
+      sender,
+      recipient,
+      save: (next, signal) => this.#save(this.#dataWithConversation(next), signal),
     });
   }
 
-  #newConversation(otherId: string): WechatConversation {
+  #conversationForSending(otherId: string): WechatConversation {
     const { account } = this.#snapshot.data;
     const other = this.#snapshot.people.find((person) => person.id === otherId);
     if (
@@ -244,63 +270,6 @@ export class WechatService {
       }
     );
   }
-  #startTask(): ReplyTask {
-    const chatId = this.#snapshot.chatId;
-    if (!chatId) {
-      throw new Error("请先打开一个 ST 聊天");
-    }
-    const task = { chatId, controller: new AbortController() };
-    this.#task = task;
-    return task;
-  }
-
-  async #reply(conversation: WechatConversation, task: ReplyTask): Promise<void> {
-    const { data, connections, transport } = this.#dependencies;
-    const account = this.#snapshot.data.account!;
-    const sender = this.#snapshot.people.find((person) => person.id === account.id);
-    const recipient = this.#snapshot.people.find((person) =>
-      conversation.people.some((member) => member.id === person.id && member.id !== account.id),
-    );
-    if (!sender || !recipient || this.#snapshot.error) {
-      throw new Error("当前帐号或对方人物资料不可用");
-    }
-    const messages = await createWechatReplies({
-      data,
-      connections,
-      transport,
-      sender,
-      recipient,
-      conversation,
-      stickerPacks: this.#dependencies.stickers.getSnapshot().packs,
-      signal: task.controller.signal,
-    });
-    if (!this.#owns(task)) {
-      return;
-    }
-    // 完整校验后一次保存；失败提示错误，首期不保存跨会话待提交任务。
-    try {
-      await this.#saveConversation({
-        ...conversation,
-        messages: [...conversation.messages, ...messages],
-      });
-    } catch (error) {
-      if (this.#owns(task)) {
-        this.#publish({
-          reply: {
-            status: "error",
-            conversationId: conversation.id,
-            error: `回复保存失败：${(error as Error).message}`,
-            retry: false,
-          },
-        });
-      }
-      return;
-    }
-    if (this.#owns(task)) {
-      this.#publish({ reply: { status: "idle" } });
-    }
-  }
-
   #dataWithConversation(conversation: WechatConversation): WechatData {
     const { data } = this.#snapshot;
     return {
@@ -312,53 +281,31 @@ export class WechatService {
     };
   }
 
-  /** 保存失败时只撤回这条本地先显示的消息，保留期间发生的其他资料变化。 */
-  #dropOptimisticMessage(conversationId: string, messageId: string, created: boolean): void {
-    const { data } = this.#snapshot;
-    const current = data.conversations.find((item) => item.id === conversationId);
-    if (!current?.messages.some((message) => message.id === messageId)) {
-      return;
-    }
-    const messages = current.messages.filter((message) => message.id !== messageId);
-    const conversations =
-      created && messages.length === 0
-        ? data.conversations.filter((item) => item.id !== conversationId)
-        : data.conversations.map((item) =>
-            item.id === conversationId ? { ...current, messages } : item,
-          );
-    this.#publish({ data: { ...data, conversations } });
-  }
-
-  async #saveConversation(conversation: WechatConversation): Promise<void> {
-    await this.#save(this.#dataWithConversation(conversation));
-  }
-  async #save(value: WechatData): Promise<void> {
+  async #save(value: WechatData, signal?: AbortSignal): Promise<void> {
     const chatId = this.#snapshot.chatId;
     if (!chatId) {
       throw new Error("请先打开一个 ST 聊天");
     }
-    await this.#dependencies.storage.write(chatId, value);
+    const operation = this.#operation;
+    await this.#dependencies.storage.write(chatId, value, signal);
+    signal?.throwIfAborted();
     if (this.#snapshot.chatId === chatId) {
-      this.#publish({ data: value, error: null });
+      // 保存期间写入锁排除了新消息；返回原聊天后同步已落库内容，保留最新人物视角。
+      const account = operation === this.#operation ? value.account : this.#snapshot.data.account;
+      this.#publish({ data: { ...value, account }, error: null });
     }
   }
   cancel(): void {
-    this.#task?.controller.abort();
-    this.#task = null;
-    this.#publish({ reply: { status: "idle" } });
+    ++this.#operation;
+    if (!this.#sending) {
+      this.#replies.cancel();
+    }
   }
   dispose(): void {
     this.cancel();
     for (const unsubscribe of this.#unsubscribe) {
       unsubscribe();
     }
-  }
-  #owns(task: ReplyTask): boolean {
-    return (
-      this.#task === task &&
-      !task.controller.signal.aborted &&
-      this.#snapshot.chatId === task.chatId
-    );
   }
   #binding(): string {
     const context = this.#dependencies.data.getSnapshot().context;
