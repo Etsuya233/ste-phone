@@ -7,6 +7,9 @@ import { MemoryDatabaseProvider } from "../infrastructure/ste-memory/memory-data
 import { createStDiaryStorage } from "../infrastructure/host/diary-storage.ts";
 import { createStWechatStorage } from "../infrastructure/host/wechat-storage.ts";
 import { createStWechatStickerStorage } from "../infrastructure/host/wechat-stickers.ts";
+import { createLocalStorageLogStorage } from "../infrastructure/browser/log-storage.ts";
+import { createPhoneLog } from "../apps/logs/public.ts";
+import type { PhoneLogApp } from "../apps/logs/public.ts";
 
 declare const __STE_PHONE_VERSION__: string;
 
@@ -20,14 +23,24 @@ if (!menu || !button) {
 // 入口负责组装具体来源。数据源随插件挂载，手机窗口和各 App 只消费这个共享实例。
 // 宿主上下文与 App 的具体实现只在入口组装。
 const chat = createStChatContext(() => window.SillyTavern.getContext());
+const logs = createPhoneLog({
+  storage: createLocalStorageLogStorage("ste-phone-logs-v1"),
+});
 const phone = createPhone({
   dataProvider: new MemoryDatabaseProvider(),
   settingsStorage: createStSettingsStorage(),
-  aiTransport: createStAiTransport(() => window.SillyTavern.getContext().getRequestHeaders()),
+  aiTransport: createStAiTransport(() => window.SillyTavern.getContext().getRequestHeaders(), {
+    log: (entry) => {
+      const level = entry.event === "error" ? "error" : entry.event === "aborted" ? "warn" : "info";
+      const app = typeof entry.app === "string" ? (entry.app as PhoneLogApp) : "system";
+      logs[level](app, "STE Phone AI", `${String(entry.operation)} ${String(entry.event)}`, entry);
+    },
+  }),
   chat,
   diaryStorage: createStDiaryStorage(() => window.SillyTavern.getContext(), chat),
   wechatStorage: createStWechatStorage(() => window.SillyTavern.getContext(), chat),
   wechatStickerStorage: createStWechatStickerStorage(() => window.SillyTavern.getContext()),
+  logs,
 });
 mountPhone({
   apps: phone.apps,
@@ -35,4 +48,4 @@ mountPhone({
   homeScreen: phone.homeScreen,
   menuEntry: { menu, button },
 });
-console.info(`[STE Phone] v${__STE_PHONE_VERSION__} 已加载`);
+logs.info("system", "STE Phone", `v${__STE_PHONE_VERSION__} 已加载`);

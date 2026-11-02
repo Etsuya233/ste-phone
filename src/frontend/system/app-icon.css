@@ -1,5 +1,5 @@
 /**
- * 应用图标外观。图形位于 app-icon.tsx，这里统一维护 8 枚图标的底色与
+ * 应用图标外观。图形位于 app-icon.tsx，这里统一维护所有图标的底色与
  * 细节，业务应用不再各自覆盖图标样式；新增应用时两处都要补充。
  *
  * 造型规则：饱和渐变瓦片 + 白色实心图形，图形在 60 的 viewBox 内保留
@@ -72,6 +72,16 @@
 
 :host .foundation-app-icon {
   background: var(--foundation-icon-fill);
+}
+:host .logs-app-icon {
+  background: var(--logs-icon-fill);
+}
+:host .logs-app-icon .logs-terminal-mark {
+  fill: none;
+  stroke: var(--logs-icon-mark);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 :host .settings-app-icon {
   background: var(--settings-icon-fill);

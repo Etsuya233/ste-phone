@@ -87,6 +87,16 @@ export function AppIcon({ app }: { app: AppId }) {
       </Icon>
     );
   }
+  if (app === "logs") {
+    return (
+      <Icon appearance="app" className="logs-app-icon">
+        <svg viewBox="0 0 60 60">
+          <rect x="12" y="10" width="36" height="40" rx="5" />
+          <path className="logs-terminal-mark" d="m19 22 6 6-6 6M29 36h12" />
+        </svg>
+      </Icon>
+    );
+  }
   if (app === "foundation") {
     return (
       <Icon appearance="app" className="foundation-app-icon">

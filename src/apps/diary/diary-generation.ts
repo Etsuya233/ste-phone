@@ -15,7 +15,10 @@ export async function generateDiaryText(input: {
   onThinking(): void;
   onText(text: string): void;
 }): Promise<string> {
-  const stream = input.transport.createStream(input.connection, { operation: "日记生成" });
+  const stream = input.transport.createStream(input.connection, {
+    operation: "日记生成",
+    app: "diary",
+  });
   const agent = new Agent({
     initialState: {
       model: createCompletionModel(input.connection.model),

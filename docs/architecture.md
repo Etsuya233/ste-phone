@@ -12,6 +12,7 @@ Phone 以 App 模块组织业务。每个模块拥有自己的数据、业务流
 | 设置 App       | 全局壁纸选择、图库操作、模型连接及默认连接；连接测试流程          | 壁纸读取与订阅、连接摘要、连接配置快照               |
 | 资料 App       | 外部资料接入、Phone 查询结构、查询缓存、背景资料快照              | 背景读取、SQL 结构描述、只读查询、来源变化订阅       |
 | 数据库 App     | SQL 草稿、对象搜索、选中项、查询结果展示和滚动状态                | 首期仅消费资料接口，无需专门跨应用接口               |
+| 日志 App       | Phone 运行日志、来源应用、LocalStorage 持久化与查看页面           | 写入日志、读取最近 1000 条、订阅与清空               |
 | AI App         | 自己的模型选择、Agent、提示词、工具、运行策略、业务内容及保存时机 | 按实际业务声明，例如消息查询或日记读取               |
 | 秒表与组件 App | 自身计时或演示交互                                                | 当前无需公开业务能力                                 |
 | 手机外壳       | 窗口、Home、Expose、页面挂载和前后台展示状态                      | 向应用传递界面生命周期事实                           |
@@ -38,7 +39,10 @@ interface AiConnection {
 }
 
 interface AiTransport {
-  createStream(connection: AiConnection): StreamFn;
+  createStream(
+    connection: AiConnection,
+    diagnostics?: { readonly operation: string; readonly app: AppId },
+  ): StreamFn;
 }
 ```
 
@@ -174,6 +178,11 @@ src/
     database/
       database-workspace.ts
       ui/
+    logs/
+      public.ts                   # 日志类型、写入与订阅契约
+      log-store.ts                # 环形缓冲、应用归属与持久化
+      ports/                      # 日志存储契约
+      ui/                         # 日志列表、筛选与详情
     stopwatch/
       ui/
     foundation/

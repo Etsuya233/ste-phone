@@ -8,6 +8,7 @@ export const appCatalog = {
     removable: true,
   },
   "data-source": { name: "资料", description: "查看人物、纪要、物品与世界背景", removable: false },
+  logs: { name: "日志", description: "查看小手机最近 1000 条运行日志", removable: true },
   foundation: { name: "组件", description: "体验手机的基础控件与导航", removable: true },
   settings: { name: "设置", description: "设置壁纸与模型连接", removable: false },
   "app-store": {
@@ -23,6 +24,15 @@ export interface HomeLayout {
   readonly dock: readonly AppId[];
 }
 export const defaultHomeLayout: HomeLayout = {
-  grid: ["diary", "wechat", "database", "data-source", "foundation", "settings", "app-store"],
+  grid: [
+    "diary",
+    "wechat",
+    "database",
+    "data-source",
+    "logs",
+    "foundation",
+    "settings",
+    "app-store",
+  ],
   dock: ["stopwatch"],
 };

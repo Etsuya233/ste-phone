@@ -1,0 +1,128 @@
+:host .logs-page .ios-page-content {
+  background: var(--ios-muted-fill);
+}
+:host .logs-filters {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  gap: var(--ios-space-small);
+  padding: var(--ios-space-small) var(--ios-space-medium);
+  background: var(--ios-bar);
+  backdrop-filter: blur(var(--ios-bar-blur));
+  border-bottom: var(--ios-hairline) solid var(--ios-line);
+}
+:host .logs-filters .ios-segmented {
+  padding: 0;
+}
+:host .logs-filters .ios-segmented legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+:host .logs-app-filter {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: var(--ios-control-radius);
+  background: var(--ios-row-surface);
+  color: var(--ios-ink);
+  font-size: 14px;
+  text-align: left;
+}
+:host .logs-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--ios-row-surface);
+}
+:host .logs-row {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px var(--ios-space-large);
+  border: 0;
+  border-bottom: var(--ios-hairline) solid var(--ios-line);
+  background: transparent;
+  color: var(--ios-ink);
+  font: inherit;
+  text-align: left;
+}
+:host .logs-row:active {
+  background: var(--ios-row-active);
+}
+:host .logs-level-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: var(--ios-secondary-ink);
+}
+:host .logs-level-dot--warn {
+  background: #ff9500;
+}
+:host .logs-level-dot--error {
+  background: var(--ios-red);
+}
+:host .logs-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+:host .logs-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+:host .logs-row--error .logs-summary {
+  color: var(--ios-red);
+}
+:host .logs-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  color: var(--ios-secondary-ink);
+  font-size: 11px;
+}
+:host .logs-empty {
+  padding: 48px 24px;
+  color: var(--ios-secondary-ink);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+:host .logs-detail {
+  margin: var(--ios-space-large);
+  padding: var(--ios-space-medium);
+  border-radius: 8px;
+  background: var(--ios-row-surface);
+}
+:host .logs-detail h2 {
+  margin: 0 0 var(--ios-space-small);
+  color: var(--ios-secondary-ink);
+  font-size: 13px;
+  font-weight: 400;
+}
+:host .logs-detail pre {
+  margin: 0;
+  font:
+    12px/1.5 ui-monospace,
+    "SFMono-Regular",
+    Consolas,
+    monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+:host .logs-copy-status {
+  margin: 0;
+  padding: 0 var(--ios-space-large) var(--ios-space-large);
+  color: var(--ios-secondary-ink);
+  font-size: 12px;
+  text-align: center;
+}

@@ -26,7 +26,10 @@ export function createModelConnectionTest(
       ...input,
       customHeaders: { ...input.customHeaders },
     });
-    const stream = transport.createStream(connection, { operation: "连接测试" });
+    const stream = transport.createStream(connection, {
+      operation: "连接测试",
+      app: "settings",
+    });
     const agent = new Agent({
       initialState: {
         model: createCompletionModel(connection.model),

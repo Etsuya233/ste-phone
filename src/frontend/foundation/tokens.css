@@ -50,6 +50,8 @@
   --database-icon-ring: #c47a24;
   --data-icon-fill: linear-gradient(#5b8def, #2f5fbf);
   --data-icon-mark: #2f5fbf;
+  --logs-icon-fill: linear-gradient(#63839f, #2f4a63);
+  --logs-icon-mark: #2f4a63;
   --foundation-icon-fill: linear-gradient(#5e6ad2, #303a8c);
   --settings-icon-fill: linear-gradient(#b5bcc7, #6e7888);
   --store-icon-fill: linear-gradient(#37b6ee, #007aff);

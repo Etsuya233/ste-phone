@@ -1,4 +1,5 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
+import type { AppId } from "../launcher/catalog.ts";
 export type { StreamFn } from "@earendil-works/pi-agent-core";
 export interface AiConnection {
   readonly baseUrl: string;
@@ -6,5 +7,8 @@ export interface AiConnection {
   readonly customHeaders: Readonly<Record<string, string>>;
 }
 export interface AiTransport {
-  createStream(connection: AiConnection, diagnostics?: { readonly operation: string }): StreamFn;
+  createStream(
+    connection: AiConnection,
+    diagnostics?: { readonly operation: string; readonly app: AppId },
+  ): StreamFn;
 }

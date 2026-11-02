@@ -97,6 +97,7 @@ export function createStAiTransport(
         let responseBody: string | undefined;
         const record = (event: string, details: Readonly<Record<string, unknown>>) =>
           log({
+            app: diagnostics?.app,
             requestId,
             operation: diagnostics?.operation ?? "模型请求",
             event,
