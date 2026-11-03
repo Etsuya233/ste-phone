@@ -4,7 +4,7 @@
 
 ## 安装与运行要求
 
-当前版本：0.0.4。资料与数据库功能需要 **STE Memory >= 0.2.6**（提供 STE_MEMORY_API.database v1）。请先升级 Memory，再刷新 ST。
+当前版本：0.0.5。资料与数据库功能需要 **STE Memory >= 0.2.6**（提供 STE_MEMORY_API.database v1）。请先升级 Memory，再刷新 ST。
 
 在 ST「扩展 → 安装扩展」中填写：
 
@@ -15,4 +15,4 @@
 
 安装后刷新页面，从聊天输入区的**魔法棒菜单 → 小手机**打开。更新时使用扩展面板的 Update。未连接 Memory 时手机外壳、秒表与组件应用仍可使用。
 
-源提交：9afbb6b10065abe23786886a8f16b8b5588aa9f5（main）
+源提交：a51833a7b612e1f03a6df46d7b8eaf9d75d79bc0（main）
