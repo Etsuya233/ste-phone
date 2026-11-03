@@ -22,7 +22,7 @@ function fixture() {
     sourceName: "Memory",
     message: null,
   };
-  const snapshot: DataSourceSnapshot = {
+  let snapshot: DataSourceSnapshot = {
     context,
     data: null,
     status: "ready",
@@ -32,9 +32,15 @@ function fixture() {
     loadedAt: null,
     revision: 1,
   };
+  const sourceListeners = new Set<() => void>();
   const data: DataAppPublic = {
     getSnapshot: () => snapshot,
-    subscribe: () => () => {},
+    subscribe: (listener) => {
+      sourceListeners.add(listener);
+      return () => {
+        sourceListeners.delete(listener);
+      };
+    },
     readBackground: async () => ({
       sourceId: "ste-memory",
       scopeId: "instance",
@@ -213,6 +219,14 @@ function fixture() {
     data,
     setScope(id: string) {
       stableScopeId = id;
+    },
+    sourceChanged(available: boolean, scopeId: string) {
+      context.available = available;
+      context.scopeId = scopeId;
+      snapshot = { ...snapshot, revision: snapshot.revision + 1 };
+      for (const listener of sourceListeners) {
+        listener();
+      }
     },
     switchChat(id: string) {
       chatId = id;
@@ -949,5 +963,35 @@ test("a switched user save releases the global sending state and a reloaded barr
   await f.service.enqueue("b", "重新载入后继续");
   assert.equal(f.stored!.conversations[0]!.messages.length, 2);
   assert.equal(f.stored!.conversations[0]!.memoryBarriers![0]!.id, barrierId);
+  f.service.dispose();
+});
+
+test("朋友圈阅读范围在来源断开后保留，新实例与新聊天不沿用旧范围", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.moments.publish({ text: "保存的动态", media: { type: "none" } });
+  f.sourceChanged(false, "");
+  await f.service.prepare();
+  assert.equal(f.service.getSnapshot().momentsScopeId, "stable");
+  assert.equal(f.service.getSnapshot().scopeId, null);
+  assert.equal(f.service.getSnapshot().data.moments!.stable![0]!.text, "保存的动态");
+  await assert.rejects(
+    f.service.moments.publish({ text: "断开时发布", media: { type: "none" } }),
+    /资料不可用/,
+  );
+  const restored = f.restore();
+  assert.equal(restored.getSnapshot().momentsScopeId, null);
+  assert.deepEqual(Object.keys(restored.getSnapshot().data.moments!), ["stable"]);
+  restored.dispose();
+  f.setScope("new-stable");
+  f.sourceChanged(true, "new-instance");
+  assert.equal(f.service.getSnapshot().momentsScopeId, null);
+  await f.service.prepare();
+  assert.equal(f.service.getSnapshot().momentsScopeId, "new-stable");
+  assert.equal(f.service.getSnapshot().data.account, null);
+  f.switchChat("new-chat");
+  assert.equal(f.service.getSnapshot().momentsScopeId, null);
+  assert.equal(f.service.getSnapshot().data.moments, undefined);
   f.service.dispose();
 });

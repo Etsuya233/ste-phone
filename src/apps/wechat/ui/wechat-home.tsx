@@ -12,6 +12,7 @@ import { PersonAvatar, type WechatPageProps } from "./wechat-page.tsx";
 import { PersonIdentity, ProfilePreview } from "./wechat-profile.tsx";
 import { formatWechatTime } from "../wechat-time.ts";
 import { useWechatClock } from "./use-wechat-clock.ts";
+import { WechatDiscover } from "./wechat-discover.tsx";
 
 export function WechatHome({
   wechat,
@@ -56,7 +57,9 @@ export function WechatHome({
           {state.error}
         </p>
       )}
-      {!account ? (
+      {tab === "发现" ? (
+        <WechatDiscover state={state} navigation={navigation} />
+      ) : !account ? (
         <div className="wechat-welcome">
           <h2>选择你的帐号</h2>
           <p>以人物的视角，聊聊故事里的日常。</p>
@@ -230,6 +233,7 @@ function WechatTabs({ tab, onSelect }: { tab: string; onSelect(tab: string): voi
   const tabs = [
     { name: "微信", icon: <ChatTabIcon /> },
     { name: "通讯录", icon: <ContactsTabIcon /> },
+    { name: "发现", icon: <DiscoverTabIcon /> },
     { name: "我", icon: <MeTabIcon /> },
   ];
   return (
@@ -276,6 +280,15 @@ function MeTabIcon() {
     <svg viewBox="0 0 24 24">
       <circle cx="12" cy="8.2" r="3.4" />
       <path d="M5.3 20c.7-3.4 3.4-5.4 6.7-5.4s6 2 6.7 5.4" />
+    </svg>
+  );
+}
+
+function DiscoverTabIcon() {
+  return (
+    <svg viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m15.8 8.2-2.5 5.1-5.1 2.5 2.5-5.1Z" />
     </svg>
   );
 }

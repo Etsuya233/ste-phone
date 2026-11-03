@@ -54,6 +54,7 @@ export class WechatService {
       data: chatId ? (dependencies.storage.read(chatId) ?? emptyWechat()) : emptyWechat(),
       people: [],
       scopeId: null,
+      momentsScopeId: null,
       loading: false,
       error: null,
       reply: { status: "idle" },
@@ -128,6 +129,7 @@ export class WechatService {
       this.#publish({
         people: roster.people,
         scopeId: roster.scopeId,
+        momentsScopeId: roster.scopeId,
         loading: false,
         data: { ...this.#snapshot.data, account: roster.account },
       });
@@ -290,7 +292,13 @@ export class WechatService {
       this.#sourceKey = binding;
       this.cancel();
       ++this.#preparation;
-      this.#publish({ people: [], scopeId: null });
+      this.#publish({
+        people: [],
+        scopeId: null,
+        momentsScopeId: this.#dependencies.data.getSnapshot().context.available
+          ? null
+          : this.#snapshot.momentsScopeId,
+      });
     }
     if (revision !== this.#sourceRevision) {
       this.#sourceRevision = revision;
@@ -310,6 +318,7 @@ export class WechatService {
       data: chatId ? (this.#dependencies.storage.read(chatId) ?? emptyWechat()) : emptyWechat(),
       people: [],
       scopeId: null,
+      momentsScopeId: null,
       error: null,
     });
   };

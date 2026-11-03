@@ -51,7 +51,10 @@ const phone = createPhone({
   chat: createPreviewChatContext(),
   dataProvider: new MemoryDatabaseProvider(),
   diaryStorage: createPreviewDiaryStorage(options.get("diary-test")),
-  wechatStorage: createPreviewWechatStorage(options.get("wechat-test")),
+  wechatStorage: createPreviewWechatStorage(
+    options.get("wechat-test"),
+    options.get("moments-test"),
+  ),
   wechatStickerStorage: await createPreviewWechatStickerStorage(),
   logs,
 });

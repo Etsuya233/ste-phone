@@ -15,6 +15,7 @@ function fixture() {
       { id: "b", name: "同名", profileText: "乙" },
     ],
     scopeId: "stable",
+    momentsScopeId: "stable",
     loading: false,
     error: null,
     reply: { status: "idle" },

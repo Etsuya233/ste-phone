@@ -11,6 +11,9 @@ import type { WechatStickerLibrary } from "../wechat-sticker-library.ts";
 import { Alert } from "../../../frontend/foundation/alert.tsx";
 import { WechatSettings } from "./wechat-settings.tsx";
 import { WechatReplyGuidance } from "./wechat-reply-guidance.tsx";
+import { WechatMoments } from "./wechat-moments.tsx";
+import { WechatMomentCompose } from "./wechat-moment-compose.tsx";
+import { WechatMomentDetail } from "./wechat-moment-detail.tsx";
 
 export function WechatApp({
   wechat,
@@ -35,7 +38,12 @@ export function WechatApp({
     <div className="wechat-app">
       <div className="wechat-navigation" inert={!!state.operationError}>
         <NavigationStack<WechatRoute>
-          key={JSON.stringify([state.chatId, state.data.account?.scopeId, state.data.account?.id])}
+          key={JSON.stringify([
+            state.chatId,
+            state.momentsScopeId,
+            state.data.account?.scopeId,
+            state.data.account?.id,
+          ])}
           active={active}
           initialRoutes={[{ page: "home" }]}
         >
@@ -50,6 +58,25 @@ export function WechatApp({
               preferences,
             };
             switch (route.page) {
+              case "moments":
+                return <WechatMoments {...props} scopeId={route.scopeId} />;
+              case "moment-compose":
+                return (
+                  <WechatMomentCompose
+                    {...props}
+                    scopeId={route.scopeId}
+                    active={active && navigation.current}
+                  />
+                );
+              case "moment-detail":
+                return (
+                  <WechatMomentDetail
+                    {...props}
+                    scopeId={route.scopeId}
+                    id={route.id}
+                    active={active && navigation.current}
+                  />
+                );
               case "home":
                 return (
                   <WechatHome {...props} onHome={onHome} active={active && navigation.current} />

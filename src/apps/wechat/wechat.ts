@@ -56,6 +56,8 @@ export interface WechatSnapshot {
   readonly data: WechatData;
   readonly people: readonly CharacterProfile[];
   readonly scopeId: string | null;
+  /** 阅读范围可在资料断开后保留；新增操作仍须核对当前有效 scopeId 与人物。 */
+  readonly momentsScopeId: string | null;
   readonly loading: boolean;
   readonly error: string | null;
   readonly reply: ReplyState;
