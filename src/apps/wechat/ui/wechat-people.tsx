@@ -21,6 +21,7 @@ export function WechatAccounts({ wechat, state, navigation }: WechatPageProps) {
             className="wechat-row"
             key={person.id}
             disabled={
+              state.barrierSaving ||
               state.loading ||
               !!state.error ||
               state.reply.status === "sending" ||

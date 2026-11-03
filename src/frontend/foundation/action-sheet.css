@@ -68,3 +68,14 @@
     animation: none;
   }
 }
+
+:host .ios-action-sheet-description {
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--ios-surface);
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+  line-height: 1.5;
+  white-space: pre-line;
+}

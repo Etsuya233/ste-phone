@@ -268,5 +268,72 @@ test("v4 settings migrate to delayed sending and the preference survives unrelat
   service.setWallpaper({ kind: "gradient" }, true);
   service.saveModelConnection(connection);
   assert.equal(new PhoneSettingsService(storage).wechatPreferences.getSnapshot(), "immediate");
-  assert.equal(service.getState().version, 5);
+  assert.equal(service.getState().version, 6);
+});
+
+test("history limit defaults to 100, migrates v5 and retains valid shared settings", () => {
+  assert.equal(
+    new PhoneSettingsService({
+      ...library,
+      read: () => undefined,
+      save: () => {},
+    }).wechatPreferences.getHistoryMessageLimit(),
+    100,
+  );
+  const { wechatHistoryMessageLimit: _oldLimit, ...previous } = defaultSettings;
+  void _oldLimit;
+  let stored: ReturnType<SettingsStorage["read"]> = {
+    ...previous,
+    version: 5,
+    blur: true,
+    wechatSendMode: "immediate",
+  };
+  const storage: SettingsStorage = {
+    ...library,
+    read: () => stored,
+    save: (value) => {
+      stored = value;
+    },
+  };
+  const service = new PhoneSettingsService(storage);
+  assert.equal(service.wechatPreferences.getHistoryMessageLimit(), 100);
+  assert.equal(service.getState().blur, true);
+  assert.equal(service.wechatPreferences.getSnapshot(), "immediate");
+  for (const limit of [30, 100, 200]) {
+    service.wechatPreferences.setHistoryMessageLimit(limit);
+    assert.equal(
+      new PhoneSettingsService(storage).wechatPreferences.getHistoryMessageLimit(),
+      limit,
+    );
+  }
+});
+
+test("invalid or failed history settings do not replace saved state; malformed v6 fails", () => {
+  const service = new PhoneSettingsService({
+    ...library,
+    read: () => undefined,
+    save: () => {
+      throw new Error("storage denied");
+    },
+  });
+  for (const limit of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => service.wechatPreferences.setHistoryMessageLimit(limit), /正安全整数/);
+    assert.throws(
+      () =>
+        new PhoneSettingsService({
+          ...library,
+          read: () => ({ ...defaultSettings, wechatHistoryMessageLimit: limit }),
+          save: () => {},
+        }),
+      /正安全整数/,
+    );
+  }
+  const damaged = { ...defaultSettings };
+  Reflect.deleteProperty(damaged, "wechatHistoryMessageLimit");
+  assert.throws(
+    () => new PhoneSettingsService({ ...library, read: () => damaged, save: () => {} }),
+    /正安全整数/,
+  );
+  assert.throws(() => service.wechatPreferences.setHistoryMessageLimit(200), /storage denied/);
+  assert.equal(service.wechatPreferences.getHistoryMessageLimit(), 100);
 });

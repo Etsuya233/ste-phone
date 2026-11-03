@@ -22,6 +22,7 @@ export function createStWechatStorage(
     }
     return getContext();
   };
+  let latestWrite = 0;
   return {
     read(chatId) {
       const context = current(chatId);
@@ -37,7 +38,7 @@ export function createStWechatStorage(
     async write(chatId, data, signal) {
       signal?.throwIfAborted();
       const context = current(chatId);
-      const metadata = context.chatMetadata;
+      const sequence = ++latestWrite;
       const save = captureWechatSave(context, data);
       const send = async (body: string) => {
         const response = await request(save.endpoint, {
@@ -60,7 +61,9 @@ export function createStWechatStorage(
         signal.throwIfAborted();
       }
       // 先确认持久化再发布元数据，失败与取消都不会留下本地半提交内容。
-      if (chat.getSnapshot()?.id === chatId && getContext().chatMetadata === metadata) {
+      if (chat.getSnapshot()?.id === chatId && sequence === latestWrite) {
+        // 同一目标可能已重新载入新的 metadata 对象；只同步确认的微信字段，保留当前其他插件数据。
+        const metadata = getContext().chatMetadata;
         const phone = metadata.ste_phone as Record<string, unknown> | undefined;
         metadata.ste_phone = { ...phone, wechat: structuredClone(data) };
       }

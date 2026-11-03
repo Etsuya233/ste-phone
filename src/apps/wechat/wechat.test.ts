@@ -32,6 +32,7 @@ test("prompt retains all pending messages and carries explicit background", () =
     buildWechatPrompt({
       sender: { id: "A", name: "甲", profileText: "人物甲" },
       recipient: { id: "B", name: "乙", profileText: "人物乙" },
+      historyMessageLimit: 30,
       summary: "全部总结",
       related: { relationships: [], heldItems: [], importantEvents: [], otherCharacters: [] },
       recent: {
@@ -55,8 +56,8 @@ test("prompt retains all pending messages and carries explicit background", () =
       },
     }),
   );
-  assert.equal(prompt.当前微信对话.length, 31);
-  assert.equal(prompt.当前微信对话[0].text, "消息0");
-  assert.equal(prompt.当前微信对话.at(-1).text, "消息30");
+  assert.equal(prompt.本轮输入.length, 31);
+  assert.equal(prompt.本轮输入[0].text, "消息0");
+  assert.equal(prompt.本轮输入.at(-1).text, "消息30");
   assert.equal(prompt.剧情总结, "全部总结");
 });

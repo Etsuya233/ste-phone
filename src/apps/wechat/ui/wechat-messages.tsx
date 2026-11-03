@@ -5,6 +5,9 @@ import { findWechatSticker, type WechatStickerPack } from "../wechat-stickers.ts
 import { PersonAvatar } from "./wechat-page.tsx";
 import { Fragment } from "react";
 import { formatWechatTime, needsWechatTimeSeparator } from "../wechat-time.ts";
+import { WechatMemoryBarrier } from "./wechat-memory-barrier.tsx";
+import { Button } from "../../../frontend/foundation/button.tsx";
+import type { useWechatMemory } from "./use-wechat-memory.tsx";
 import { useWechatClock } from "./use-wechat-clock.ts";
 
 export function WechatMessages({
@@ -14,6 +17,7 @@ export function WechatMessages({
   packs,
   stickers,
   active,
+  memory,
 }: {
   conversation: WechatConversation | undefined;
   accountId: string | undefined;
@@ -21,10 +25,23 @@ export function WechatMessages({
   packs: readonly WechatStickerPack[];
   stickers: WechatStickerLibrary;
   active: boolean;
+  memory: ReturnType<typeof useWechatMemory>;
 }) {
   const now = useWechatClock(active);
   return (
     <div className="wechat-messages">
+      {memory.boundaries
+        .filter((item) => item.position === 0)
+        .map(({ barrier }) => (
+          <WechatMemoryBarrier
+            key={barrier.id}
+            barrier={barrier}
+            effective={barrier.id === memory.effectiveId}
+            disabled={memory.disabled}
+            onToggle={(enabled) => void memory.toggle(barrier.id, enabled)}
+            onMenu={() => memory.openBarrier(barrier.id)}
+          />
+        ))}
       {conversation?.messages.map((message, index) => {
         const sender =
           people.find((person) => person.id === message.senderId)?.name ??
@@ -58,7 +75,26 @@ export function WechatMessages({
               ) : (
                 <p>{message.content.text}</p>
               )}
+              <Button
+                className="wechat-message-menu"
+                aria-label={`消息 ${index + 1} 操作`}
+                onClick={() => memory.openMessage(index)}
+              >
+                ···
+              </Button>
             </div>
+            {memory.boundaries
+              .filter((item) => item.position === index + 1)
+              .map(({ barrier }) => (
+                <WechatMemoryBarrier
+                  key={barrier.id}
+                  barrier={barrier}
+                  effective={barrier.id === memory.effectiveId}
+                  disabled={memory.disabled}
+                  onToggle={(enabled) => void memory.toggle(barrier.id, enabled)}
+                  onMenu={() => memory.openBarrier(barrier.id)}
+                />
+              ))}
           </Fragment>
         );
       })}

@@ -75,3 +75,35 @@
   font-size: var(--ios-caption-size);
   line-height: 1.5;
 }
+
+:host .wechat-navigation {
+  height: 100%;
+}
+:host .wechat-memory-barrier {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--ios-line);
+  border-radius: 8px;
+  background: var(--ios-surface);
+  font-size: var(--ios-caption-size);
+  overflow-anchor: none;
+}
+:host .wechat-memory-status {
+  margin-left: 8px;
+  color: var(--ios-secondary-ink);
+}
+:host .wechat-memory-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+:host .wechat-message-menu {
+  flex-shrink: 0;
+  padding: 4px;
+  color: var(--ios-muted-ink);
+}
+:host .wechat-message p {
+  max-width: calc(100% - 94px);
+}

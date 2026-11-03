@@ -112,7 +112,12 @@ function fixture() {
     customHeaders: {},
   };
   let sendMode: "immediate" | "delayed" = "immediate";
+  let historyMessageLimit = 100;
   const preferences = {
+    getHistoryMessageLimit: () => historyMessageLimit,
+    setHistoryMessageLimit: (limit: number) => {
+      historyMessageLimit = limit;
+    },
     getSnapshot: () => sendMode,
     subscribe: () => () => {},
     setSendMode: (mode: "immediate" | "delayed") => {
@@ -750,5 +755,199 @@ test("failed guidance writes retain saved data, allow retry and never write into
   assert.equal(f.stored, null);
   f.switchChat("st-chat");
   assert.equal(f.service.getSnapshot().data.replyGuidance!.stable!.b, "原聊天的修改");
+  f.service.dispose();
+});
+
+function latestPayload(prompt: string) {
+  const request = JSON.parse(prompt) as { messages: { role: string; content: string }[] };
+  return JSON.parse(request.messages.findLast((message) => message.role === "user")!.content);
+}
+
+test("barriers survive empty conversations, failed first sends and account switches", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const id = await f.service.memory.insert("b", null);
+  assert.ok(id);
+  assert.equal(await f.service.memory.insert("b", null), id);
+  assert.equal(f.service.getConversation("b")!.memoryBarriers!.length, 1);
+  f.failSave(true);
+  assert.equal(await f.service.enqueue("b", "失败的第一条"), false);
+  assert.deepEqual(f.service.getConversation("b")!.messages, []);
+  assert.equal(f.service.getConversation("b")!.memoryBarriers![0]!.id, id);
+  f.failSave(false);
+  await f.service.selectAccount("b");
+  assert.equal(f.service.getConversation("a")!.memoryBarriers![0]!.id, id);
+  const restored = f.restore();
+  await restored.prepare();
+  assert.equal(restored.getConversation("a")!.memoryBarriers![0]!.id, id);
+  restored.dispose();
+  f.service.dispose();
+});
+
+test("cross-barrier queues reply only to visible messages and consume original queue on success", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "隐藏的旧队列");
+  const hidden = f.service.getConversation("b")!.messages[0]!;
+  const barrier = await f.service.memory.insert("b", hidden.id);
+  await f.service.enqueue("b", "获准的新输入");
+  const visible = f.service.getConversation("b")!.messages.at(-1)!;
+  f.invalid(true);
+  await f.service.requestReply("b");
+  assert.equal(pendingWechatMessages(f.service.getConversation("b")!, "a").length, 2);
+  assert.doesNotMatch(f.prompt, /隐藏的旧队列/);
+  f.invalid(false);
+  await f.service.requestReply("b");
+  const completed = f.service.getConversation("b")!;
+  assert.equal(completed.pendingCompletedThrough!.a, visible.id);
+  assert.equal(completed.messages.at(-1)!.reply!.triggerMessageId, visible.id);
+  await f.service.memory.setEnabled("b", barrier!, false);
+  await f.service.requestReply("b");
+  assert.equal(latestPayload(f.prompt).本轮任务, "主动发起聊天");
+  assert.deepEqual(pendingWechatMessages(f.service.getConversation("b")!, "a"), []);
+  f.service.dispose();
+});
+
+test("fully hidden queues produce proactive replies with no fake trigger and never revive", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "旧队列");
+  const hidden = f.service.getConversation("b")!.messages[0]!;
+  const barrier = await f.service.memory.insert("b", hidden.id);
+  await f.service.requestReply("b");
+  assert.equal(latestPayload(f.prompt).本轮任务, "主动发起聊天");
+  assert.deepEqual(latestPayload(f.prompt).本轮输入, []);
+  const completed = f.service.getConversation("b")!;
+  assert.equal(completed.pendingCompletedThrough!.a, hidden.id);
+  assert.equal(completed.messages.at(-1)!.reply!.triggerMessageId, undefined);
+  await f.service.memory.setEnabled("b", barrier!, false);
+  assert.deepEqual(pendingWechatMessages(f.service.getConversation("b")!, "a"), []);
+  f.service.dispose();
+});
+
+test("barrier saves are globally exclusive and failures preserve original barriers and drafts", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  f.service.setDraft("b", "保留草稿");
+  const started = f.holdNextSave();
+  const inserting = f.service.memory.insert("b", null);
+  await started;
+  assert.equal(f.service.getSnapshot().barrierSaving, true);
+  await assert.rejects(f.service.send("b", "新消息"), /等待/);
+  await assert.rejects(f.service.enqueue("b", "队列"), /延迟|等待/);
+  await assert.rejects(f.service.selectAccount("b"), /等待/);
+  await assert.rejects(f.service.memory.insert("b", null), /回复或保存/);
+  f.failSave(true);
+  f.releaseSave();
+  assert.equal(await inserting, null);
+  assert.equal(f.service.getConversation("b"), undefined);
+  assert.equal(f.service.getDraft("b"), "保留草稿");
+  assert.match(f.service.getSnapshot().operationError!, /聊天.*甲.*乙.*磁盘失败/);
+  f.failSave(false);
+  f.service.dismissOperationError();
+  assert.ok(await f.service.memory.insert("b", null));
+  const modelStarted = f.holdModel();
+  const replying = f.service.requestReply("b");
+  await modelStarted;
+  await assert.rejects(
+    f.service.memory.delete("b", f.service.getConversation("b")!.memoryBarriers![0]!.id),
+    /回复或保存/,
+  );
+  f.service.cancel();
+  f.releaseModel();
+  await replying;
+  assert.ok(await f.service.memory.insert("b", null));
+  f.service.dispose();
+});
+
+test("history limit is fixed before async background reads and retries read the new setting", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.send("b", "初次消息");
+  f.preferences.setHistoryMessageLimit(1);
+  const read = f.data.readSummary;
+  let release!: () => void;
+  let started!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  f.data.readSummary = async () => {
+    started();
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return "背景";
+  };
+  const replying = f.service.requestReply("b");
+  await waiting;
+  f.preferences.setHistoryMessageLimit(100);
+  release();
+  await replying;
+  assert.equal(latestPayload(f.prompt).当前微信历史.length, 1);
+  f.data.readSummary = read;
+  await f.service.requestReply("b");
+  assert.equal(latestPayload(f.prompt).当前微信历史.length, 5);
+  f.service.dispose();
+});
+
+test("barrier writes retain their old target lock and errors after switching chats", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const started = f.holdNextSave();
+  const inserting = f.service.memory.insert("b", null);
+  await started;
+  f.switchChat("other-chat");
+  await f.service.prepare();
+  assert.equal(f.service.getSnapshot().barrierSaving, true);
+  await assert.rejects(f.service.selectAccount("a"), /等待/);
+  f.failSave(true);
+  f.releaseSave();
+  await inserting;
+  assert.equal(f.service.getSnapshot().data.conversations.length, 0);
+  assert.match(f.service.getSnapshot().operationError!, /甲.*乙/);
+  assert.equal(f.service.getSnapshot().reply.status, "idle");
+  f.service.dispose();
+});
+
+test("a switched user save releases the global sending state and a reloaded barrier reads confirmed data", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const started = f.holdNextSave();
+  const sending = f.service.enqueue("b", "旧聊天的消息");
+  await started;
+  f.switchChat("another-chat");
+  f.releaseSave();
+  await sending;
+  assert.equal(f.service.getSnapshot().reply.status, "idle");
+  assert.equal(f.service.getSnapshot().writeBusy, false);
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "新聊天可继续发送");
+  f.switchChat("st-chat");
+  await f.service.prepare();
+  const savingStarted = f.holdNextSave();
+  const inserting = f.service.memory.insert("b", null);
+  await savingStarted;
+  f.switchChat("another-chat");
+  f.switchChat("st-chat");
+  await f.service.prepare();
+  assert.equal(f.service.getConversation("b")!.memoryBarriers, undefined);
+  f.releaseSave();
+  const barrierId = await inserting;
+  assert.equal(f.service.getConversation("b")!.memoryBarriers![0]!.id, barrierId);
+  await f.service.enqueue("b", "重新载入后继续");
+  assert.equal(f.stored!.conversations[0]!.messages.length, 2);
+  assert.equal(f.stored!.conversations[0]!.memoryBarriers![0]!.id, barrierId);
   f.service.dispose();
 });

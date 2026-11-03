@@ -48,16 +48,16 @@ test("SQL-backed prompt includes one-hop context while preserving summary and te
       })),
     };
     const payload = JSON.parse(
-      await readWechatPrompt(data, scope, sender, recipient, conversation),
+      await readWechatPrompt(data, scope, sender, recipient, conversation, 30),
     );
     assert.deepEqual(payload.当前帐号, sender);
     assert.deepEqual(payload.你扮演的回复人物, recipient);
     assert.match(payload.剧情总结, /必须保留的完整总结/);
     assert.match(payload.剧情总结, /借出的笔记本/);
     assert.doesNotMatch(payload.剧情总结, /放学后，小红与小蓝在图书馆讨论/);
-    assert.equal(payload.当前微信对话.length, 30);
-    assert.equal(payload.当前微信对话[0].text, "微信5");
-    assert.equal(payload.当前微信对话.at(-1).text, "微信34");
+    assert.equal(payload.当前微信历史.length, 29);
+    assert.equal(payload.当前微信历史[0].text, "微信5");
+    assert.equal(payload.本轮输入.at(-1).text, "微信34");
     assert.equal(payload.最近ST消息[0].content, "已经清洗的ST正文");
     assert.equal(payload.世界状态[0].location, "学校图书馆");
     assert.deepEqual(

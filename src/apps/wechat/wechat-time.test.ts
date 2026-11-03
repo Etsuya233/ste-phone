@@ -39,6 +39,7 @@ test("message separators cover first message, five-minute boundary and midnight"
 const input: Parameters<typeof buildWechatPrompt>[0] = {
   sender: { id: "A", name: "甲", profileText: "人物甲" },
   recipient: { id: "B", name: "乙", profileText: "人物乙" },
+  historyMessageLimit: 30,
   summary: "剧情仍停在同一天",
   related: { relationships: [], heldItems: [], importantEvents: [], otherCharacters: [] },
   recent: {
@@ -66,10 +67,10 @@ const input: Parameters<typeof buildWechatPrompt>[0] = {
 
 test("pending batches retain their gap before the window and timestamps within the batch", () => {
   const prompt = JSON.parse(buildWechatPrompt(input));
-  assert.equal(prompt.当前微信对话.length, 34);
-  assert.equal(prompt.当前微信对话[0].createdAt, "2026-11-03T07:59:00Z");
-  assert.equal(prompt.当前微信对话[0].距上一条消息秒数, 86340);
-  assert.equal(prompt.当前微信对话[1].距上一条消息秒数, 0);
+  assert.equal(prompt.本轮输入.length, 34);
+  assert.equal(prompt.本轮输入[0].createdAt, "2026-11-03T07:59:00Z");
+  assert.equal(prompt.本轮输入[0].距上一条消息秒数, 86340);
+  assert.equal(prompt.本轮输入[1].距上一条消息秒数, 0);
   assert.equal(prompt.微信现实时间.本轮与此前消息间隔秒数, 86340);
   assert.equal(prompt.微信现实时间.距最后消息秒数, 60);
   assert.equal(prompt.微信现实时间.当前时刻, input.now!.toISOString());

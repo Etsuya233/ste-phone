@@ -39,7 +39,8 @@ test("v3 migration adds the store and preserves wallpaper and model credentials"
   const service = new PhoneSettingsService(storage);
   assert.deepEqual(service.getState(), {
     ...legacy,
-    version: 5,
+    version: 6,
+    wechatHistoryMessageLimit: 100,
     wechatSendMode: "delayed",
     homeLayout: defaultSettings.homeLayout,
   });

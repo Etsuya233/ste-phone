@@ -31,9 +31,9 @@ function fixture(request: typeof fetch) {
   return {
     storage,
     context,
-    switchChat() {
-      activeId = "b";
-      context.chatId = "story-b";
+    switchChat(id = "b") {
+      activeId = id;
+      context.chatId = `story-${id}`;
     },
   };
 }
@@ -139,4 +139,52 @@ test("failed rollback remains an observable error and failed saves do not mutate
   const before = structuredClone(f.context.chatMetadata);
   await assert.rejects(f.storage.write("a", emptyWechat(), controller.signal), /撤回保存失败/);
   assert.deepEqual(f.context.chatMetadata, before);
+});
+
+test("confirmed save refreshes a reloaded same-target metadata object without replacing other fields", async () => {
+  let finish!: (value: Response) => void;
+  const f = fixture(
+    (async () =>
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      })) as typeof fetch,
+  );
+  const data = { ...emptyWechat(), replyGuidance: { stable: { person: "确认的新值" } } };
+  const writing = f.storage.write("a", data);
+  f.switchChat();
+  const reloaded = {
+    integrity: "new-integrity",
+    another_plugin: { value: 42 },
+    ste_phone: { diary: { version: 1, entries: ["new diary"] } },
+  };
+  Object.assign(f.context, { chatMetadata: reloaded });
+  f.switchChat("a");
+  finish(new Response(null, { status: 200 }));
+  await writing;
+  assert.deepEqual(f.storage.read("a"), data);
+  assert.equal(f.context.chatMetadata.integrity, "new-integrity");
+  assert.deepEqual(f.context.chatMetadata.another_plugin, { value: 42 });
+  assert.deepEqual((f.context.chatMetadata.ste_phone as Record<string, unknown>).diary, {
+    version: 1,
+    entries: ["new diary"],
+  });
+});
+
+test("an older acknowledgement cannot replay its metadata over a later write", async () => {
+  let finish!: (value: Response) => void;
+  let calls = 0;
+  const f = fixture((async () => {
+    if (++calls === 1) {
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    }
+    return new Response(null, { status: 200 });
+  }) as typeof fetch);
+  const old = f.storage.write("a", emptyWechat());
+  const newer = { ...emptyWechat(), replyGuidance: { stable: { person: "newest" } } };
+  await f.storage.write("a", newer);
+  finish(new Response(null, { status: 200 }));
+  await old;
+  assert.deepEqual(f.storage.read("a"), newer);
 });

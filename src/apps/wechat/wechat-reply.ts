@@ -3,12 +3,8 @@ import type { DataAppPublic, CharacterProfile } from "../data-source/public.ts";
 import type { ModelConnectionsReader } from "../settings/public.ts";
 import { generateWechatReply } from "./wechat-generation.ts";
 import { readWechatPrompt } from "./wechat-context.ts";
-import {
-  pendingWechatMessages,
-  createWechatMessage,
-  type WechatConversation,
-  type WechatMessage,
-} from "./wechat.ts";
+import { createWechatMessage, type WechatConversation, type WechatMessage } from "./wechat.ts";
+import { selectWechatMemory } from "./wechat-memory.ts";
 import { wechatStickerCatalog, type WechatStickerPack } from "./wechat-stickers.ts";
 
 /** 取材与连接属于本轮调用，完成后返回整批人物消息；持久化由微信服务负责。 */
@@ -19,6 +15,7 @@ export async function createWechatReplies(input: {
   sender: CharacterProfile;
   recipient: CharacterProfile;
   replyGuidance: string;
+  historyMessageLimit: number;
   conversation: WechatConversation;
   signal: AbortSignal;
   stickerPacks: readonly WechatStickerPack[];
@@ -37,6 +34,7 @@ export async function createWechatReplies(input: {
     sender,
     recipient,
     conversation,
+    input.historyMessageLimit,
     stickers,
   );
   signal.throwIfAborted();
@@ -50,7 +48,11 @@ export async function createWechatReplies(input: {
   });
   const messages = contents.map((content) => createWechatMessage(recipient.id, content));
   const batchId = messages[0]!.id;
-  const triggerMessageId = pendingWechatMessages(conversation, sender.id).at(-1)?.id;
+  const triggerMessageId = selectWechatMemory(
+    conversation,
+    sender.id,
+    input.historyMessageLimit,
+  ).pending.at(-1)?.id;
   return messages.map((message) => ({
     ...message,
     reply: triggerMessageId ? { batchId, triggerMessageId } : { batchId },

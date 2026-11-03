@@ -43,4 +43,6 @@ export interface WechatPreferences {
   getSnapshot(): WechatSendMode;
   subscribe(listener: () => void): () => void;
   setSendMode(mode: WechatSendMode): void;
+  getHistoryMessageLimit(): number;
+  setHistoryMessageLimit(limit: number): void;
 }

@@ -5,13 +5,21 @@ import type {
   PhoneSettings,
   PhoneSettingsV2,
   PhoneSettingsV3,
+  PhoneSettingsV4,
+  PhoneSettingsV5,
   LegacyPhoneSettings,
   SettingsStorage,
 } from "../../apps/settings/ports/settings-storage.ts";
 interface StContext extends StDiaryContext {
   extensionSettings: {
     ste_phone_wechat_stickers?: { version: number; packs: readonly WechatStickerPack[] };
-    ste_phone?: PhoneSettings | PhoneSettingsV3 | PhoneSettingsV2 | LegacyPhoneSettings;
+    ste_phone?:
+      | PhoneSettings
+      | PhoneSettingsV5
+      | PhoneSettingsV4
+      | PhoneSettingsV3
+      | PhoneSettingsV2
+      | LegacyPhoneSettings;
   };
   saveSettingsDebounced: () => void;
   getRequestHeaders: () => Record<string, string>;

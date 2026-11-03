@@ -4,24 +4,17 @@ import { Page } from "../../../frontend/foundation/page.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import type { WechatPageProps } from "./wechat-page.tsx";
-import { WechatComposer } from "./wechat-composer.tsx";
+import { WechatChatComposer } from "./wechat-chat-composer.tsx";
 import { conversationId } from "../wechat.ts";
+import { useWechatMemory } from "./use-wechat-memory.tsx";
 import { WechatMessages } from "./wechat-messages.tsx";
 
-export function WechatChat({
-  wechat,
-  state,
-  navigation,
-  id,
-  active,
-  stickers,
-  stickerState,
-  sendMode,
-}: WechatPageProps & { id: string; active: boolean }) {
-  const [draft, setDraft] = useState(() => wechat.getDraft(id));
+export function WechatChat({ ...props }: WechatPageProps & { id: string; active: boolean }) {
+  const { wechat, state, navigation, id, active, stickers, stickerState } = props;
   const [composerHeight, setComposerHeight] = useState(62);
   const end = useRef<HTMLDivElement>(null);
   const conversation = wechat.getConversation(id);
+  const memory = useWechatMemory({ ...props, conversation, end });
   const person = state.people.find((person) => person.id === id);
   const other = conversation?.people.find((person) => person.id === id);
   const name = person?.name ?? other?.name ?? "人物不可用";
@@ -30,80 +23,63 @@ export function WechatChat({
     : null;
   const reply =
     state.reply.status !== "idle" && state.reply.conversationId === currentId ? state.reply : null;
-  const running = state.reply.status === "running" || state.reply.status === "saving";
-  const stopping = state.reply.status === "stopping";
-  const sending = state.reply.status === "sending";
-  const available = !!person && !!state.data.account && !state.error && !state.loading;
+  const available =
+    !!person && !!state.data.account && !state.error && !state.loading && !memory.error;
   useMessageScroll(end, conversation?.messages.length, active, composerHeight);
-  async function submit(action: "send" | "enqueue") {
-    const text = draft;
-    setDraft("");
-    // 保存失败时服务会恢复草稿，这里同步恢复输入框，避免消息被撤回后正文也丢失。
-    if (!(await wechat[action](id, text))) {
-      setDraft((current) => current || wechat.getDraft(id));
-    }
-  }
   return (
-    <Page
-      className="wechat-chat"
-      navBar={
-        <NavBar
-          title={
-            reply?.status === "running" || reply?.status === "saving" ? "用户正在输入..." : name
-          }
-          back={{ label: "微信", onClick: navigation.pop }}
-          right={<Button onClick={() => navigation.push({ page: "person", id })}>资料</Button>}
-        />
-      }
-      footerHeight={composerHeight}
-      footer={
-        <WechatComposer
-          value={draft}
-          disabled={!available || running || sending || stopping}
-          replying={!!reply && running}
-          onStop={() => wechat.cancel()}
-          delayed={sendMode === "delayed"}
-          onQueue={() => void submit("enqueue")}
-          onChange={(text) => {
-            setDraft(text);
-            wechat.setDraft(id, text);
-          }}
-          onSend={() => void submit("send")}
-          onHeightChange={setComposerHeight}
+    <>
+      <Page
+        inert={memory.menuOpen}
+        className="wechat-chat"
+        navBar={
+          <NavBar
+            title={
+              reply?.status === "running" || reply?.status === "saving" ? "用户正在输入..." : name
+            }
+            back={{ label: "微信", onClick: navigation.pop }}
+            right={
+              <Button aria-label="聊天菜单" onClick={memory.openChat}>
+                ···
+              </Button>
+            }
+          />
+        }
+        footerHeight={composerHeight}
+        footer={
+          <WechatChatComposer {...props} available={available} onHeightChange={setComposerHeight} />
+        }
+      >
+        <WechatMessages
+          memory={memory}
+          active={active}
+          conversation={conversation}
+          accountId={state.data.account?.id}
+          people={state.people}
           packs={stickerState.packs}
           stickers={stickers}
-          onSendSticker={(marker) =>
-            void wechat[sendMode === "delayed" ? "enqueue" : "send"](id, marker, {
-              preserveDraft: true,
-            })
-          }
-          onManageStickers={() => navigation.push({ page: "stickers" })}
         />
-      }
-    >
-      <WechatMessages
-        active={active}
-        conversation={conversation}
-        accountId={state.data.account?.id}
-        people={state.people}
-        packs={stickerState.packs}
-        stickers={stickers}
-      />
-      {!available && (
-        <p className="wechat-notice">{state.error ?? "当前人物资料不可用，仍可阅读历史。"}</p>
-      )}
-      {reply?.status === "error" && (
-        <div className="wechat-reply" role="alert">
-          <p>{reply.error}</p>
-          {reply.retry && (
-            <Button disabled={!available} onClick={() => void wechat.requestReply(id)}>
-              重试回复
-            </Button>
-          )}
-        </div>
-      )}
-      <div ref={end} />
-    </Page>
+        {!available && (
+          <p className="wechat-notice">
+            {memory.error ?? state.error ?? "当前人物资料不可用，仍可阅读历史。"}
+          </p>
+        )}
+        {reply?.status === "error" && (
+          <div className="wechat-reply" role="alert">
+            <p>{reply.error}</p>
+            {reply.retry && (
+              <Button
+                disabled={!available || state.barrierSaving}
+                onClick={() => void wechat.requestReply(id)}
+              >
+                重试回复
+              </Button>
+            )}
+          </div>
+        )}
+        <div ref={end} />
+      </Page>
+      {memory.sheet}
+    </>
   );
 }
 

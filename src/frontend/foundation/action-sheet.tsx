@@ -14,12 +14,14 @@ export function ActionSheet({
   label = "操作菜单",
   cancelLabel = "取消",
   onDismiss,
+  description,
 }: {
   actions: readonly ActionSheetAction[];
   active: boolean;
   label?: string;
   cancelLabel?: string;
   onDismiss: () => void;
+  description?: string;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -91,6 +93,7 @@ export function ActionSheet({
         aria-modal="true"
         aria-label={label}
       >
+        {description ? <p className="ios-action-sheet-description">{description}</p> : null}
         <div className="ios-action-sheet-group">
           {actions.map((action) => (
             <button

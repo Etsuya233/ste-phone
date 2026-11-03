@@ -16,12 +16,20 @@ export interface WechatMessage {
   readonly createdAt: string;
   readonly reply?: { readonly batchId: string; readonly triggerMessageId?: string };
 }
+export interface WechatMemoryBarrier {
+  readonly id: string;
+  readonly afterMessageId: string | null;
+  readonly enabled: boolean;
+}
 export interface WechatConversation {
   readonly id: string;
   readonly people: readonly [WechatPerson, WechatPerson];
   readonly messages: readonly WechatMessage[];
   /** 待回复边界按发言人物保存，切帐号后仍能恢复原视角的待回复消息。 */
   readonly pendingReplies?: Readonly<Record<string, string>>;
+  /** 完成截止包含屏障明确跳过的旧队列，与 AI 实际阅读的触发消息分别记录。 */
+  readonly pendingCompletedThrough?: Readonly<Record<string, string>>;
+  readonly memoryBarriers?: readonly WechatMemoryBarrier[];
 }
 export interface WechatData {
   readonly version: 1;
@@ -48,6 +56,9 @@ export interface WechatSnapshot {
   readonly loading: boolean;
   readonly error: string | null;
   readonly reply: ReplyState;
+  readonly writeBusy: boolean;
+  readonly barrierSaving: boolean;
+  readonly operationError: string | null;
 }
 export const emptyWechat = (): WechatData => ({ version: 1, account: null, conversations: [] });
 export const conversationId = (scopeId: string, a: string, b: string) =>
@@ -76,6 +87,16 @@ export function pendingWechatMessages(
       throw new Error("微信待回复消息边界不存在");
     }
     return conversation.messages.slice(start).filter((message) => message.senderId === senderId);
+  }
+  const completed = conversation.pendingCompletedThrough?.[senderId];
+  if (completed !== undefined) {
+    const position = conversation.messages.findIndex((message) => message.id === completed);
+    if (position < 0 || conversation.messages[position]!.senderId !== senderId) {
+      throw new Error("微信队列完成截止位置无效");
+    }
+    return conversation.messages
+      .slice(position + 1)
+      .filter((message) => message.senderId === senderId && !message.reply);
   }
   const replied = conversation.messages.findLast(
     (message) => message.senderId !== senderId && message.reply?.triggerMessageId !== undefined,
@@ -118,7 +139,7 @@ export function rollbackWechatMessage(
   return {
     ...data,
     conversations:
-      messages.length === 0
+      messages.length === 0 && !current.memoryBarriers?.length
         ? data.conversations.filter((item) => item.id !== original.id)
         : data.conversations.map((item) =>
             item.id === original.id

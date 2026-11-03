@@ -8,6 +8,8 @@ import { WechatAccounts, WechatPerson } from "./wechat-people.tsx";
 import { WechatChat } from "./wechat-chat.tsx";
 import { WechatStickers } from "./wechat-stickers.tsx";
 import type { WechatStickerLibrary } from "../wechat-sticker-library.ts";
+import { Alert } from "../../../frontend/foundation/alert.tsx";
+import { WechatSettings } from "./wechat-settings.tsx";
 import { WechatReplyGuidance } from "./wechat-reply-guidance.tsx";
 
 export function WechatApp({
@@ -31,45 +33,61 @@ export function WechatApp({
   }, [wechat, state.chatId]);
   return (
     <div className="wechat-app">
-      <NavigationStack<WechatRoute>
-        key={JSON.stringify([state.chatId, state.data.account?.scopeId, state.data.account?.id])}
-        active={active}
-        initialRoutes={[{ page: "home" }]}
-      >
-        {(route, navigation) => {
-          const props = {
-            wechat,
-            state,
-            navigation,
-            stickers,
-            stickerState,
-            sendMode,
-            preferences,
-          };
-          switch (route.page) {
-            case "home":
-              return (
-                <WechatHome {...props} onHome={onHome} active={active && navigation.current} />
-              );
-            case "accounts":
-              return <WechatAccounts {...props} />;
-            case "stickers":
-              return <WechatStickers {...props} />;
-            case "person":
-              return <WechatPerson {...props} id={route.id} />;
-            case "reply-guidance":
-              return (
-                <WechatReplyGuidance
-                  {...props}
-                  id={route.id}
-                  active={active && navigation.current}
-                />
-              );
-            case "chat":
-              return <WechatChat {...props} id={route.id} active={active && navigation.current} />;
-          }
-        }}
-      </NavigationStack>
+      <div className="wechat-navigation" inert={!!state.operationError}>
+        <NavigationStack<WechatRoute>
+          key={JSON.stringify([state.chatId, state.data.account?.scopeId, state.data.account?.id])}
+          active={active}
+          initialRoutes={[{ page: "home" }]}
+        >
+          {(route, navigation) => {
+            const props = {
+              wechat,
+              state,
+              navigation,
+              stickers,
+              stickerState,
+              sendMode,
+              preferences,
+            };
+            switch (route.page) {
+              case "home":
+                return (
+                  <WechatHome {...props} onHome={onHome} active={active && navigation.current} />
+                );
+              case "settings":
+                return <WechatSettings {...props} />;
+              case "accounts":
+                return <WechatAccounts {...props} />;
+              case "stickers":
+                return <WechatStickers {...props} />;
+              case "person":
+                return <WechatPerson {...props} id={route.id} />;
+              case "reply-guidance":
+                return (
+                  <WechatReplyGuidance
+                    {...props}
+                    id={route.id}
+                    active={active && navigation.current}
+                  />
+                );
+              case "chat":
+                return (
+                  <WechatChat {...props} id={route.id} active={active && navigation.current} />
+                );
+            }
+          }}
+        </NavigationStack>
+      </div>
+      {state.operationError ? (
+        <Alert
+          title="记忆屏障保存失败"
+          active={active}
+          actions={[{ label: "好", onClick: wechat.dismissOperationError }]}
+          onDismiss={wechat.dismissOperationError}
+        >
+          {state.operationError}
+        </Alert>
+      ) : null}
     </div>
   );
 }

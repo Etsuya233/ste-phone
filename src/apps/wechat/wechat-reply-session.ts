@@ -3,6 +3,7 @@ import type { DataAppPublic, CharacterProfile } from "../data-source/public.ts";
 import type { ModelConnectionsReader } from "../settings/public.ts";
 import type { WechatStickerLibrary } from "./wechat-sticker-library.ts";
 import type { ReplyState, WechatConversation } from "./wechat.ts";
+import { pendingWechatMessages } from "./wechat.ts";
 import { createWechatReplies } from "./wechat-reply.ts";
 
 interface ReplyTask {
@@ -37,6 +38,7 @@ export class WechatReplySession {
     sender: CharacterProfile;
     recipient: CharacterProfile;
     replyGuidance: string;
+    historyMessageLimit: number;
     save(conversation: WechatConversation, signal: AbortSignal): Promise<void>;
   }): Promise<void> {
     if (this.busy) {
@@ -57,6 +59,7 @@ export class WechatReplySession {
         sender,
         recipient,
         replyGuidance: input.replyGuidance,
+        historyMessageLimit: input.historyMessageLimit,
         conversation,
         stickerPacks: this.#dependencies.stickers.getSnapshot().packs,
         signal,
@@ -64,10 +67,20 @@ export class WechatReplySession {
       signal.throwIfAborted();
       task.committing = true;
       this.#dependencies.publish({ status: "saving", conversationId: conversation.id });
+      const completed = pendingWechatMessages(conversation, sender.id).at(-1)?.id;
+      const pendingCompletedThrough = { ...conversation.pendingCompletedThrough };
+      if (completed) {
+        pendingCompletedThrough[sender.id] = completed;
+      }
       const pendingReplies = { ...conversation.pendingReplies };
       delete pendingReplies[sender.id];
       await save(
-        { ...conversation, pendingReplies, messages: [...conversation.messages, ...messages] },
+        {
+          ...conversation,
+          pendingReplies,
+          pendingCompletedThrough,
+          messages: [...conversation.messages, ...messages],
+        },
         signal,
       );
       signal.throwIfAborted();

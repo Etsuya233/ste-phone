@@ -4,7 +4,7 @@ import type {
   RelatedBackground,
   WorldState,
 } from "../data-source/public.ts";
-import { pendingWechatMessages } from "./wechat.ts";
+import { selectWechatMemory } from "./wechat-memory.ts";
 import type { WechatConversation, TextContent } from "./wechat.ts";
 import type { wechatStickerCatalog } from "./wechat-stickers.ts";
 
@@ -27,21 +27,24 @@ export function buildWechatPrompt(input: {
   recent: RecentChatSnapshot;
   world: readonly WorldState[];
   conversation: WechatConversation;
+  historyMessageLimit: number;
   stickers?: ReturnType<typeof wechatStickerCatalog>;
   now?: Date;
 }): string {
   const { sender, recipient, summary, related, recent, world, conversation } = input;
-  const pending = pendingWechatMessages(conversation, sender.id);
-  const start = pending.length
-    ? conversation.messages.findIndex((message) => message.id === pending[0]!.id)
-    : conversation.messages.length;
+  const { eligible, pending, start, windowStart } = selectWechatMemory(
+    conversation,
+    sender.id,
+    input.historyMessageLimit,
+  );
+  const pendingIds = new Set(pending.map((message) => message.id));
   const now = input.now ?? new Date();
-  // 历史默认保留最近 30 条，本轮尚未得到回复的消息必须完整传入。
-  const historyStart = Math.min(start, Math.max(0, conversation.messages.length - 30));
-  const history = conversation.messages.slice(historyStart).map((message, index) => {
-    // 从完整历史取前一条，窗口裁剪不能抹去本轮之前的长间隔。
-    const previous = conversation.messages[historyStart + index - 1];
+  const history = eligible.slice(windowStart).map((message, index) => {
+    // 时间只能取获准后缀；窗口外的获准消息仍可描述间隔。
+    const previous = eligible[windowStart + index - 1];
     return {
+      id: message.id,
+      顺序: windowStart + index,
       senderId: message.senderId,
       sender: message.senderId === sender.id ? sender.name : recipient.name,
       text: message.content.text,
@@ -53,23 +56,25 @@ export function buildWechatPrompt(input: {
   });
   return JSON.stringify({
     本轮任务: pending.length ? "回复当前帐号本轮发送的消息" : "主动发起聊天",
-    微信现实时间: wechatTimeContext(conversation, start, now),
+    微信现实时间: wechatTimeContext(eligible, start, now),
     当前帐号: sender,
     你扮演的回复人物: recipient,
     剧情总结: summary,
     关联背景: related,
     世界状态: world,
     最近ST消息: recent.messages,
-    当前微信对话: history,
+    当前微信历史: history.filter((message) => !pendingIds.has(message.id)),
+    本轮输入: history.filter((message) => pendingIds.has(message.id)),
+    消息顺序说明: "历史与本轮输入按顺序字段合并理解；仅回复本轮输入，输入为空时主动开口。",
     可用表情: input.stickers ?? [],
   });
 }
 
-/** 待回复消息已经在历史中，间隔需从它们之前的消息计算，不能使用刚发送的末条。 */
-function wechatTimeContext(conversation: WechatConversation, start: number, now: Date) {
-  const previous = conversation.messages[start - 1];
-  const firstPending = conversation.messages[start];
-  const last = conversation.messages.at(-1);
+/** 本轮输入与历史来自同一获准序列，交流间隔从首条输入之前计算。 */
+function wechatTimeContext(messages: WechatConversation["messages"], start: number, now: Date) {
+  const previous = messages[start - 1];
+  const firstPending = messages[start];
+  const last = messages.at(-1);
   return {
     当前时刻: now.toISOString(),
     设备时区: Intl.DateTimeFormat().resolvedOptions().timeZone,

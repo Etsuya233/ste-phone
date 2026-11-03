@@ -32,6 +32,7 @@ export async function readWechatPrompt(
   sender: CharacterProfile,
   recipient: CharacterProfile,
   conversation: WechatConversation,
+  historyMessageLimit: number,
   stickers: ReturnType<typeof wechatStickerCatalog> = [],
 ): Promise<string> {
   const summary = await data.readSummary(scope);
@@ -49,6 +50,7 @@ export async function readWechatPrompt(
     recent,
     world,
     conversation,
+    historyMessageLimit,
     stickers,
   });
 }

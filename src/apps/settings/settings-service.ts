@@ -22,14 +22,16 @@ export type {
   PhoneSettingsV2,
   PhoneSettingsV3,
   PhoneSettingsV4,
+  PhoneSettingsV5,
   LegacyPhoneSettings,
   SettingsStorage,
   Wallpaper,
   WallpaperImage,
 } from "./ports/settings-storage.ts";
 export const defaultSettings: PhoneSettings = {
-  version: 5,
+  version: 6,
   wechatSendMode: "delayed",
+  wechatHistoryMessageLimit: 100,
   wallpaper: { kind: "gradient" },
   blur: false,
   modelConnections: [],
@@ -99,6 +101,11 @@ export class PhoneSettingsService {
   };
   readonly wechatPreferences: WechatPreferences = {
     getSnapshot: () => this.state.wechatSendMode,
+    getHistoryMessageLimit: () => this.state.wechatHistoryMessageLimit,
+    setHistoryMessageLimit: (limit) => {
+      validateWechatHistoryLimit(limit);
+      this.save({ ...this.state, wechatHistoryMessageLimit: limit });
+    },
     subscribe: (listener) => this.subscribe(listener),
     setSendMode: (mode) => {
       if (mode !== "immediate" && mode !== "delayed") {
@@ -137,12 +144,13 @@ export class PhoneSettingsService {
     } else if (stored.version === 3) {
       this.state = {
         ...stored,
-        version: 5,
+        version: 6,
+        wechatHistoryMessageLimit: 100,
         homeLayout: defaultHomeLayout,
         wechatSendMode: "delayed",
       };
       storage.save(this.state);
-    } else if (stored.version === 4 || stored.version === 5) {
+    } else if (stored.version === 4 || stored.version === 5 || stored.version === 6) {
       // 其他分支或旧构建可能保存过当前目录没有的应用 ID，主屏无法渲染，加载时丢弃。
       const grid = stored.homeLayout.grid.filter((id) => Object.hasOwn(appCatalog, id));
       const dock = stored.homeLayout.dock.filter((id) => Object.hasOwn(appCatalog, id));
@@ -151,14 +159,16 @@ export class PhoneSettingsService {
         dock.length !== stored.homeLayout.dock.length;
       this.state = {
         ...stored,
-        version: 5,
+        version: 6,
+        wechatHistoryMessageLimit: stored.version === 6 ? stored.wechatHistoryMessageLimit : 100,
         homeLayout: { grid, dock },
         wechatSendMode: stored.version === 4 ? "delayed" : stored.wechatSendMode,
       };
       if (this.state.wechatSendMode !== "immediate" && this.state.wechatSendMode !== "delayed") {
         throw new Error("不支持的微信发送模式");
       }
-      if (changed || stored.version === 4) {
+      validateWechatHistoryLimit(this.state.wechatHistoryMessageLimit);
+      if (changed || stored.version !== 6) {
         storage.save(this.state);
       }
     } else {
@@ -256,5 +266,11 @@ export class PhoneSettingsService {
     this.state = settings;
     this.updateSnapshots();
     this.listeners.forEach((listener) => listener());
+  }
+}
+
+export function validateWechatHistoryLimit(limit: number): void {
+  if (!Number.isSafeInteger(limit) || limit <= 0) {
+    throw new Error("历史消息条数须为正安全整数");
   }
 }

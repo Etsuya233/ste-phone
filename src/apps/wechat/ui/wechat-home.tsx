@@ -28,6 +28,7 @@ export function WechatHome({
   const conversations = state.data.conversations
     .filter(
       (item) =>
+        item.messages.length > 0 &&
         account &&
         item.people.some(
           (person) => person.id === account.id && person.scopeId === account.scopeId,
@@ -86,6 +87,7 @@ export function WechatHome({
               onOpenProfile={() => navigation.push({ page: "person", id: account.id })}
               onSwitchAccount={() => navigation.push({ page: "accounts" })}
               onOpenStickers={() => navigation.push({ page: "stickers" })}
+              onOpenSettings={() => navigation.push({ page: "settings" })}
             />
           )}
         </>
@@ -199,6 +201,7 @@ function WechatMe({
   onOpenProfile,
   onSwitchAccount,
   onOpenStickers,
+  onOpenSettings,
 }: {
   preferences: WechatPageProps["preferences"];
   name: string;
@@ -206,6 +209,7 @@ function WechatMe({
   onOpenProfile(): void;
   onSwitchAccount(): void;
   onOpenStickers(): void;
+  onOpenSettings(): void;
 }) {
   return (
     <>
@@ -215,6 +219,7 @@ function WechatMe({
         <ListCell title="个人资料" onClick={onOpenProfile} />
         <ListCell title="切换帐号" onClick={onSwitchAccount} />
         <ListCell title="表情包" onClick={onOpenStickers} />
+        <ListCell title="设置" onClick={onOpenSettings} />
       </GroupedList>
       <WechatSendPreferences preferences={preferences} />
     </>
