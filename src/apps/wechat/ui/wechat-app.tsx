@@ -8,6 +8,7 @@ import { WechatAccounts, WechatPerson } from "./wechat-people.tsx";
 import { WechatChat } from "./wechat-chat.tsx";
 import { WechatStickers } from "./wechat-stickers.tsx";
 import type { WechatStickerLibrary } from "../wechat-sticker-library.ts";
+import { WechatReplyGuidance } from "./wechat-reply-guidance.tsx";
 
 export function WechatApp({
   wechat,
@@ -56,6 +57,14 @@ export function WechatApp({
               return <WechatStickers {...props} />;
             case "person":
               return <WechatPerson {...props} id={route.id} />;
+            case "reply-guidance":
+              return (
+                <WechatReplyGuidance
+                  {...props}
+                  id={route.id}
+                  active={active && navigation.current}
+                />
+              );
             case "chat":
               return <WechatChat {...props} id={route.id} active={active && navigation.current} />;
           }

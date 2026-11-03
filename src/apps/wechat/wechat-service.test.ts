@@ -12,6 +12,7 @@ function fixture() {
     { id: "a", name: "甲", profileText: "人物甲" },
     { id: "b", name: "乙", profileText: "人物乙" },
   ];
+  let stableScopeId = "stable";
   const context = {
     available: true,
     chatIdentity: "memory-chat",
@@ -37,7 +38,7 @@ function fixture() {
     readBackground: async () => ({
       sourceId: "ste-memory",
       scopeId: "instance",
-      stableScopeId: "stable",
+      stableScopeId,
       characters: people,
       chronicles: [],
       items: [],
@@ -205,6 +206,9 @@ function fixture() {
     preferences,
     stickers,
     data,
+    setScope(id: string) {
+      stableScopeId = id;
+    },
     switchChat(id: string) {
       chatId = id;
       for (const listener of chatListeners) {
@@ -588,5 +592,163 @@ test("a user save completed after switching away and back remains in the active 
   assert.equal(f.calls, 0);
   await f.service.enqueue("b", "下一条消息");
   assert.equal(f.stored!.conversations[0]!.messages.length, 2);
+  f.service.dispose();
+});
+
+test("reply guidance belongs to stable people in one ST chat and survives restore and account changes", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  assert.equal(Object.hasOwn(f.stored!, "replyGuidance"), false); // 已有 v1 数据可直接编辑，无需重写历史。
+  await f.service.saveReplyGuidance("a", "甲的指导");
+  await f.service.saveReplyGuidance("b", "  乙的指导\n多用 Emoji  ");
+  assert.deepEqual(f.stored!.replyGuidance, {
+    stable: { a: "甲的指导", b: "乙的指导\n多用 Emoji" },
+  });
+  const restored = f.restore();
+  await restored.prepare();
+  await restored.selectAccount("b");
+  assert.deepEqual(restored.getSnapshot().data.replyGuidance, f.stored!.replyGuidance);
+  restored.dispose();
+  f.switchChat("other-chat");
+  await f.service.prepare();
+  assert.equal(f.service.getSnapshot().data.replyGuidance, undefined);
+  await f.service.saveReplyGuidance("b", "另一聊天的指导");
+  f.switchChat("st-chat");
+  await f.service.prepare();
+  assert.equal(f.service.getSnapshot().data.replyGuidance!.stable!.b, "乙的指导\n多用 Emoji");
+  f.setScope("other-stable-scope");
+  await f.service.prepare();
+  await f.service.saveReplyGuidance("b", "另一空间的指导");
+  const guidance = f.service.getSnapshot().data.replyGuidance!;
+  assert.equal(guidance.stable!.b, "乙的指导\n多用 Emoji");
+  assert.equal(guidance["other-stable-scope"]!.b, "另一空间的指导");
+  f.service.dispose();
+});
+
+test("only the reply person's guidance enters system instructions, and clearing restores the default", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.saveReplyGuidance("a", "甲专用的傲娇指导");
+  await f.service.saveReplyGuidance("b", "乙专用的 Emoji 指导");
+  await f.service.send("b", "");
+  let request = JSON.parse(f.prompt);
+  let system = request.messages.filter((message: { role: string }) => message.role === "system");
+  assert.match(JSON.stringify(system), /乙专用的 Emoji 指导/);
+  assert.doesNotMatch(JSON.stringify(system), /甲专用的傲娇指导/);
+  assert.match(JSON.stringify(system), /指导不改变剧情事实/);
+  assert.doesNotMatch(
+    JSON.stringify(request.messages.filter((message: { role: string }) => message.role === "user")),
+    /乙专用的 Emoji 指导/,
+  );
+  await f.service.selectAccount("b");
+  await f.service.send("a", "换个视角");
+  assert.match(f.prompt, /甲专用的傲娇指导/);
+  assert.doesNotMatch(f.prompt, /乙专用的 Emoji 指导/);
+  await f.service.saveReplyGuidance("a", " \n ");
+  await f.service.send("a", "继续");
+  request = JSON.parse(f.prompt);
+  system = request.messages.filter((message: { role: string }) => message.role === "system");
+  assert.doesNotMatch(JSON.stringify(system), /甲专用的傲娇指导|用户为当前回复人物设置/);
+  assert.equal(f.stored!.replyGuidance!.stable!.a, undefined);
+  f.service.dispose();
+});
+
+test("guidance is fixed before background reads and edits apply to the next generation and retry", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.saveReplyGuidance("b", "原本的指导");
+  const readSummary = f.data.readSummary;
+  let release!: () => void;
+  let started!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  f.data.readSummary = async () => {
+    started();
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return "全部剧情总结";
+  };
+  const replying = f.service.requestReply("b");
+  await waiting;
+  await f.service.saveReplyGuidance("b", "修改后的指导");
+  release();
+  await replying;
+  assert.match(f.prompt, /原本的指导/);
+  assert.doesNotMatch(f.prompt, /修改后的指导/);
+  assert.equal(f.stored!.replyGuidance!.stable!.b, "修改后的指导");
+  assert.equal(f.stored!.conversations[0]!.messages.length, 2);
+  f.data.readSummary = readSummary;
+  f.invalid(true);
+  await f.service.send("b", "触发失败");
+  assert.match(f.prompt, /修改后的指导/);
+  await f.service.saveReplyGuidance("b", "重试的新指导");
+  f.invalid(false);
+  await f.service.requestReply("b");
+  assert.match(f.prompt, /重试的新指导/);
+  assert.doesNotMatch(f.prompt, /修改后的指导/);
+  assert.equal(f.stored!.conversations[0]!.messages.length, 5);
+  f.service.dispose();
+});
+
+test("reply completion waits for a guidance write and preserves both changes", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const modelStarted = f.holdModel();
+  const replying = f.service.requestReply("b");
+  await modelStarted;
+  const saveStarted = f.holdNextSave();
+  const saving = f.service.saveReplyGuidance("b", "生成期间的新指导");
+  await saveStarted;
+  f.releaseModel();
+  f.releaseSave();
+  await Promise.all([saving, replying]);
+  assert.equal(f.stored!.replyGuidance!.stable!.b, "生成期间的新指导");
+  assert.equal(f.stored!.conversations[0]!.messages.length, 2);
+  f.service.dispose();
+});
+
+test("a guidance save queued behind a canceled reply uses the rolled back conversation", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const started = f.holdNextSave();
+  const replying = f.service.requestReply("b");
+  await started;
+  const saving = f.service.saveReplyGuidance("b", "保留新指导");
+  f.service.cancel();
+  f.releaseSave();
+  await Promise.all([saving, replying]);
+  assert.equal(f.stored!.replyGuidance!.stable!.b, "保留新指导");
+  assert.equal(f.stored!.conversations.length, 0);
+  f.service.dispose();
+});
+
+test("failed guidance writes retain saved data, allow retry and never write into a switched chat", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.saveReplyGuidance("b", "已保存指导");
+  f.failSave(true);
+  await assert.rejects(f.service.saveReplyGuidance("b", "失败的修改"), /磁盘失败/);
+  assert.equal(f.service.getSnapshot().data.replyGuidance!.stable!.b, "已保存指导");
+  f.failSave(false);
+  const started = f.holdNextSave();
+  const saving = f.service.saveReplyGuidance("b", "原聊天的修改");
+  await started;
+  const queued = f.service.saveReplyGuidance("a", "排队期间换聊天");
+  f.switchChat("other-chat");
+  f.releaseSave();
+  await saving;
+  await assert.rejects(queued, /聊天已变化/);
+  assert.equal(f.service.getSnapshot().data.replyGuidance, undefined);
+  assert.equal(f.stored, null);
+  f.switchChat("st-chat");
+  assert.equal(f.service.getSnapshot().data.replyGuidance!.stable!.b, "原聊天的修改");
   f.service.dispose();
 });

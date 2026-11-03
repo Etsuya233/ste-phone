@@ -3,6 +3,7 @@ import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { PersonAvatar, type WechatPageProps } from "./wechat-page.tsx";
 import { PersonIdentity, ProfileFields } from "./wechat-profile.tsx";
+import { GroupedList } from "../../../frontend/foundation/grouped-list.tsx";
 
 export function WechatAccounts({ wechat, state, navigation }: WechatPageProps) {
   return (
@@ -54,9 +55,21 @@ export function WechatAccounts({ wechat, state, navigation }: WechatPageProps) {
 export function WechatPerson({ state, navigation, id }: WechatPageProps & { id: string }) {
   const person = state.people.find((item) => item.id === id);
   const self = state.data.account?.id === id;
+  const guidance = state.data.replyGuidance?.[state.scopeId!]?.[id];
   const content = person ? (
     <>
       <PersonIdentity name={person.name} />
+      <GroupedList>
+        <button
+          type="button"
+          className="wechat-field wechat-field--block"
+          onClick={() => navigation.push({ page: "reply-guidance", id })}
+        >
+          <span>回复指导</span>
+          <span className="wechat-field-value wechat-guidance-preview">{guidance || "未设置"}</span>
+          <span className="wechat-field-toggle">编辑</span>
+        </button>
+      </GroupedList>
       {person.profileText ? (
         <ProfileFields name={person.name} profileText={person.profileText} />
       ) : (

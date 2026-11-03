@@ -1,4 +1,5 @@
 @import "./wechat-chat.css";
+@import "./wechat-reply-guidance.css";
 
 :host .wechat-app {
   height: 100%;

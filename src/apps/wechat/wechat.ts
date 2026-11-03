@@ -27,6 +27,8 @@ export interface WechatData {
   readonly version: 1;
   readonly account: WechatPerson | null;
   readonly conversations: readonly WechatConversation[];
+  /** 旧 v1 数据未填写指导；按稳定空间、稳定人物身份保存，所有微信帐号共享。 */
+  readonly replyGuidance?: Readonly<Record<string, Readonly<Record<string, string>>>>;
 }
 export type ReplyState =
   | { readonly status: "idle" }

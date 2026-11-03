@@ -18,6 +18,7 @@ export async function createWechatReplies(input: {
   transport: AiTransport;
   sender: CharacterProfile;
   recipient: CharacterProfile;
+  replyGuidance: string;
   conversation: WechatConversation;
   signal: AbortSignal;
   stickerPacks: readonly WechatStickerPack[];
@@ -39,7 +40,14 @@ export async function createWechatReplies(input: {
     stickers,
   );
   signal.throwIfAborted();
-  const contents = await generateWechatReply({ transport, connection, prompt, signal, stickers });
+  const contents = await generateWechatReply({
+    transport,
+    connection,
+    prompt,
+    signal,
+    stickers,
+    replyGuidance: input.replyGuidance,
+  });
   const messages = contents.map((content) => createWechatMessage(recipient.id, content));
   const batchId = messages[0]!.id;
   const triggerMessageId = pendingWechatMessages(conversation, sender.id).at(-1)?.id;

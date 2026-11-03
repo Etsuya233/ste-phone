@@ -81,6 +81,28 @@ test("group save uses the group endpoint and HTTP errors remain observable", asy
   assert.equal(calls[0]!.body.force, false);
 });
 
+test("reply guidance round-trips through chat metadata for single and group chats", async () => {
+  for (const groupId of [null, "group-a"]) {
+    let body!: { chat: { chat_metadata: { ste_phone: { wechat: unknown; diary: unknown } } }[] };
+    const f = fixture((async (_, init) => {
+      body = JSON.parse(init!.body as string);
+      return new Response(null, { status: 200 });
+    }) as typeof fetch);
+    f.context.groupId = groupId;
+    const data = {
+      ...emptyWechat(),
+      replyGuidance: { "stable-scope": { person: "多用 Emoji 😊\n更傲娇一些" } },
+    };
+    await f.storage.write("a", data);
+    assert.deepEqual(body.chat[0]!.chat_metadata.ste_phone.wechat, data);
+    assert.deepEqual(body.chat[0]!.chat_metadata.ste_phone.diary, {
+      version: 1,
+      entries: ["kept"],
+    });
+    assert.deepEqual(f.storage.read("a"), data);
+  }
+});
+
 test("canceling an acknowledged save rolls back the captured target after chat switch", async () => {
   let finish!: (value: Response) => void;
   const calls: { url: string; body: Record<string, unknown> }[] = [];

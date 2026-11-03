@@ -41,6 +41,7 @@ export class WechatService {
   #preparation = 0;
   #sourceKey: string;
   #sourceRevision: number;
+  #writes: Promise<void> = Promise.resolve();
 
   constructor(dependencies: Dependencies) {
     this.#dependencies = dependencies;
@@ -107,11 +108,12 @@ export class WechatService {
     if (!person || !this.#snapshot.scopeId) {
       throw new Error("请选择当前资料中的人物");
     }
+    const scopeId = this.#snapshot.scopeId;
     try {
-      await this.#save({
-        ...this.#snapshot.data,
-        account: { id, name: person.name, scopeId: this.#snapshot.scopeId },
-      });
+      await this.#save((data) => ({
+        ...data,
+        account: { id, name: person.name, scopeId },
+      }));
       return true;
     } catch (error) {
       this.#publish({ error: (error as Error).message });
@@ -126,6 +128,25 @@ export class WechatService {
           (item) => item.id === conversationId(account.scopeId, account.id, otherId),
         )
       : undefined;
+  }
+  async saveReplyGuidance(id: string, text: string): Promise<void> {
+    if (this.#sending) {
+      throw new Error("请等待消息保存完成后再保存回复指导");
+    }
+    const { scopeId, people } = this.#snapshot;
+    if (!scopeId || !people.some((person) => person.id === id)) {
+      throw new Error("当前人物资料不可用，无法保存回复指导");
+    }
+    const guidance = text.trim();
+    await this.#save((data) => {
+      const peopleGuidance = { ...data.replyGuidance?.[scopeId] };
+      if (guidance) {
+        peopleGuidance[id] = guidance;
+      } else {
+        delete peopleGuidance[id];
+      }
+      return { ...data, replyGuidance: { ...data.replyGuidance, [scopeId]: peopleGuidance } };
+    });
   }
   getDraft(otherId: string): string {
     return this.#drafts.get(this.#draftKey(otherId)) ?? "";
@@ -195,7 +216,7 @@ export class WechatService {
       reply: { status: "sending", conversationId: conversation.id },
     });
     try {
-      await this.#save(this.#dataWithConversation(next));
+      await this.#save(() => this.#dataWithConversation(next));
       if (operation === this.#operation) {
         this.#publish({ reply: { status: "idle" } });
         options.onSent?.();
@@ -246,7 +267,9 @@ export class WechatService {
       conversation,
       sender,
       recipient,
-      save: (next, signal) => this.#save(this.#dataWithConversation(next), signal),
+      // 在取材前固定本轮指导；生成期间保存的新内容只影响下一轮。
+      replyGuidance: this.#snapshot.data.replyGuidance?.[account.scopeId]?.[otherId] ?? "",
+      save: (next, signal) => this.#save(() => this.#dataWithConversation(next), signal),
     });
   }
 
@@ -281,19 +304,29 @@ export class WechatService {
     };
   }
 
-  async #save(value: WechatData, signal?: AbortSignal): Promise<void> {
+  async #save(update: (data: WechatData) => WechatData, signal?: AbortSignal): Promise<void> {
     const chatId = this.#snapshot.chatId;
     if (!chatId) {
       throw new Error("请先打开一个 ST 聊天");
     }
     const operation = this.#operation;
-    await this.#dependencies.storage.write(chatId, value, signal);
-    signal?.throwIfAborted();
-    if (this.#snapshot.chatId === chatId) {
-      // 保存期间写入锁排除了新消息；返回原聊天后同步已落库内容，保留最新人物视角。
-      const account = operation === this.#operation ? value.account : this.#snapshot.data.account;
-      this.#publish({ data: { ...value, account }, error: null });
-    }
+    // 指导编辑与消息共用聊天快照，依次提交并在执行时合并最新数据，避免互相覆盖。
+    const writing = this.#writes.then(async () => {
+      signal?.throwIfAborted();
+      if (this.#snapshot.chatId !== chatId) {
+        throw new Error("当前聊天已变化，无法保存微信");
+      }
+      const value = update(this.#snapshot.data);
+      await this.#dependencies.storage.write(chatId, value, signal);
+      signal?.throwIfAborted();
+      if (this.#snapshot.chatId === chatId) {
+        const account = operation === this.#operation ? value.account : this.#snapshot.data.account;
+        this.#publish({ data: { ...value, account }, error: null });
+      }
+    });
+    // 单次失败交还调用页面展示；后续明确发起的保存仍可继续。
+    this.#writes = writing.catch(() => {});
+    await writing;
   }
   cancel(): void {
     ++this.#operation;

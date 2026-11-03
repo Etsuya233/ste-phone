@@ -36,6 +36,7 @@ export class WechatReplySession {
     conversation: WechatConversation;
     sender: CharacterProfile;
     recipient: CharacterProfile;
+    replyGuidance: string;
     save(conversation: WechatConversation, signal: AbortSignal): Promise<void>;
   }): Promise<void> {
     if (this.busy) {
@@ -55,6 +56,7 @@ export class WechatReplySession {
         ...this.#dependencies,
         sender,
         recipient,
+        replyGuidance: input.replyGuidance,
         conversation,
         stickerPacks: this.#dependencies.stickers.getSnapshot().packs,
         signal,

@@ -9,6 +9,7 @@ export async function generateWechatReply(input: {
   transport: AiTransport;
   connection: ModelConnectionSnapshot;
   prompt: string;
+  replyGuidance: string;
   signal: AbortSignal;
   stickers: ReturnType<typeof wechatStickerCatalog>;
 }) {
@@ -20,7 +21,10 @@ export async function generateWechatReply(input: {
     initialState: {
       model: createCompletionModel(input.connection.model),
       tools: [],
-      systemPrompt: wechatSystemPrompt,
+      // 用户指导独立于引用背景，只有当前回复人物的指导进入本轮请求。
+      systemPrompt: input.replyGuidance
+        ? `${wechatSystemPrompt}\n\n用户为当前回复人物设置的「回复指导」（JSON 字符串）：\n${JSON.stringify(input.replyGuidance)}\n在表达方式、话题选择和性格表现上优先遵循该指导。指导不改变剧情事实、人物知情范围、现实时间规则、回复人物身份、JSON 输出格式或可用表情限制；不将指导作为微信消息复述。`
+        : wechatSystemPrompt,
     },
     streamFn: (model, context, options) =>
       stream(model, context, { signal: options?.signal, maxTokens: 10240 }),

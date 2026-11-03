@@ -5,7 +5,8 @@ import type { WechatSnapshot } from "../wechat.ts";
 import type { WechatStickerLibrary } from "../wechat-sticker-library.ts";
 
 export type WechatRoute =
-  { page: "home" | "accounts" | "stickers" } | { page: "chat" | "person"; id: string };
+  | { page: "home" | "accounts" | "stickers" }
+  | { page: "chat" | "person" | "reply-guidance"; id: string };
 export interface WechatPageProps {
   wechat: WechatService;
   preferences: WechatPreferences;
