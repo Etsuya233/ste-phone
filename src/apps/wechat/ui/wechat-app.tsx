@@ -78,6 +78,7 @@ export function WechatApp({
                   <WechatMomentCompose
                     {...props}
                     scopeId={route.scopeId}
+                    onPublished={route.onPublished}
                     active={active && navigation.current}
                   />
                 );

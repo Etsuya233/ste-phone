@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { Page } from "../../../frontend/foundation/page.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
@@ -16,6 +17,15 @@ export function WechatMoments({
 }: WechatPageProps & { scopeId: string }) {
   const moments = state.data.moments?.[scopeId] ?? [];
   const reason = momentWritingReason(state, scopeId);
+  const feed = useRef<HTMLDivElement>(null);
+  const revealPublished = useRef(false);
+  useLayoutEffect(() => {
+    // 只消费本页发起的发布成功通知，等导航返回后定位；普通浏览返回保留阅读位置。
+    if (navigation.current && revealPublished.current) {
+      feed.current!.closest(".ios-page-content")!.scrollTop = 0;
+      revealPublished.current = false;
+    }
+  }, [navigation.current]);
   return (
     <Page
       navBar={
@@ -25,7 +35,15 @@ export function WechatMoments({
           right={
             <Button
               disabled={!!reason}
-              onClick={() => navigation.push({ page: "moment-compose", scopeId })}
+              onClick={() =>
+                navigation.push({
+                  page: "moment-compose",
+                  scopeId,
+                  onPublished: () => {
+                    revealPublished.current = true;
+                  },
+                })
+              }
             >
               发布
             </Button>
@@ -43,7 +61,7 @@ export function WechatMoments({
         </Button>
       </div>
       {!moments.length ? <p className="wechat-notice">暂无动态，分享此刻的日常吧。</p> : null}
-      <div className="wechat-moments-feed">
+      <div ref={feed} className="wechat-moments-feed">
         {moments.toReversed().map((moment) => (
           <article className="wechat-moment" key={moment.id}>
             <MomentAuthor author={moment.author} state={state} navigation={navigation} />

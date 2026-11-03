@@ -11,7 +11,12 @@ import { momentWritingReason } from "./wechat-moment-content.tsx";
 
 type Confirmation = { type: "discard" } | { type: "media"; media: MomentMedia } | null;
 
-function useMomentCompose({ wechat, navigation, active }: WechatPageProps & { active: boolean }) {
+function useMomentCompose({
+  wechat,
+  navigation,
+  active,
+  onPublished,
+}: WechatPageProps & { active: boolean; onPublished(): void }) {
   const [draft, setDraft] = useState<MomentContent>({ text: "", media: { type: "none" } });
   const [status, setStatus] = useState<"editing" | "saving" | "saved">("editing");
   const [error, setError] = useState<string | null>(null);
@@ -19,9 +24,10 @@ function useMomentCompose({ wechat, navigation, active }: WechatPageProps & { ac
   useEffect(() => {
     // 保存完成后仅在本页回到前台时返回；Home 和关闭手机不触发后台导航。
     if (active && status === "saved") {
+      onPublished();
       navigation.pop();
     }
-  }, [active, status, navigation]);
+  }, [active, status, navigation, onPublished]);
   async function publish() {
     setStatus("saving");
     setError(null);
@@ -85,7 +91,9 @@ function useMomentCompose({ wechat, navigation, active }: WechatPageProps & { ac
   };
 }
 
-export function WechatMomentCompose(props: WechatPageProps & { scopeId: string; active: boolean }) {
+export function WechatMomentCompose(
+  props: WechatPageProps & { scopeId: string; active: boolean; onPublished(): void },
+) {
   const { state, scopeId, active } = props;
   const editor = useMomentCompose(props);
   const reason = momentWritingReason(state, scopeId);
