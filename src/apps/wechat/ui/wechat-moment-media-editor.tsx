@@ -32,12 +32,26 @@ export function MomentMediaEditor({
     [next[index], next[index + direction]] = [next[index + direction]!, next[index]!];
     onChange({ type: "images", descriptions: next });
   }
+  function remove(index: number) {
+    onChange({
+      type: "images",
+      descriptions: descriptions.filter((_, position) => position !== index),
+    });
+  }
   return (
     <div className="wechat-moment-images-editor">
       {descriptions.map((description, index) => (
         <div className="wechat-moment-image-editor" key={index}>
+          <div className="wechat-moment-image-heading">
+            <span>
+              图片 {index + 1}/{descriptions.length}
+            </span>
+            <Button disabled={disabled} onClick={() => remove(index)}>
+              删除
+            </Button>
+          </div>
           <label className="wechat-moment-label">
-            图片 {index + 1} 描述
+            描述
             <textarea
               rows={3}
               value={description}
@@ -52,31 +66,26 @@ export function MomentMediaEditor({
               }
             />
           </label>
-          <div className="wechat-moment-actions">
-            <Button disabled={disabled || index === 0} onClick={() => move(index, -1)}>
-              上移
+          <div className="wechat-moment-image-actions">
+            <Button
+              aria-label={`上移图片 ${index + 1}`}
+              disabled={disabled || index === 0}
+              onClick={() => move(index, -1)}
+            >
+              ↑
             </Button>
             <Button
+              aria-label={`下移图片 ${index + 1}`}
               disabled={disabled || index === descriptions.length - 1}
               onClick={() => move(index, 1)}
             >
-              下移
-            </Button>
-            <Button
-              disabled={disabled}
-              onClick={() =>
-                onChange({
-                  type: "images",
-                  descriptions: descriptions.filter((_, position) => position !== index),
-                })
-              }
-            >
-              删除图片 {index + 1}
+              ↓
             </Button>
           </div>
         </div>
       ))}
       <Button
+        className="wechat-moment-add-image"
         disabled={disabled || descriptions.length >= 9}
         onClick={() => onChange({ type: "images", descriptions: [...descriptions, ""] })}
       >

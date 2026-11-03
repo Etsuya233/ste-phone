@@ -75,13 +75,15 @@ export function MomentGenerationNotice({
       role={generation.status === "error" ? "alert" : "status"}
     >
       <span>
-        {finished
+        {generation.status === "complete" || generation.status === "error"
           ? generation.message
           : generation.status === "stopping"
             ? "正在停止并确认保存撤回…"
             : generation.status === "saving"
               ? "正在保存朋友圈…"
-              : "正在生成朋友圈…"}
+              : generation.status === "running" && generation.kind === "post"
+                ? "正在生成动态…"
+                : "正在生成互动…"}
       </span>
       <Button
         disabled={generation.status === "stopping"}

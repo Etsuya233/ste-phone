@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Page } from "../../../frontend/foundation/page.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
+import { readProfileSummary } from "../profile-fields.ts";
+import type { WechatSnapshot } from "../wechat.ts";
 import { PersonAvatar, type WechatPageProps } from "./wechat-page.tsx";
 import { momentWritingReason } from "./wechat-moment-content.tsx";
 
@@ -12,7 +14,13 @@ export function WechatMomentParticipants({
   scopeId,
   id,
   active,
-}: WechatPageProps & { scopeId: string; id: string; active: boolean }) {
+  onInteracted,
+}: WechatPageProps & {
+  scopeId: string;
+  id: string;
+  active: boolean;
+  onInteracted(count: number): void;
+}) {
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [complete, setComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,9 +34,12 @@ export function WechatMomentParticipants({
   }, [active, complete, navigation]);
   async function generate() {
     setError(null);
+    const before = commentCount(wechat.getSnapshot(), scopeId, id);
     try {
       await wechat.moments.generateInteraction(id, selected);
-      if (wechat.getSnapshot().momentGeneration.status === "complete") {
+      const snapshot = wechat.getSnapshot();
+      if (snapshot.momentGeneration.status === "complete") {
+        onInteracted(commentCount(snapshot, scopeId, id) - before);
         setComplete(true);
       }
     } catch (error) {
@@ -79,7 +90,7 @@ export function WechatMomentParticipants({
               <PersonAvatar name={person.name} />
               <span>
                 <strong>{person.name}</strong>
-                <small>{person.profileText}</small>
+                <small>{readProfileSummary(person.profileText)}</small>
               </span>
             </label>
           );
@@ -93,4 +104,8 @@ export function WechatMomentParticipants({
       ) : null}
     </Page>
   );
+}
+
+function commentCount(snapshot: WechatSnapshot, scopeId: string, id: string): number {
+  return snapshot.data.moments?.[scopeId]?.find((moment) => moment.id === id)?.comments.length ?? 0;
 }

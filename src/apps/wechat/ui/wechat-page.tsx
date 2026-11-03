@@ -9,7 +9,13 @@ export type WechatRoute =
   | { page: "chat" | "person" | "reply-guidance"; id: string }
   | { page: "moments" | "moment-ai-author"; scopeId: string }
   | { page: "moment-compose"; scopeId: string; onPublished(): void }
-  | { page: "moment-detail" | "moment-participants"; scopeId: string; id: string };
+  | { page: "moment-detail"; scopeId: string; id: string }
+  | {
+      page: "moment-participants";
+      scopeId: string;
+      id: string;
+      onInteracted(count: number): void;
+    };
 export interface WechatPageProps {
   wechat: WechatService;
   preferences: WechatPreferences;

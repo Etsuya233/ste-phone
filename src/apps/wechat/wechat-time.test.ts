@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatWechatTime, needsWechatTimeSeparator } from "./wechat-time.ts";
+import {
+  formatWechatMomentFullTime,
+  formatWechatMomentTime,
+  formatWechatTime,
+  needsWechatTimeSeparator,
+} from "./wechat-time.ts";
 import { buildWechatPrompt, wechatSystemPrompt } from "./wechat-prompt.ts";
 
 test("local calendar labels distinguish today, yesterday, dates and years", () => {
@@ -16,6 +21,29 @@ test("local calendar labels distinguish today, yesterday, dates and years", () =
   assert.equal(formatWechatTime(earlier, now, true), "10/30");
   assert.equal(formatWechatTime(lastYear, now), "2025/12/31 14:32");
   assert.equal(formatWechatTime(today, new Date(2026, 10, 4)), "昨天 14:32");
+});
+
+test("moment labels use relative minutes, hours, yesterday and calendar dates", () => {
+  const now = new Date(2026, 10, 3, 16);
+  assert.equal(
+    formatWechatMomentTime(new Date(2026, 10, 3, 15, 59, 30).toISOString(), now),
+    "刚刚",
+  );
+  assert.equal(
+    formatWechatMomentTime(new Date(2026, 10, 3, 15, 55).toISOString(), now),
+    "5 分钟前",
+  );
+  assert.equal(formatWechatMomentTime(new Date(2026, 10, 3, 13).toISOString(), now), "3 小时前");
+  assert.equal(
+    formatWechatMomentTime(new Date(2026, 10, 2, 23, 5).toISOString(), now),
+    "昨天 23:05",
+  );
+  assert.equal(formatWechatMomentTime(new Date(2026, 9, 30, 14).toISOString(), now), "10/30");
+  assert.equal(formatWechatMomentTime(new Date(2025, 11, 31, 14).toISOString(), now), "2025/12/31");
+  assert.equal(
+    formatWechatMomentFullTime(new Date(2026, 10, 3, 17, 12).toISOString()),
+    "2026/11/3 17:12",
+  );
 });
 
 test("message separators cover first message, five-minute boundary and midnight", () => {

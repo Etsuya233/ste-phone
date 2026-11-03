@@ -107,7 +107,11 @@ export function WechatMomentCompose(
               title="发布动态"
               back={{ label: "朋友圈", onClick: editor.back }}
               right={
-                <Button disabled={locked || !!reason} onClick={() => void editor.publish()}>
+                <Button
+                  className="wechat-moment-primary"
+                  disabled={locked || !!reason}
+                  onClick={() => void editor.publish()}
+                >
                   {editor.status === "saving" ? "保存中" : "发布"}
                 </Button>
               }

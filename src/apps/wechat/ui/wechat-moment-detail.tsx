@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Page } from "../../../frontend/foundation/page.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
@@ -89,11 +89,52 @@ function useMomentDetail({
   };
 }
 
+function useRevealComments(active: boolean) {
+  const commentsRef = useRef<HTMLElement>(null);
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [newCommentCount, setNewCommentCount] = useState(0);
+  useLayoutEffect(() => {
+    if (!active || pendingCount === null) {
+      return;
+    }
+    setPendingCount(null);
+    setNewCommentCount(pendingCount);
+    if (pendingCount <= 0) {
+      return;
+    }
+    // 等新增提示渲染后再定位，避免提示自身高度把目标挤出视口。
+    requestAnimationFrame(() => {
+      const section = commentsRef.current;
+      const scroller = section?.closest<HTMLElement>(".ios-page-content");
+      if (!section || !scroller) {
+        return;
+      }
+      const comments = section.querySelectorAll<HTMLElement>("[data-comment-id]");
+      const firstNew = comments[comments.length - pendingCount];
+      if (!firstNew) {
+        return;
+      }
+      const target = firstNew.getBoundingClientRect();
+      const viewport = scroller.getBoundingClientRect();
+      scroller.scrollTo({
+        top: scroller.scrollTop + target.top - viewport.top - 12,
+        behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      });
+    });
+  }, [active, pendingCount]);
+  return {
+    commentsRef,
+    newCommentCount,
+    revealComments: (count: number) => setPendingCount(count),
+  };
+}
+
 export function WechatMomentDetail(
   props: WechatPageProps & { id: string; scopeId: string; active: boolean },
 ) {
   const { state, navigation, id, scopeId, active } = props;
   const editor = useMomentDetail(props);
+  const reveal = useRevealComments(active);
   const moment = state.data.moments?.[scopeId]?.find((item) => item.id === id);
   const reason = momentWritingReason(state, scopeId);
   const locked = !!reason || editor.status !== "editing";
@@ -110,6 +151,7 @@ export function WechatMomentDetail(
               right={
                 moment && own(moment.author.id) ? (
                   <Button
+                    variant="danger"
                     disabled={locked}
                     onClick={() => editor.setConfirmation({ type: "moment" })}
                   >
@@ -122,12 +164,23 @@ export function WechatMomentDetail(
         >
           {moment ? (
             <>
+              <article className="wechat-moment">
+                <MomentAuthor author={moment.author} state={state} navigation={navigation} />
+                <MomentContentView moment={moment} />
+              </article>
               <div className="wechat-moment-ai-actions">
                 <Button
                   disabled={
                     locked || !state.people.some((person) => person.id !== state.data.account?.id)
                   }
-                  onClick={() => navigation.push({ page: "moment-participants", scopeId, id })}
+                  onClick={() =>
+                    navigation.push({
+                      page: "moment-participants",
+                      scopeId,
+                      id,
+                      onInteracted: reveal.revealComments,
+                    })
+                  }
                 >
                   AI 生成互动
                 </Button>
@@ -135,12 +188,17 @@ export function WechatMomentDetail(
                   <p className="wechat-notice">没有可参与互动的其他人物。</p>
                 ) : null}
               </div>
-              <article className="wechat-moment">
-                <MomentAuthor author={moment.author} state={state} navigation={navigation} />
-                <MomentContentView moment={moment} />
-              </article>
-              <section className="wechat-moment-comments" aria-label="全部评论">
+              <section
+                ref={reveal.commentsRef}
+                className="wechat-moment-comments"
+                aria-label="全部评论"
+              >
                 <h2>评论 {moment.comments.length}</h2>
+                {reveal.newCommentCount ? (
+                  <p className="wechat-moment-new-comments" role="status">
+                    AI 新增了 {reveal.newCommentCount} 条评论
+                  </p>
+                ) : null}
                 {!moment.comments.length ? <p className="wechat-notice">还没有评论。</p> : null}
                 {moment.comments.map((comment) => (
                   <MomentCommentView
@@ -164,36 +222,50 @@ export function WechatMomentDetail(
           )}
         </Page>
       </div>
-      {editor.confirmation ? (
-        <Alert
-          active={active}
-          title={
-            editor.confirmation.type === "discard"
-              ? "舍弃评论？"
-              : editor.confirmation.type === "moment"
-                ? "删除动态？"
-                : "删除评论？"
-          }
-          onDismiss={() => editor.setConfirmation(null)}
-          actions={[
-            {
-              label: editor.confirmation.type === "discard" ? "继续编辑" : "取消",
-              onClick: () => editor.setConfirmation(null),
-            },
-            {
-              label: editor.confirmation.type === "discard" ? "舍弃" : "删除",
-              onClick: () => void editor.confirm(),
-            },
-          ]}
-        >
-          {editor.confirmation.type === "moment"
-            ? "动态及其全部评论将被删除。"
-            : editor.confirmation.type === "comment"
-              ? "原评论将被删除，其他人的回复会保留。"
-              : "未提交的评论将被舍弃。"}
-        </Alert>
-      ) : null}
+      <MomentConfirmation editor={editor} active={active} />
     </>
+  );
+}
+
+function MomentConfirmation({
+  editor,
+  active,
+}: {
+  editor: ReturnType<typeof useMomentDetail>;
+  active: boolean;
+}) {
+  const confirmation = editor.confirmation;
+  if (!confirmation) {
+    return null;
+  }
+  return (
+    <Alert
+      active={active}
+      title={
+        confirmation.type === "discard"
+          ? "舍弃评论？"
+          : confirmation.type === "moment"
+            ? "删除动态？"
+            : "删除评论？"
+      }
+      onDismiss={() => editor.setConfirmation(null)}
+      actions={[
+        {
+          label: confirmation.type === "discard" ? "继续编辑" : "取消",
+          onClick: () => editor.setConfirmation(null),
+        },
+        {
+          label: confirmation.type === "discard" ? "舍弃" : "删除",
+          onClick: () => void editor.confirm(),
+        },
+      ]}
+    >
+      {confirmation.type === "moment"
+        ? "动态及其全部评论将被删除。"
+        : confirmation.type === "comment"
+          ? "原评论将被删除，其他人的回复会保留。"
+          : "未提交的评论将被舍弃。"}
+    </Alert>
   );
 }
 
@@ -232,6 +304,7 @@ function MomentCommentEditor({
       </label>
       <Button
         variant="filled"
+        className="wechat-moment-primary"
         disabled={locked || !editor.text.trim()}
         onClick={() => void editor.comment()}
       >

@@ -23,3 +23,27 @@ export function readProfileFields(profileText: string): ProfileField[] {
   }
   return fields.filter((field) => field.value.trim() !== "");
 }
+
+// 选择人物时只露一行可读简介。Memory 资料按字段名逐行提供，优先取性格与近况，
+// 避免把 name、background 等原始键名整段塞进列表。
+const SUMMARY_LABELS = [
+  "personality",
+  "性格",
+  "current_status",
+  "current status",
+  "近况",
+  "当前状态",
+  "background",
+  "背景",
+  "简介",
+];
+const NAME_LABELS = new Set(["name", "姓名"]);
+
+export function readProfileSummary(profileText: string): string {
+  const fields = readProfileFields(profileText);
+  const preferred = SUMMARY_LABELS.map((label) =>
+    fields.find((field) => field.label.toLowerCase() === label),
+  ).find((field): field is ProfileField => field !== undefined);
+  const fallback = fields.find((field) => !NAME_LABELS.has(field.label.toLowerCase()));
+  return (preferred ?? fallback)?.value.trim() ?? profileText.trim();
+}

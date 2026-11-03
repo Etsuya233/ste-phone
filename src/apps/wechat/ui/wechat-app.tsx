@@ -71,6 +71,7 @@ export function WechatApp({
                     scopeId={route.scopeId}
                     id={route.id}
                     active={active && navigation.current}
+                    onInteracted={route.onInteracted}
                   />
                 );
               case "moment-ai-author":

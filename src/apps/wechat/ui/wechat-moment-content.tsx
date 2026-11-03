@@ -1,11 +1,18 @@
 import { Button } from "../../../frontend/foundation/button.tsx";
 import type { MomentComment, WechatMoment } from "../wechat-moments.ts";
+import { formatWechatMomentFullTime, formatWechatMomentTime } from "../wechat-time.ts";
 import type { WechatPerson, WechatSnapshot } from "../wechat.ts";
 import { PersonAvatar, type WechatPageProps } from "./wechat-page.tsx";
 
 export function momentWritingReason(state: WechatSnapshot, scopeId: string): string | null {
-  if (state.loading || state.error || state.scopeId !== scopeId) {
-    return "人物资料不可用，当前仅可阅读。";
+  if (state.loading) {
+    return "正在载入朋友圈…";
+  }
+  if (state.error) {
+    return `人物资料加载失败：${state.error}`;
+  }
+  if (state.scopeId !== scopeId) {
+    return "正在查看历史资料的朋友圈，仅可阅读。";
   }
   if (
     !state.data.account ||
@@ -65,22 +72,39 @@ export function MomentContentView({
       : moment.media.type === "video"
         ? [moment.media.description]
         : [];
+  const layout =
+    descriptions.length === 1
+      ? "single"
+      : descriptions.length === 2 || descriptions.length === 4
+        ? "two"
+        : "grid";
+  const fullTime = formatWechatMomentFullTime(moment.createdAt);
   return (
     <div className={`wechat-moment-content ${compact ? "wechat-moment-content--compact" : ""}`}>
-      {moment.text ? <p>{moment.text}</p> : null}
+      {moment.text ? <p className="wechat-moment-text">{moment.text}</p> : null}
       {descriptions.length ? (
         <div
-          className={`wechat-moment-media wechat-moment-media--${descriptions.length === 1 ? "single" : "grid"}`}
+          className={`wechat-moment-media wechat-moment-media--${moment.media.type} ${
+            compact ? `wechat-moment-media--${layout}` : ""
+          }`}
         >
           {descriptions.map((description, index) => (
             <div className="wechat-moment-placeholder" key={index}>
-              <span>{moment.media.type === "video" ? "视频" : `图片 ${index + 1}`}</span>
+              <span>
+                {moment.media.type === "video"
+                  ? "视频"
+                  : descriptions.length > 1
+                    ? `图片 ${index + 1}/${descriptions.length}`
+                    : "图片"}
+              </span>
               <p>{description}</p>
             </div>
           ))}
         </div>
       ) : null}
-      <time dateTime={moment.createdAt}>{new Date(moment.createdAt).toLocaleString("zh-CN")}</time>
+      <time dateTime={moment.createdAt} title={fullTime}>
+        {compact ? formatWechatMomentTime(moment.createdAt, new Date()) : fullTime}
+      </time>
     </div>
   );
 }
@@ -105,22 +129,26 @@ export function MomentCommentView({
   const deleted =
     comment.replyTo && !moment.comments.some((item) => item.id === comment.replyTo!.commentId);
   return (
-    <div className="wechat-moment-comment">
-      <p>
+    <div className="wechat-moment-comment" data-comment-id={comment.id}>
+      <p className="wechat-moment-comment-meta">
         <strong>{name(comment.author)}</strong>
         {comment.replyTo ? (
-          <>
+          <span className="wechat-moment-reply-context">
             {" "}
             回复 <strong>{name(comment.replyTo.author)}</strong>
-            {deleted ? "（原评论已删除）" : ""}
-          </>
+            {deleted ? <span className="wechat-moment-reply-deleted">原评论已删除</span> : null}
+          </span>
         ) : null}
-        ：{comment.text}
       </p>
+      <p className="wechat-moment-comment-text">{comment.text}</p>
       {onReply || onDelete ? (
         <div className="wechat-moment-comment-actions">
           {onReply ? <Button onClick={onReply}>回复</Button> : null}
-          {onDelete ? <Button onClick={onDelete}>删除评论</Button> : null}
+          {onDelete ? (
+            <Button className="wechat-moment-delete" onClick={onDelete}>
+              删除
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </div>
