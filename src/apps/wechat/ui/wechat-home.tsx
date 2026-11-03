@@ -10,6 +10,8 @@ import type { CharacterProfile } from "../../data-source/public.ts";
 import type { WechatConversation, WechatPerson } from "../wechat.ts";
 import { PersonAvatar, type WechatPageProps } from "./wechat-page.tsx";
 import { PersonIdentity, ProfilePreview } from "./wechat-profile.tsx";
+import { formatWechatTime } from "../wechat-time.ts";
+import { useWechatClock } from "./use-wechat-clock.ts";
 
 export function WechatHome({
   wechat,
@@ -17,7 +19,9 @@ export function WechatHome({
   navigation,
   onHome,
   preferences,
-}: WechatPageProps & { onHome(): void }) {
+  active,
+}: WechatPageProps & { onHome(): void; active: boolean }) {
+  const now = useWechatClock(active);
   const [tab, setTab] = useState("微信");
   const account = state.data.account;
   const self = account ? state.people.find((person) => person.id === account.id) : undefined;
@@ -29,7 +33,10 @@ export function WechatHome({
           (person) => person.id === account.id && person.scopeId === account.scopeId,
         ),
     )
-    .toReversed();
+    .toSorted(
+      (left, right) =>
+        Date.parse(right.messages.at(-1)!.createdAt) - Date.parse(left.messages.at(-1)!.createdAt),
+    );
   return (
     <Page
       navBar={
@@ -61,6 +68,7 @@ export function WechatHome({
               account={account}
               conversations={conversations}
               people={state.people}
+              now={now}
               onOpen={(id) => navigation.push({ page: "chat", id })}
             />
           )}
@@ -91,17 +99,20 @@ function WechatConversations({
   conversations,
   people,
   onOpen,
+  now,
 }: {
   account: WechatPerson;
   conversations: readonly WechatConversation[];
   people: readonly CharacterProfile[];
   onOpen(id: string): void;
+  now: Date;
 }) {
   return (
     <div className="wechat-rows">
       {conversations.length ? (
         conversations.map((conversation) => {
           const other = conversation.people.find((person) => person.id !== account.id)!;
+          const last = conversation.messages.at(-1)!;
           const name =
             other.scopeId === account.scopeId
               ? (people.find((person) => person.id === other.id)?.name ?? other.name)
@@ -115,8 +126,16 @@ function WechatConversations({
             >
               <PersonAvatar name={name} />
               <span>
-                <strong>{name}</strong>
-                <small>{conversation.messages.at(-1)?.content.text}</small>
+                <span className="wechat-conversation-heading">
+                  <strong>{name}</strong>
+                  <time
+                    dateTime={last.createdAt}
+                    title={new Date(last.createdAt).toLocaleString("zh-CN")}
+                  >
+                    {formatWechatTime(last.createdAt, now, true)}
+                  </time>
+                </span>
+                <small>{last.content.text}</small>
               </span>
             </button>
           );

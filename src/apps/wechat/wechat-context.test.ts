@@ -44,7 +44,7 @@ test("SQL-backed prompt includes one-hop context while preserving summary and te
         id: String(index),
         senderId: sender.id,
         content: { type: "text", text: `微信${index}` },
-        createdAt: "now",
+        createdAt: "2026-11-02T08:00:00Z",
       })),
     };
     const payload = JSON.parse(

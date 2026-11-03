@@ -82,6 +82,7 @@ export function WechatChat({
       }
     >
       <WechatMessages
+        active={active}
         conversation={conversation}
         accountId={state.data.account?.id}
         people={state.people}

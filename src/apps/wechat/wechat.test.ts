@@ -49,7 +49,7 @@ test("prompt retains all pending messages and carries explicit background", () =
         messages: Array.from({ length: 31 }, (_, index) => ({
           id: String(index),
           senderId: "A",
-          createdAt: "now",
+          createdAt: "2026-11-02T08:00:00Z",
           content: { type: "text", text: `消息${index}` },
         })),
       },

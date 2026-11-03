@@ -47,7 +47,9 @@ export function WechatApp({
           };
           switch (route.page) {
             case "home":
-              return <WechatHome {...props} onHome={onHome} />;
+              return (
+                <WechatHome {...props} onHome={onHome} active={active && navigation.current} />
+              );
             case "accounts":
               return <WechatAccounts {...props} />;
             case "stickers":
