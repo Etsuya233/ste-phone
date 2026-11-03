@@ -20,6 +20,9 @@
   background: var(--ios-alert-surface);
   backdrop-filter: blur(var(--ios-bar-blur));
 }
+:host .ios-action-sheet-control {
+  overflow: hidden;
+}
 :host .ios-action-sheet-action {
   display: block;
   width: 100%;

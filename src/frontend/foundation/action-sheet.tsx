@@ -1,5 +1,8 @@
 import { useLayoutEffect, useRef } from "react";
-import type { KeyboardEvent, MouseEvent } from "react";
+import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
+
+const FOCUSABLE =
+  "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]";
 
 export interface ActionSheetAction {
   readonly label: string;
@@ -13,6 +16,7 @@ export function ActionSheet({
   active,
   label = "操作菜单",
   cancelLabel = "取消",
+  control,
   onDismiss,
   description,
 }: {
@@ -20,6 +24,7 @@ export function ActionSheet({
   active: boolean;
   label?: string;
   cancelLabel?: string;
+  control?: ReactNode;
   onDismiss: () => void;
   description?: string;
 }) {
@@ -45,7 +50,7 @@ export function ActionSheet({
   }, [active]);
   useLayoutEffect(() => {
     if (active) {
-      panel.current!.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+      panel.current!.querySelector<HTMLElement>(FOCUSABLE)?.focus();
     }
   }, [active]);
 
@@ -68,11 +73,9 @@ export function ActionSheet({
     if (event.key !== "Tab") {
       return;
     }
-    const buttons = [
-      ...panel.current!.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"),
-    ];
-    const first = buttons[0]!;
-    const last = buttons.at(-1)!;
+    const focusable = [...panel.current!.querySelectorAll<HTMLElement>(FOCUSABLE)];
+    const first = focusable[0]!;
+    const last = focusable.at(-1)!;
     const focused = (panel.current!.getRootNode() as ShadowRoot).activeElement;
     if (event.shiftKey && focused === first) {
       event.preventDefault();
@@ -94,6 +97,9 @@ export function ActionSheet({
         aria-label={label}
       >
         {description ? <p className="ios-action-sheet-description">{description}</p> : null}
+        {control ? (
+          <div className="ios-action-sheet-group ios-action-sheet-control">{control}</div>
+        ) : null}
         <div className="ios-action-sheet-group">
           {actions.map((action) => (
             <button

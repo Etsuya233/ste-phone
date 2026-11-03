@@ -1,7 +1,8 @@
 import { useLayoutEffect, useState } from "react";
 import type { RefObject } from "react";
 import { wechatMemoryBoundaries } from "../wechat-memory.ts";
-import type { WechatConversation } from "../wechat.ts";
+import { pendingWechatMessages } from "../wechat.ts";
+import type { WechatConversation, WechatSnapshot } from "../wechat.ts";
 import type { WechatPageProps } from "./wechat-page.tsx";
 
 import { WechatMemoryMenu } from "./wechat-memory-menu.tsx";
@@ -23,18 +24,27 @@ export function useWechatMemory({
   const [menu, setMenu] = useState<MemoryMenu | null>(null);
   const [position, setPosition] = useState<{ top: number; target?: string } | null>(null);
   let boundaries: ReturnType<typeof wechatMemoryBoundaries> = [];
+  let effective: ReturnType<typeof wechatMemoryBoundaries>[number] | undefined;
+  let skippedPending = 0;
   let error: string | null = null;
   try {
     if (conversation) {
       boundaries = wechatMemoryBoundaries(conversation);
+      effective = boundaries.findLast((item) => item.barrier.enabled);
+      if (effective && effective.position > 0 && state.data.account) {
+        const before = new Set(
+          conversation.messages.slice(0, effective.position).map((message) => message.id),
+        );
+        skippedPending = pendingWechatMessages(conversation, state.data.account.id).filter(
+          (message) => before.has(message.id),
+        ).length;
+      }
     }
   } catch (failure) {
     error = (failure as Error).message;
   }
-  const effective = boundaries.findLast((item) => item.barrier.enabled);
-  const busy =
-    state.writeBusy || state.barrierSaving || !["idle", "error"].includes(state.reply.status);
-  const disabled = busy || !!error || !state.data.account || state.loading || !!state.error;
+  const lockReason = memoryLockReason(state);
+  const disabled = !!lockReason || !!error || !state.data.account || state.loading || !!state.error;
   const container = () => end.current?.closest<HTMLElement>(".ios-page-content");
   useLayoutEffect(() => {
     if (!active || menu || !position) {
@@ -79,10 +89,12 @@ export function useWechatMemory({
     effectiveId: effective?.barrier.id,
     error,
     disabled,
+    lockReason,
     menuOpen: !!menu,
     openChat: () => setMenu({ type: "chat" }),
     openMessage: (index: number) => setMenu({ type: "message", index }),
-    openBarrier: (barrierId: string) => setMenu({ type: "barrier", id: barrierId }),
+    openBarrier: (barrierId: string, position: number) =>
+      setMenu({ type: "barrier", id: barrierId, position }),
     toggle,
     sheet: menu ? (
       <WechatMemoryMenu
@@ -90,13 +102,36 @@ export function useWechatMemory({
         conversation={conversation}
         effective={effective}
         active={active}
-        busy={busy}
+        skippedPending={skippedPending}
+        lockReason={lockReason}
         disabled={disabled}
         onProfile={() => navigation.push({ page: "person", id })}
         onInsert={(after) => void insert(after)}
+        onToggle={(barrierId, enabled) => void toggle(barrierId, enabled)}
         onDelete={(barrierId) => void remove(barrierId)}
         onDismiss={() => setMenu(null)}
       />
     ) : null,
   };
+}
+
+/** 屏障编辑与回复、消息保存共用写入互斥，就地说明当前不能修改的原因。 */
+function memoryLockReason(state: WechatSnapshot): string | null {
+  if (state.barrierSaving) {
+    return "屏障保存中，暂不可修改";
+  }
+  switch (state.reply.status) {
+    case "sending":
+      return "消息发送中，暂不可修改";
+    case "running":
+      return "AI 回复中，可先停止再修改";
+    case "stopping":
+      return "正在停止回复，暂不可修改";
+    case "saving":
+      return "回复保存中，暂不可修改";
+    case "idle":
+    case "error":
+      break;
+  }
+  return state.writeBusy ? "消息保存中，暂不可修改" : null;
 }

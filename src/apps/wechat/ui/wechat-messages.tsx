@@ -6,7 +6,7 @@ import { PersonAvatar } from "./wechat-page.tsx";
 import { Fragment } from "react";
 import { formatWechatTime, needsWechatTimeSeparator } from "../wechat-time.ts";
 import { WechatMemoryBarrier } from "./wechat-memory-barrier.tsx";
-import { Button } from "../../../frontend/foundation/button.tsx";
+import { WechatMessageBubble } from "./wechat-message-bubble.tsx";
 import type { useWechatMemory } from "./use-wechat-memory.tsx";
 import { useWechatClock } from "./use-wechat-clock.ts";
 
@@ -32,14 +32,13 @@ export function WechatMessages({
     <div className="wechat-messages">
       {memory.boundaries
         .filter((item) => item.position === 0)
-        .map(({ barrier }) => (
+        .map(({ barrier, position }) => (
           <WechatMemoryBarrier
             key={barrier.id}
             barrier={barrier}
             effective={barrier.id === memory.effectiveId}
-            disabled={memory.disabled}
-            onToggle={(enabled) => void memory.toggle(barrier.id, enabled)}
-            onMenu={() => memory.openBarrier(barrier.id)}
+            position={position}
+            onMenu={() => memory.openBarrier(barrier.id, position)}
           />
         ))}
       {conversation?.messages.map((message, index) => {
@@ -65,34 +64,28 @@ export function WechatMessages({
               className={`wechat-message ${message.senderId === accountId ? "wechat-message--mine" : ""}`}
             >
               <PersonAvatar name={sender} />
-              {sticker ? (
-                <img
-                  className="wechat-message-sticker"
-                  src={stickers.imageUrl(sticker.image)}
-                  alt={message.content.text}
-                  title={sticker.description}
-                />
-              ) : (
-                <p>{message.content.text}</p>
-              )}
-              <Button
-                className="wechat-message-menu"
-                aria-label={`消息 ${index + 1} 操作`}
-                onClick={() => memory.openMessage(index)}
-              >
-                ···
-              </Button>
+              <WechatMessageBubble index={index} onMenu={() => memory.openMessage(index)}>
+                {sticker ? (
+                  <img
+                    className="wechat-message-sticker"
+                    src={stickers.imageUrl(sticker.image)}
+                    alt={message.content.text}
+                    title={sticker.description}
+                  />
+                ) : (
+                  <p>{message.content.text}</p>
+                )}
+              </WechatMessageBubble>
             </div>
             {memory.boundaries
               .filter((item) => item.position === index + 1)
-              .map(({ barrier }) => (
+              .map(({ barrier, position }) => (
                 <WechatMemoryBarrier
                   key={barrier.id}
                   barrier={barrier}
                   effective={barrier.id === memory.effectiveId}
-                  disabled={memory.disabled}
-                  onToggle={(enabled) => void memory.toggle(barrier.id, enabled)}
-                  onMenu={() => memory.openBarrier(barrier.id)}
+                  position={position}
+                  onMenu={() => memory.openBarrier(barrier.id, position)}
                 />
               ))}
           </Fragment>
