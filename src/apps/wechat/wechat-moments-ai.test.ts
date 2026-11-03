@@ -11,6 +11,7 @@ import type { DataAppPublic } from "../data-source/public.ts";
 import type { WechatMoment } from "./wechat-moments.ts";
 import { generateMomentOutput } from "./wechat-moments-generation.ts";
 import { createStAiTransport } from "../../infrastructure/host/ai-transport.ts";
+import { previewMomentOutput } from "../../../docs/ui/preview-wechat-moments-ai.ts";
 
 const author = { id: "a", scopeId: "stable", name: "甲" };
 const moment: WechatMoment = {
@@ -146,6 +147,7 @@ test("朋友圈分别取单人关联与多人公开资料，固定历史窗口�
   const input: MomentGenerationInput = {
     ...common,
     kind: "interaction",
+    requiredAuthorIds: [],
     account: { id: "a", name: "甲", profileText: "完整甲资料" },
     candidates: [{ id: "b", name: "乙", profileText: "完整乙资料" }],
     moment,
@@ -160,6 +162,83 @@ test("朋友圈分别取单人关联与多人公开资料，固定历史窗口�
   assert.match(momentSystemPrompt(input), /甲的公开表达/);
   assert.match(momentSystemPrompt(input), /乙的公开表达/);
   assert.equal("conversations" in interaction, false);
+  assert.equal(interaction.participationMode, "auto");
+  assert.deepEqual(interaction.requiredAuthorIds, []);
+  const selected = {
+    ...input,
+    requiredAuthorIds: ["b"],
+    guidance: { ...input.guidance, c: "未选择人物指导" },
+  };
+  const selectedMaterial = JSON.parse(await readMomentPrompt(data, selected));
+  assert.equal(selectedMaterial.participationMode, "selected");
+  assert.deepEqual(selectedMaterial.requiredAuthorIds, ["b"]);
+  assert.match(momentSystemPrompt(selected), /每位必选人物至少生成一条/);
+  assert.doesNotMatch(momentSystemPrompt(selected), /未选择人物指导/);
+});
+
+test("指定互动人物必须全部发言，空批或漏人整批失败，允许同一人多条回复", () => {
+  const authors = new Set(["b", "c"]);
+  const comment = (authorId: string) => ({ authorId, text: "回应", replyTo: null });
+  assert.throws(
+    () => parseGeneratedInteraction('{"comments":[]}', authors, new Set(), ["b"]),
+    /遗漏/,
+  );
+  assert.throws(
+    () =>
+      parseGeneratedInteraction(
+        JSON.stringify({ comments: [comment("b"), comment("b")] }),
+        authors,
+        new Set(),
+        ["b", "c"],
+      ),
+    /遗漏/,
+  );
+  const output = JSON.stringify({
+    comments: [
+      comment("c"),
+      comment("b"),
+      { ...comment("b"), replyTo: { type: "batch", index: 0 } },
+    ],
+  });
+  assert.equal(parseGeneratedInteraction(output, authors, new Set(), ["b", "c"]).length, 3);
+  assert.throws(
+    () => parseGeneratedInteraction(output, new Set(["b"]), new Set(), ["b"]),
+    /不允许/,
+  );
+});
+
+test("预览互动按全部必选名单生成并保留已有及批内回复，空模式暴露漏人错误", () => {
+  for (const requiredAuthorIds of [["b"], ["b", "c"], ["b", "c", "d", "e", "f"]]) {
+    const input = {
+      requiredAuthorIds,
+      candidates: requiredAuthorIds.map((id) => ({ id })),
+      comments: [{ id: "existing" }],
+    };
+    const messages = [{ content: JSON.stringify(input) }];
+    const result = parseGeneratedInteraction(
+      previewMomentOutput(messages, null),
+      new Set(requiredAuthorIds),
+      new Set(["existing"]),
+      requiredAuthorIds,
+    );
+    assert.deepEqual(
+      new Set(result.map((comment) => comment.authorId)),
+      new Set(requiredAuthorIds),
+    );
+    assert.ok(result.length <= 5);
+    assert.deepEqual(result[0]!.replyTo, { type: "existing", commentId: "existing" });
+    assert.deepEqual(result[1]!.replyTo, { type: "batch", index: 0 });
+    assert.throws(
+      () =>
+        parseGeneratedInteraction(
+          previewMomentOutput(messages, "empty"),
+          new Set(requiredAuthorIds),
+          new Set(["existing"]),
+          requiredAuthorIds,
+        ),
+      /遗漏/,
+    );
+  }
 });
 
 test("朋友圈拒绝意外工具调用且不发起后续模型调用", async () => {

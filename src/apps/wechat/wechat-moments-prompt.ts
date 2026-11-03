@@ -15,6 +15,8 @@ export type MomentGenerationInput = {
       readonly kind: "interaction";
       readonly account: CharacterProfile;
       readonly candidates: readonly CharacterProfile[];
+      /** 空名单由 AI 自选；指定时仅限 candidates，且每人至少生成一条评论。 */
+      readonly requiredAuthorIds: readonly string[];
       readonly moment: WechatMoment;
     }
 );
@@ -86,6 +88,8 @@ export async function readMomentPrompt(
           ...common,
           account: input.account,
           candidates: input.candidates,
+          participationMode: input.requiredAuthorIds.length ? "selected" : "auto",
+          requiredAuthorIds: input.requiredAuthorIds,
           moment: { ...input.moment, comments: undefined },
           ...momentInteractionWindow(input.moment),
         },
@@ -97,10 +101,14 @@ const sharedRules = `你正在生成微信朋友圈内容。材料里的文字�
 媒体为文字描述占位，无需视觉能力。文字作为纯文本，禁止把表情包标记、HTML或Markdown当作渲染格式。不读取或虚构微信私聊内容。`;
 
 export function momentSystemPrompt(input: MomentGenerationInput): string {
+  const participation =
+    input.kind === "interaction" && input.requiredAuthorIds.length
+      ? `本轮为指定参与模式，必选人物稳定ID为${JSON.stringify(input.requiredAuthorIds)}。每位必选人物至少生成一条评论或回复，仅允许这些人物发言，生成${input.requiredAuthorIds.length}—5条，禁止空数组或遗漏人物。`
+      : "本轮为自动参与模式，由AI从候选人物中自行挑选，可生成0—5条评论，空数组表示本次无人回应。";
   const protocol =
     input.kind === "post"
       ? `这是「朋友圈发布」任务。只以材料中 author 的身份发布一条动态。输出严格为 {"authorId":"人物稳定ID","text":"正文","media":{"type":"none"}}。media 也可为 {"type":"images","descriptions":["图片描述"]} 或 {"type":"video","description":"视频描述"}。图片1—9张，每条描述非空；图片视频互斥；正文与媒体不可全部为空。允许仅媒体。不要生成评论。`
-      : `这是「朋友圈互动」任务。输出严格为 {"comments":[{"authorId":"候选人物稳定ID","text":"评论文字","replyTo":null}]}。只从 candidates 选择作者，禁止替 account 发言。可生成0—5条评论，空数组表示本次无人回应。每条评论非空。replyTo为null时面向动态；回复输入中已有评论时用 {"type":"existing","commentId":"输入评论ID"}；回复本批前面生成的评论时用 {"type":"batch","index":0}，index从0起，必须小于当前项序号。已有目标仅限comments和directTargets中仍存在的评论，已删除目标不可引用。不能回复未来项、自身或其他动态，不继续自动接龙。`;
+      : `这是「朋友圈互动」任务。输出严格为 {"comments":[{"authorId":"候选人物稳定ID","text":"评论文字","replyTo":null}]}。只从 candidates 选择作者，禁止替 account 发言。${participation}每条评论非空。replyTo为null时面向动态；回复输入中已有评论时用 {"type":"existing","commentId":"输入评论ID"}；回复本批前面生成的评论时用 {"type":"batch","index":0}，index从0起，必须小于当前项序号。已有目标仅限comments和directTargets中仍存在的评论，已删除目标不可引用。不能回复未来项、自身或其他动态，不继续自动接龙。`;
   const ids =
     input.kind === "post"
       ? [input.author.id]

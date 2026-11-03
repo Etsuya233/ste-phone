@@ -80,7 +80,6 @@ function useMomentDetail({
     replyTo,
     setReplyTo,
     error,
-    setError,
     status,
     confirmation,
     setConfirmation,
@@ -128,11 +127,7 @@ export function WechatMomentDetail(
                   disabled={
                     locked || !state.people.some((person) => person.id !== state.data.account?.id)
                   }
-                  onClick={() =>
-                    void props.wechat.moments
-                      .generateInteraction(id)
-                      .catch((error: Error) => editor.setError(error.message))
-                  }
+                  onClick={() => navigation.push({ page: "moment-participants", scopeId, id })}
                 >
                   AI 生成互动
                 </Button>

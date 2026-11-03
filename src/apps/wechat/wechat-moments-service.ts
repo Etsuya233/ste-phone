@@ -92,10 +92,31 @@ export class WechatMomentsService {
     });
   }
 
-  async generateInteraction(momentId: string): Promise<void> {
+  async generateInteraction(
+    momentId: string,
+    participantIds: readonly string[] = [],
+  ): Promise<void> {
     const account = this.#accountForWriting();
     const snapshot = this.#dependencies.snapshot();
-    const candidates = snapshot.people.filter((person) => person.id !== account.id);
+    if (participantIds.length > 5) {
+      throw new Error("最多选择 5 位互动人物");
+    }
+    if (new Set(participantIds).size !== participantIds.length) {
+      throw new Error("互动人物不能重复选择");
+    }
+    // 显式选择固定允许名单，每位必须参与；空选择让模型从其余有效人物中自行挑选。
+    const candidates = participantIds.length
+      ? participantIds.map((id) => {
+          if (id === account.id) {
+            throw new Error("不能选择当前帐号参与 AI 互动");
+          }
+          const person = snapshot.people.find((item) => item.id === id);
+          if (!person) {
+            throw new Error("互动人物不属于当前有效资料");
+          }
+          return person;
+        })
+      : snapshot.people.filter((person) => person.id !== account.id);
     if (!candidates.length) {
       throw new Error("没有可参与互动的其他人物");
     }
@@ -103,9 +124,15 @@ export class WechatMomentsService {
       kind: "interaction",
       account: snapshot.people.find((person) => person.id === account.id)!,
       candidates,
+      requiredAuthorIds: [...participantIds],
       scopeId: account.scopeId,
       scope: { ...this.#dependencies.data.getSnapshot().context },
-      guidance: snapshot.data.replyGuidance?.[account.scopeId] ?? {},
+      guidance: Object.fromEntries(
+        [account.id, ...candidates.map((person) => person.id)].map((id) => [
+          id,
+          snapshot.data.replyGuidance?.[account.scopeId]?.[id] ?? "",
+        ]),
+      ),
       moment: this.#moment(snapshot.data, account.scopeId, momentId),
     });
   }

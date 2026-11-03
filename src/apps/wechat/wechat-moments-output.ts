@@ -51,13 +51,14 @@ export function parseGeneratedInteraction(
   text: string,
   allowedAuthors: ReadonlySet<string>,
   existingComments: ReadonlySet<string>,
+  requiredAuthorIds: readonly string[] = [],
 ): readonly GeneratedMomentComment[] {
   const value = record(JSON.parse(text));
   fields(value, ["comments"]);
   if (!Array.isArray(value.comments) || value.comments.length > 5) {
     throw new Error("朋友圈互动需要 0—5 条评论");
   }
-  return value.comments.map((raw, index) => {
+  const comments = value.comments.map((raw, index) => {
     const comment = record(raw);
     fields(comment, ["authorId", "text", "replyTo"]);
     if (typeof comment.authorId !== "string" || !allowedAuthors.has(comment.authorId)) {
@@ -72,6 +73,11 @@ export function parseGeneratedInteraction(
       replyTo: parseReplyTarget(comment.replyTo, index, existingComments),
     };
   });
+  const authors = new Set(comments.map((comment) => comment.authorId));
+  if (requiredAuthorIds.some((id) => !authors.has(id))) {
+    throw new Error("朋友圈互动遗漏了指定参与人物，整批未保存");
+  }
+  return comments;
 }
 
 function parseReplyTarget(

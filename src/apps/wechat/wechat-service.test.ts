@@ -277,6 +277,9 @@ function fixture() {
     withoutDefaultConnection() {
       defaultModelId = null;
     },
+    addPerson(id: string) {
+      people.push({ id, name: `人物${id}`, profileText: `完整${id}资料` });
+    },
     removePerson(id: string) {
       people.splice(
         people.findIndex((person) => person.id === id),
@@ -1213,5 +1216,87 @@ test("朋友圈缺模型连接、无互动候选及人物删除均明确拒绝�
     /资料不可用/,
   );
   assert.equal(f.calls, 0);
+  f.service.dispose();
+});
+
+test("朋友圈指定互动固定所选名单并要求全部参与，遗漏或越界不保存", async () => {
+  const f = fixture();
+  f.addPerson("c");
+  f.addPerson("d");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.saveReplyGuidance("c", "选中人物指导");
+  await f.service.saveReplyGuidance("d", "未选人物指导");
+  const id = await f.service.moments.publish({ text: "指定互动", media: { type: "none" } });
+  const selected = ["b", "c"];
+  const started = f.holdModel();
+  const generation = f.service.moments.generateInteraction(id, selected);
+  await started;
+  selected.splice(0, selected.length, "d");
+  const request = JSON.parse(f.prompt) as { messages: { content: string }[] };
+  const material = JSON.parse(request.messages[1]!.content);
+  assert.deepEqual(material.requiredAuthorIds, ["b", "c"]);
+  assert.equal(material.participationMode, "selected");
+  assert.deepEqual(
+    material.candidates.map((person: { id: string }) => person.id),
+    ["b", "c"],
+  );
+  assert.equal(material.account.id, "a");
+  assert.match(request.messages[0]!.content, /选中人物指导/);
+  assert.doesNotMatch(request.messages[0]!.content, /未选人物指导/);
+  f.momentOutput({
+    comments: [
+      { authorId: "c", text: "丙先回复", replyTo: null },
+      { authorId: "b", text: "乙回复丙", replyTo: { type: "batch", index: 0 } },
+    ],
+  });
+  f.releaseModel();
+  await generation;
+  assert.deepEqual(
+    f.stored!.moments!.stable![0]!.comments.map((comment) => comment.author.id),
+    ["c", "b"],
+  );
+  const before = f.stored;
+  for (const comments of [
+    [],
+    [{ authorId: "b", text: "漏了丙", replyTo: null }],
+    [{ authorId: "d", text: "未选人物", replyTo: null }],
+  ]) {
+    f.momentOutput({ comments });
+    await f.service.moments.generateInteraction(id, ["b", "c"]);
+    assert.equal(f.service.getSnapshot().momentGeneration.status, "error");
+    assert.equal(f.stored, before);
+  }
+  f.service.dispose();
+});
+
+test("朋友圈互动选择拒绝当前帐号、未知人物、重复与超限，允许五人各一条", async () => {
+  const f = fixture();
+  for (const id of ["c", "d", "e", "f", "g"]) {
+    f.addPerson(id);
+  }
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const id = await f.service.moments.publish({ text: "互动人数边界", media: { type: "none" } });
+  for (const selected of [["a"], ["unknown"], ["b", "b"], ["b", "c", "d", "e", "f", "g"]]) {
+    await assert.rejects(
+      f.service.moments.generateInteraction(id, selected),
+      /当前帐号|有效资料|重复|最多/,
+    );
+  }
+  assert.equal(f.calls, 0);
+  const participants = ["b", "c", "d", "e", "f"];
+  f.momentOutput({
+    comments: participants.map((authorId) => ({ authorId, text: "每人一条", replyTo: null })),
+  });
+  await f.service.moments.generateInteraction(id, participants);
+  assert.equal(f.service.getSnapshot().momentGeneration.status, "complete");
+  assert.equal(f.stored!.moments!.stable![0]!.comments.length, 5);
+  f.momentOutput({ comments: [] });
+  await f.service.moments.generateInteraction(id, []);
+  assert.deepEqual(f.service.getSnapshot().momentGeneration, {
+    status: "complete",
+    message: "本次无人回应。",
+  });
   f.service.dispose();
 });

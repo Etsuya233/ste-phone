@@ -143,6 +143,7 @@ export class WechatMomentsSession {
       output,
       new Set(input.candidates.map((person) => person.id)),
       new Set([...window.comments, ...window.directTargets].map((comment) => comment.id)),
+      input.requiredAuthorIds,
     );
     if (!generated.length) {
       return null;

@@ -15,6 +15,7 @@ import { WechatMoments } from "./wechat-moments.tsx";
 import { WechatMomentCompose } from "./wechat-moment-compose.tsx";
 import { WechatMomentDetail } from "./wechat-moment-detail.tsx";
 import { MomentGenerationNotice, WechatMomentAiAuthor } from "./wechat-moment-ai.tsx";
+import { WechatMomentParticipants } from "./wechat-moment-participants.tsx";
 
 export function WechatApp({
   wechat,
@@ -63,6 +64,15 @@ export function WechatApp({
               preferences,
             };
             switch (route.page) {
+              case "moment-participants":
+                return (
+                  <WechatMomentParticipants
+                    {...props}
+                    scopeId={route.scopeId}
+                    id={route.id}
+                    active={active && navigation.current}
+                  />
+                );
               case "moment-ai-author":
                 return (
                   <WechatMomentAiAuthor

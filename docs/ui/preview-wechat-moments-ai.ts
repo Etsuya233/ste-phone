@@ -15,6 +15,7 @@ export function previewMomentOutput(messages: readonly unknown[], mode: string |
     author?: { id: string };
     candidates?: { id: string }[];
     comments?: { id: string }[];
+    requiredAuthorIds: string[];
   };
   if (input.author) {
     return JSON.stringify({
@@ -26,17 +27,22 @@ export function previewMomentOutput(messages: readonly unknown[], mode: string |
   if (mode === "empty") {
     return JSON.stringify({ comments: [] });
   }
-  const authorId = input.candidates![0]!.id;
+  const authors = input.requiredAuthorIds.length
+    ? [...input.requiredAuthorIds]
+    : [input.candidates![0]!.id];
+  if (authors.length === 1) {
+    authors.push(authors[0]!);
+  }
   return JSON.stringify({
-    comments: [
-      {
-        authorId,
-        text: "【模拟互动】这一刻很适合被记下来。",
-        replyTo: input.comments?.length
-          ? { type: "existing", commentId: input.comments.at(-1)!.id }
-          : null,
-      },
-      { authorId, text: "【模拟回复】下次一起分享吧。", replyTo: { type: "batch", index: 0 } },
-    ],
+    comments: authors.map((authorId, index) => ({
+      authorId,
+      text: index === 0 ? "【模拟互动】这一刻很适合被记下来。" : "【模拟回复】下次一起分享吧。",
+      replyTo:
+        index > 0
+          ? { type: "batch", index: index - 1 }
+          : input.comments?.length
+            ? { type: "existing", commentId: input.comments.at(-1)!.id }
+            : null,
+    })),
   });
 }

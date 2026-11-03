@@ -175,3 +175,28 @@
   gap: var(--ios-space-small);
   overflow-wrap: anywhere;
 }
+
+:host .wechat-moment-participant {
+  display: flex;
+  align-items: center;
+  gap: var(--ios-space-small);
+  padding: var(--ios-space-medium);
+  border-bottom: 1px solid var(--ios-line);
+  cursor: pointer;
+}
+:host .wechat-moment-participant > input {
+  flex-shrink: 0;
+  accent-color: var(--ios-blue);
+}
+:host .wechat-moment-participant > span:last-child {
+  min-width: 0;
+}
+:host .wechat-moment-participant small {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+}
