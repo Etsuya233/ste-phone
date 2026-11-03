@@ -18,6 +18,7 @@ import { WechatWrites } from "./wechat-writes.ts";
 import { WechatSubmission } from "./wechat-submission.ts";
 import { wechatMemoryBoundaries } from "./wechat-memory.ts";
 import type { WechatStickerLibrary } from "./wechat-sticker-library.ts";
+import { WechatMomentsService } from "./wechat-moments-service.ts";
 
 interface Dependencies {
   storage: WechatStorage;
@@ -39,6 +40,7 @@ export class WechatService {
   readonly #submission: WechatSubmission;
   readonly #writes: WechatWrites;
   readonly memory: WechatMemoryEditor;
+  readonly moments: WechatMomentsService;
   #operation = 0;
   #preparation = 0;
   #sourceKey: string;
@@ -86,6 +88,15 @@ export class WechatService {
       chatName: () => this.#dependencies.chat.getSnapshot()!.name,
       publish: (patch) => this.#publish(patch),
       save: (update) => this.#writes.save(update),
+    });
+    this.moments = new WechatMomentsService({
+      snapshot: this.getSnapshot,
+      busy: () =>
+        this.#submission.busy ||
+        this.#replies.busy ||
+        this.#writes.busy ||
+        this.#snapshot.barrierSaving,
+      save: (update, signal) => this.#writes.save(update, signal),
     });
     this.#sourceKey = this.#binding();
     this.#sourceRevision = dependencies.data.getSnapshot().revision;

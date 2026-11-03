@@ -1,4 +1,5 @@
 import type { CharacterProfile } from "../data-source/public.ts";
+import type { WechatMoment } from "./wechat-moments.ts";
 
 export interface WechatPerson {
   readonly id: string;
@@ -37,6 +38,8 @@ export interface WechatData {
   readonly conversations: readonly WechatConversation[];
   /** 旧 v1 数据未填写指导；按稳定空间、稳定人物身份保存，所有微信帐号共享。 */
   readonly replyGuidance?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  /** 缺少字段的旧 v1 数据表示空朋友圈；每个稳定空间独立保留追加顺序。 */
+  readonly moments?: Readonly<Record<string, readonly WechatMoment[]>>;
 }
 export type ReplyState =
   | { readonly status: "idle" }

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { emptyWechat } from "../../apps/wechat/wechat.ts";
+import type { WechatData } from "../../apps/wechat/wechat.ts";
 import { createStWechatStorage, type StWechatContext } from "./wechat-storage.ts";
 
 function fixture(request: typeof fetch) {
@@ -100,6 +101,47 @@ test("reply guidance round-trips through chat metadata for single and group chat
       entries: ["kept"],
     });
     assert.deepEqual(f.storage.read("a"), data);
+  }
+});
+
+test("moments round-trip alongside existing metadata and invalid moments fail before sending", async () => {
+  for (const groupId of [null, "group-a"]) {
+    let requests = 0;
+    const f = fixture((async () => {
+      ++requests;
+      return new Response(null, { status: 200 });
+    }) as typeof fetch);
+    f.context.groupId = groupId;
+    const data: WechatData = {
+      ...emptyWechat(),
+      replyGuidance: { stable: { a: "公开表达指导" } },
+      moments: {
+        stable: [
+          {
+            id: "post",
+            author: { id: "a", name: "甲", scopeId: "stable" },
+            text: "分享",
+            media: { type: "video", description: "落日" },
+            createdAt: "2026-11-03T00:00:00.000Z",
+            comments: [],
+          },
+        ],
+      },
+    };
+    await f.storage.write("a", data);
+    assert.deepEqual(f.storage.read("a"), data);
+    assert.deepEqual((f.context.chatMetadata.ste_phone as Record<string, unknown>).diary, {
+      version: 1,
+      entries: ["kept"],
+    });
+    const invalid = {
+      ...data,
+      moments: { stable: [{ ...data.moments!.stable![0]!, createdAt: "bad" }] },
+    };
+    await assert.rejects(f.storage.write("a", invalid), /保存时间无效/);
+    assert.equal(requests, 1);
+    (f.context.chatMetadata.ste_phone as Record<string, unknown>).wechat = invalid;
+    assert.throws(() => f.storage.read("a"), /保存时间无效/);
   }
 });
 
