@@ -1,6 +1,40 @@
 :host .wechat-moment-page {
   height: 100%;
 }
+:host .wechat-app {
+  display: flex;
+  flex-direction: column;
+}
+:host .wechat-app > .wechat-navigation {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+:host .wechat-navigation[data-moment-task] {
+  --safe-bottom: 0px;
+}
+:host .wechat-moment-generation {
+  flex-shrink: 0;
+  min-height: calc(60px + var(--safe-bottom));
+  max-height: calc(120px + var(--safe-bottom));
+  padding: var(--ios-space-small) var(--ios-space-medium);
+  padding-bottom: calc(var(--ios-space-small) + var(--safe-bottom));
+  display: flex;
+  align-items: center;
+  gap: var(--ios-space-small);
+  background: var(--ios-surface);
+  border-top: 1px solid var(--ios-line);
+  font-size: var(--ios-caption-size);
+  overflow: auto;
+}
+:host .wechat-moment-generation span {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+:host .wechat-moment-ai-actions {
+  padding: var(--ios-space-small) var(--ios-space-medium);
+}
 :host .wechat-moment {
   padding: var(--ios-space-medium);
   border-bottom: 1px solid var(--ios-line);

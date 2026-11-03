@@ -45,7 +45,10 @@ if (options.get("logs-test") === "demo") {
 const phone = createPhone({
   settingsStorage: await createPreviewSettingsStorage(),
   aiTransport: createPreviewAiTransport(
-    options.get("wechat-test") ?? options.get("diary-test") ?? options.get("model-test"),
+    options.get("moments-test") ??
+      options.get("wechat-test") ??
+      options.get("diary-test") ??
+      options.get("model-test"),
     logs,
   ),
   chat: createPreviewChatContext(),

@@ -28,15 +28,32 @@ export interface WechatMoment extends MomentContent {
   readonly comments: readonly MomentComment[];
 }
 
+/** 保存提交时生成记录身份与设备时间；AI 批次传入同一时刻，顺序由追加位置决定。 */
+export function createMomentRecord(author: WechatPerson, createdAt = new Date().toISOString()) {
+  return {
+    id: [...crypto.getRandomValues(new Uint32Array(4))]
+      .map((value) => value.toString(16).padStart(8, "0"))
+      .join(""),
+    author,
+    createdAt,
+  };
+}
+
 /** 媒体描述与正文均为纯文本；只去首尾空白，内部段落保持原样。 */
 export function normalizeMomentContent(content: MomentContent): MomentContent {
   const text = content.text.trim();
   let media: MomentMedia;
   switch (content.media.type) {
     case "none":
+      if ("description" in content.media || "descriptions" in content.media) {
+        throw new Error("纯文字动态不能包含媒体描述");
+      }
       media = { type: "none" };
       break;
     case "images": {
+      if ("description" in content.media) {
+        throw new Error("图片和视频不能出现在同一条动态中");
+      }
       const descriptions = content.media.descriptions.map((description) => description.trim());
       if (
         descriptions.length < 1 ||
@@ -49,6 +66,9 @@ export function normalizeMomentContent(content: MomentContent): MomentContent {
       break;
     }
     case "video": {
+      if ("descriptions" in content.media) {
+        throw new Error("图片和视频不能出现在同一条动态中");
+      }
       const description = content.media.description.trim();
       if (!description) {
         throw new Error("请填写视频描述");

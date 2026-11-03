@@ -58,6 +58,7 @@ export class WechatService {
       loading: false,
       error: null,
       reply: { status: "idle" },
+      momentGeneration: { status: "idle" },
       writeBusy: false,
       barrierSaving: false,
       operationError: null,
@@ -73,7 +74,8 @@ export class WechatService {
       snapshot: this.getSnapshot,
       operation: () => this.#operation,
       generation: () => this.#writes.generation,
-      replyBusy: () => this.#replies.busy || this.#snapshot.barrierSaving,
+      replyBusy: () =>
+        this.#replies.busy || this.moments.generation.busy || this.#snapshot.barrierSaving,
       conversation: (id) => this.#conversationForSending(id),
       withConversation: (conversation) => this.#dataWithConversation(conversation),
       save: (update) => this.#writes.save(update),
@@ -84,6 +86,7 @@ export class WechatService {
       busy: () =>
         this.#submission.busy ||
         this.#replies.busy ||
+        this.moments.generation.busy ||
         this.#writes.busy ||
         this.#snapshot.barrierSaving,
       chatName: () => this.#dependencies.chat.getSnapshot()!.name,
@@ -91,6 +94,7 @@ export class WechatService {
       save: (update) => this.#writes.save(update),
     });
     this.moments = new WechatMomentsService({
+      ...dependencies,
       snapshot: this.getSnapshot,
       busy: () =>
         this.#submission.busy ||
@@ -98,6 +102,7 @@ export class WechatService {
         this.#writes.busy ||
         this.#snapshot.barrierSaving,
       save: (update, signal) => this.#writes.save(update, signal),
+      publishGeneration: (momentGeneration) => this.#publish({ momentGeneration }),
     });
     this.#sourceKey = this.#binding();
     this.#sourceRevision = dependencies.data.getSnapshot().revision;
@@ -141,7 +146,13 @@ export class WechatService {
   }
 
   async selectAccount(id: string): Promise<boolean> {
-    if (this.#submission.busy || this.#replies.committing || this.#snapshot.barrierSaving) {
+    if (
+      this.#submission.busy ||
+      this.#replies.committing ||
+      this.#writes.busy ||
+      this.moments.generation.committing ||
+      this.#snapshot.barrierSaving
+    ) {
       throw new Error("请等待消息保存完成");
     }
     this.cancel();
@@ -220,7 +231,13 @@ export class WechatService {
   }
 
   async requestReply(otherId: string): Promise<void> {
-    if (this.#submission.busy || this.#replies.busy || this.#snapshot.barrierSaving) {
+    if (
+      this.#submission.busy ||
+      this.#replies.busy ||
+      this.moments.generation.busy ||
+      this.#writes.busy ||
+      this.#snapshot.barrierSaving
+    ) {
       throw new Error("请等待当前消息处理完成");
     }
     const conversation = this.#conversationForSending(otherId);
@@ -271,6 +288,7 @@ export class WechatService {
 
   cancel(): void {
     ++this.#operation;
+    this.moments.generation.cancel();
     if (!this.#submission.busy) {
       this.#replies.cancel();
     }

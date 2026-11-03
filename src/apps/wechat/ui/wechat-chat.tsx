@@ -68,7 +68,12 @@ export function WechatChat({ ...props }: WechatPageProps & { id: string; active:
             <p>{reply.error}</p>
             {reply.retry && (
               <Button
-                disabled={!available || state.barrierSaving}
+                disabled={
+                  !available ||
+                  state.barrierSaving ||
+                  state.writeBusy ||
+                  ["running", "saving", "stopping"].includes(state.momentGeneration.status)
+                }
                 onClick={() => void wechat.requestReply(id)}
               >
                 重试回复

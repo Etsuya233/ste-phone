@@ -34,6 +34,14 @@ export function WechatMoments({
       }
     >
       {reason ? <p className="wechat-notice">{reason}</p> : null}
+      <div className="wechat-moment-ai-actions">
+        <Button
+          disabled={!!reason}
+          onClick={() => navigation.push({ page: "moment-ai-author", scopeId })}
+        >
+          AI 发布动态
+        </Button>
+      </div>
       {!moments.length ? <p className="wechat-notice">暂无动态，分享此刻的日常吧。</p> : null}
       <div className="wechat-moments-feed">
         {moments.toReversed().map((moment) => (

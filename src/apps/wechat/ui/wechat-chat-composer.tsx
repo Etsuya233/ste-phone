@@ -23,6 +23,7 @@ export function WechatChatComposer({
   const running = state.reply.status === "running" || state.reply.status === "saving";
   const stopping = state.reply.status === "stopping";
   const sending = state.reply.status === "sending";
+  const momentsBusy = ["running", "saving", "stopping"].includes(state.momentGeneration.status);
   const account = state.data.account;
   const replying =
     running &&
@@ -38,7 +39,7 @@ export function WechatChatComposer({
   return (
     <WechatComposer
       value={draft}
-      disabled={!available || running || sending || stopping || state.barrierSaving}
+      disabled={!available || running || sending || stopping || momentsBusy || state.barrierSaving}
       replying={replying}
       onStop={() => wechat.cancel()}
       delayed={sendMode === "delayed"}

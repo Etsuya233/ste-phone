@@ -1,5 +1,6 @@
 import type { CharacterProfile } from "../data-source/public.ts";
 import type { WechatMoment } from "./wechat-moments.ts";
+import type { MomentGenerationState } from "./wechat-moments-session.ts";
 
 export interface WechatPerson {
   readonly id: string;
@@ -61,6 +62,7 @@ export interface WechatSnapshot {
   readonly loading: boolean;
   readonly error: string | null;
   readonly reply: ReplyState;
+  readonly momentGeneration: MomentGenerationState;
   readonly writeBusy: boolean;
   readonly barrierSaving: boolean;
   readonly operationError: string | null;

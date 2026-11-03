@@ -52,7 +52,10 @@ function fixture() {
     readSummary: async () => "全部剧情总结",
     readWorldState: async () => [{ worldTime: "2026-11-02", location: "图书馆", weather: "晴" }],
     readRelatedBackground: async (request) => {
-      assert.deepEqual([...request.participantIds].sort(), ["a", "b"]);
+      assert.ok(
+        request.participantIds.length >= 1 &&
+          request.participantIds.every((id) => ["a", "b"].includes(id)),
+      );
       return { relationships: [], heldItems: [], importantEvents: [], otherCharacters: [] };
     },
     describe: async () => ({
@@ -94,6 +97,8 @@ function fixture() {
   let calls = 0;
   let prompt = "";
   let replySticker = false;
+  let momentOutput: string | null = null;
+  let defaultModelId: string | null = "test";
   let releaseModel: (() => void) | null = null;
   let modelStarted: (() => void) | null = null;
   let holdModel = false;
@@ -171,7 +176,7 @@ function fixture() {
       },
     },
     connections: {
-      getSnapshot: () => ({ defaultModelConnectionId: "test", connections: [connection] }),
+      getSnapshot: () => ({ defaultModelConnectionId: defaultModelId, connections: [connection] }),
       getConnection: () => connection,
       subscribe: () => () => {},
     },
@@ -189,12 +194,13 @@ function fixture() {
         }
         const content = invalid
           ? "invalid JSON"
-          : JSON.stringify({
+          : (momentOutput ??
+            JSON.stringify({
               messages: [
                 { type: "text", text: "一条回复" },
                 { type: "text", text: replySticker ? "[[sticker:日常:开心]]" : "第二条" },
               ],
-            });
+            }));
         return new Response(
           `data: ${JSON.stringify({ choices: [{ delta: { content }, finish_reason: null }] })}\n\ndata: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: finishReason }] })}\n\ndata: [DONE]\n\n`,
         );
@@ -264,6 +270,18 @@ function fixture() {
     },
     replyWithSticker() {
       replySticker = true;
+    },
+    momentOutput(value: unknown) {
+      momentOutput = JSON.stringify(value);
+    },
+    withoutDefaultConnection() {
+      defaultModelId = null;
+    },
+    removePerson(id: string) {
+      people.splice(
+        people.findIndex((person) => person.id === id),
+        1,
+      );
     },
   };
 }
@@ -993,5 +1011,207 @@ test("朋友圈阅读范围在来源断开后保留，新实例与新聊天不�
   f.switchChat("new-chat");
   assert.equal(f.service.getSnapshot().momentsScopeId, null);
   assert.equal(f.service.getSnapshot().data.moments, undefined);
+  f.service.dispose();
+});
+
+test("朋友圈AI显式选择人物发布，互动排除当前帐号且支持整批前序回复", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.saveReplyGuidance("b", "乙的公开表达");
+  f.momentOutput({
+    authorId: "b",
+    text: "乙的动态",
+    media: { type: "video", description: "视频内容" },
+  });
+  await f.service.moments.generatePost("b");
+  const post = f.stored!.moments!.stable![0]!;
+  assert.equal(post.author.id, "b");
+  assert.equal(f.service.getSnapshot().momentGeneration.status, "complete");
+  let request = JSON.parse(f.prompt) as { messages: { role: string; content: string }[] };
+  assert.match(request.messages[0]!.content, /乙的公开表达/);
+  assert.equal(JSON.parse(request.messages[1]!.content).author.id, "b");
+  assert.deepEqual(f.stored!.conversations, []);
+  f.momentOutput({
+    comments: [
+      { authorId: "b", text: "跟进", replyTo: null },
+      { authorId: "b", text: "补充", replyTo: { type: "batch", index: 0 } },
+    ],
+  });
+  await f.service.moments.generateInteraction(post.id);
+  const comments = f.stored!.moments!.stable![0]!.comments;
+  assert.equal(comments.length, 2);
+  assert.deepEqual(comments[1]!.replyTo, {
+    commentId: comments[0]!.id,
+    author: comments[0]!.author,
+  });
+  assert.equal(comments[0]!.createdAt, comments[1]!.createdAt);
+  request = JSON.parse(f.prompt);
+  assert.deepEqual(
+    JSON.parse(request.messages[1]!.content).candidates.map((person: { id: string }) => person.id),
+    ["b"],
+  );
+  const before = f.stored;
+  f.momentOutput({ comments: [] });
+  await f.service.moments.generateInteraction(post.id);
+  assert.equal(f.stored, before);
+  assert.deepEqual(f.service.getSnapshot().momentGeneration, {
+    status: "complete",
+    message: "本次无人回应。",
+  });
+  f.service.dispose();
+});
+
+test("朋友圈AI非法整批、截断与保存失败均不修改历史，重新生成重新调用模型", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const id = await f.service.moments.publish({ text: "手动动态", media: { type: "none" } });
+  const before = f.stored;
+  f.momentOutput({
+    comments: [
+      { authorId: "b", text: "有效前项", replyTo: null },
+      { authorId: "a", text: "非法后项", replyTo: null },
+    ],
+  });
+  await f.service.moments.generateInteraction(id);
+  assert.equal(f.service.getSnapshot().momentGeneration.status, "error");
+  assert.equal(f.stored, before);
+  f.momentOutput({ authorId: "a", text: "AI动态", media: { type: "none" } });
+  f.failSave(true);
+  await f.service.moments.generatePost("a");
+  assert.equal(f.stored, before);
+  assert.match(JSON.stringify(f.service.getSnapshot().momentGeneration), /保存失败/);
+  const calls = f.calls;
+  f.failSave(false);
+  await f.service.moments.generatePost("a");
+  assert.equal(f.calls, calls + 1);
+  assert.equal(f.stored!.moments!.stable!.length, 2);
+  f.truncate();
+  await f.service.moments.generatePost("a");
+  assert.equal(f.stored!.moments!.stable!.length, 2);
+  assert.match(JSON.stringify(f.service.getSnapshot().momentGeneration), /输出上限/);
+  f.service.dispose();
+});
+
+test("朋友圈与单聊互斥，指导更新不改变本轮输入，切帐号取消迟到结果", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.saveReplyGuidance("b", "原指导");
+  f.momentOutput({ authorId: "b", text: "旧任务动态", media: { type: "none" } });
+  const started = f.holdModel();
+  const generation = f.service.moments.generatePost("b");
+  await started;
+  await assert.rejects(f.service.send("b", "不应发送"), /等待当前/);
+  await assert.rejects(f.service.requestReply("b"), /等待当前/);
+  await assert.rejects(
+    f.service.moments.publish({ text: "不应发布", media: { type: "none" } }),
+    /等待当前/,
+  );
+  await f.service.saveReplyGuidance("b", "新指导");
+  assert.match(f.prompt, /原指导/);
+  assert.doesNotMatch(f.prompt, /新指导/);
+  await f.service.selectAccount("b");
+  f.releaseModel();
+  await generation;
+  assert.equal(f.stored!.moments, undefined);
+  assert.equal(f.stored!.replyGuidance!.stable!.b, "新指导");
+  f.service.dispose();
+});
+
+test("朋友圈保存期间停止等待原存储撤回，生成锁随后释放且没有待保存任务", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  f.momentOutput({ authorId: "a", text: "待保存动态", media: { type: "none" } });
+  const started = f.holdNextSave();
+  const generation = f.service.moments.generatePost("a");
+  await started;
+  assert.equal(f.service.getSnapshot().momentGeneration.status, "saving");
+  f.service.moments.generation.cancel();
+  assert.equal(f.service.getSnapshot().momentGeneration.status, "stopping");
+  await assert.rejects(
+    f.service.moments.publish({ text: "冲突", media: { type: "none" } }),
+    /等待当前/,
+  );
+  f.releaseSave();
+  await generation;
+  assert.equal(f.stored!.moments, undefined);
+  assert.equal(f.service.getSnapshot().momentGeneration.status, "idle");
+  await f.service.moments.publish({ text: "停止后手动发布", media: { type: "none" } });
+  assert.equal(f.stored!.moments!.stable![0]!.text, "停止后手动发布");
+  f.service.dispose();
+});
+
+test("更换资料实例取消朋友圈任务，即使稳定范围相同也不保存旧实例结果", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  f.momentOutput({ authorId: "a", text: "旧实例", media: { type: "none" } });
+  const started = f.holdModel();
+  const generation = f.service.moments.generatePost("a");
+  await started;
+  f.sourceChanged(true, "new-instance");
+  await f.service.prepare();
+  assert.equal(f.service.getSnapshot().scopeId, "stable");
+  f.releaseModel();
+  await generation;
+  assert.equal(f.stored!.moments, undefined);
+  f.service.dispose();
+});
+
+test("普通保存和单聊生成期间不能启动朋友圈AI，取消后的新聊天不接收旧结果", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const startedSave = f.holdNextSave();
+  const saving = f.service.moments.publish({ text: "手动保存", media: { type: "none" } });
+  await startedSave;
+  await assert.rejects(f.service.moments.generatePost("a"), /等待当前/);
+  assert.equal(f.calls, 0);
+  f.releaseSave();
+  await saving;
+  const startedReply = f.holdModel();
+  const reply = f.service.requestReply("b");
+  await startedReply;
+  await assert.rejects(f.service.moments.generatePost("a"), /等待当前/);
+  f.service.cancel();
+  f.releaseModel();
+  await reply;
+  f.momentOutput({ authorId: "a", text: "旧聊天迟到", media: { type: "none" } });
+  const started = f.holdModel();
+  const generation = f.service.moments.generatePost("a");
+  await started;
+  f.switchChat("new-chat");
+  f.releaseModel();
+  await generation;
+  assert.equal(f.service.getSnapshot().data.moments, undefined);
+  f.switchChat("st-chat");
+  assert.equal(f.service.getSnapshot().data.moments!.stable!.length, 1);
+  f.service.dispose();
+});
+
+test("朋友圈缺模型连接、无互动候选及人物删除均明确拒绝且保留历史", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const id = await f.service.moments.publish({ text: "已有动态", media: { type: "none" } });
+  f.withoutDefaultConnection();
+  await f.service.moments.generatePost("a");
+  assert.match(JSON.stringify(f.service.getSnapshot().momentGeneration), /默认模型连接/);
+  assert.equal(f.calls, 0);
+  f.removePerson("b");
+  await f.service.prepare();
+  await assert.rejects(f.service.moments.generateInteraction(id), /没有可参与/);
+  f.removePerson("a");
+  await f.service.prepare();
+  assert.equal(f.service.getSnapshot().data.account, null);
+  assert.equal(f.service.getSnapshot().data.moments!.stable![0]!.author.id, "a");
+  await assert.rejects(
+    f.service.moments.publish({ text: "失效帐号", media: { type: "none" } }),
+    /资料不可用/,
+  );
+  assert.equal(f.calls, 0);
   f.service.dispose();
 });

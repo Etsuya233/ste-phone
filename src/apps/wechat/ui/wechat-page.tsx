@@ -7,7 +7,7 @@ import type { WechatStickerLibrary } from "../wechat-sticker-library.ts";
 export type WechatRoute =
   | { page: "home" | "accounts" | "stickers" | "settings" }
   | { page: "chat" | "person" | "reply-guidance"; id: string }
-  | { page: "moments" | "moment-compose"; scopeId: string }
+  | { page: "moments" | "moment-compose" | "moment-ai-author"; scopeId: string }
   | { page: "moment-detail"; scopeId: string; id: string };
 export interface WechatPageProps {
   wechat: WechatService;

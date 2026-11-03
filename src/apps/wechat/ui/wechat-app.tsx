@@ -14,6 +14,7 @@ import { WechatReplyGuidance } from "./wechat-reply-guidance.tsx";
 import { WechatMoments } from "./wechat-moments.tsx";
 import { WechatMomentCompose } from "./wechat-moment-compose.tsx";
 import { WechatMomentDetail } from "./wechat-moment-detail.tsx";
+import { MomentGenerationNotice, WechatMomentAiAuthor } from "./wechat-moment-ai.tsx";
 
 export function WechatApp({
   wechat,
@@ -36,7 +37,11 @@ export function WechatApp({
   }, [wechat, state.chatId]);
   return (
     <div className="wechat-app">
-      <div className="wechat-navigation" inert={!!state.operationError}>
+      <div
+        className="wechat-navigation"
+        data-moment-task={state.momentGeneration.status !== "idle" || undefined}
+        inert={!!state.operationError}
+      >
         <NavigationStack<WechatRoute>
           key={JSON.stringify([
             state.chatId,
@@ -58,6 +63,14 @@ export function WechatApp({
               preferences,
             };
             switch (route.page) {
+              case "moment-ai-author":
+                return (
+                  <WechatMomentAiAuthor
+                    {...props}
+                    scopeId={route.scopeId}
+                    active={active && navigation.current}
+                  />
+                );
               case "moments":
                 return <WechatMoments {...props} scopeId={route.scopeId} />;
               case "moment-compose":
@@ -105,6 +118,7 @@ export function WechatApp({
           }}
         </NavigationStack>
       </div>
+      <MomentGenerationNotice wechat={wechat} state={state} />
       {state.operationError ? (
         <Alert
           title="记忆屏障保存失败"

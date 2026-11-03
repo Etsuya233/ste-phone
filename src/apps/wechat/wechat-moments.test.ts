@@ -19,6 +19,7 @@ function fixture() {
     loading: false,
     error: null,
     reply: { status: "idle" },
+    momentGeneration: { status: "idle" },
     writeBusy: false,
     barrierSaving: false,
     operationError: null,
@@ -43,6 +44,22 @@ function fixture() {
     },
   );
   const service = new WechatMomentsService({
+    data: {} as ConstructorParameters<typeof WechatMomentsService>[0]["data"],
+    transport: {
+      createStream: () => {
+        throw new Error("手动操作不应调用模型");
+      },
+    },
+    connections: {
+      getSnapshot: () => ({ defaultModelConnectionId: null, connections: [] }),
+      getConnection: () => {
+        throw new Error("无模型");
+      },
+      subscribe: () => () => {},
+    },
+    publishGeneration: (momentGeneration) => {
+      snapshot = { ...snapshot, momentGeneration };
+    },
     snapshot: () => snapshot,
     busy: () => writes.busy || generating,
     save: (update, signal) => writes.save(update, signal),

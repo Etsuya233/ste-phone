@@ -1,8 +1,13 @@
 import type { WechatData, WechatPerson, WechatSnapshot } from "./wechat.ts";
+import type { AiTransport } from "../../core/ai/public.ts";
+import type { DataAppPublic } from "../data-source/public.ts";
+import type { ModelConnectionsReader } from "../settings/public.ts";
+import { WechatMomentsSession, type MomentGenerationState } from "./wechat-moments-session.ts";
 import {
   addMoment,
   addMomentComment,
   assertMomentOwner,
+  createMomentRecord,
   normalizeMomentContent,
   removeMomentComment,
   type MomentContent,
@@ -10,33 +15,40 @@ import {
 } from "./wechat-moments.ts";
 
 interface Dependencies {
+  data: DataAppPublic;
+  transport: AiTransport;
+  connections: ModelConnectionsReader;
   snapshot: () => WechatSnapshot;
   busy: () => boolean;
+  publishGeneration(state: MomentGenerationState): void;
   save: (update: (data: WechatData) => WechatData, signal?: AbortSignal) => Promise<void>;
 }
 
 /** 朋友圈拥有内容操作，实际保存与单聊共用微信写入队列。页面仅提交操作参数。 */
 export class WechatMomentsService {
   readonly #dependencies: Dependencies;
+  readonly generation: WechatMomentsSession;
   constructor(dependencies: Dependencies) {
     this.#dependencies = dependencies;
+    this.generation = new WechatMomentsSession({
+      ...dependencies,
+      publish: dependencies.publishGeneration,
+    });
   }
 
   async publish(content: MomentContent): Promise<string> {
     const author = this.#accountForWriting();
     const normalized = normalizeMomentContent(content);
-    const id = [...crypto.getRandomValues(new Uint32Array(4))]
-      .map((value) => value.toString(16).padStart(8, "0"))
-      .join("");
-    await this.#dependencies.save((data) =>
-      addMoment(data, {
+    let id!: string;
+    await this.#dependencies.save((data) => {
+      const record = createMomentRecord(author);
+      id = record.id;
+      return addMoment(data, {
         ...normalized,
-        id,
-        author,
-        createdAt: new Date().toISOString(),
+        ...record,
         comments: [],
-      }),
-    );
+      });
+    });
     return id;
   }
 
@@ -55,15 +67,46 @@ export class WechatMomentsService {
         throw new Error("回复目标已删除或不属于当前动态");
       }
       const next = addMomentComment(moment, {
-        id: [...crypto.getRandomValues(new Uint32Array(4))]
-          .map((value) => value.toString(16).padStart(8, "0"))
-          .join(""),
-        author,
+        ...createMomentRecord(author),
         text: body,
-        createdAt: new Date().toISOString(),
         ...(target ? { replyTo: { commentId: target.id, author: target.author } } : {}),
       });
       return this.#replace(data, author.scopeId, next);
+    });
+  }
+
+  async generatePost(authorId: string): Promise<void> {
+    const account = this.#accountForWriting();
+    const snapshot = this.#dependencies.snapshot();
+    const author = snapshot.people.find((person) => person.id === authorId);
+    if (!author) {
+      throw new Error("请选择当前资料中的发布人物");
+    }
+    await this.generation.generate({
+      kind: "post",
+      author,
+      scopeId: account.scopeId,
+      scope: { ...this.#dependencies.data.getSnapshot().context },
+      guidance: snapshot.data.replyGuidance?.[account.scopeId] ?? {},
+      history: snapshot.data.moments?.[account.scopeId] ?? [],
+    });
+  }
+
+  async generateInteraction(momentId: string): Promise<void> {
+    const account = this.#accountForWriting();
+    const snapshot = this.#dependencies.snapshot();
+    const candidates = snapshot.people.filter((person) => person.id !== account.id);
+    if (!candidates.length) {
+      throw new Error("没有可参与互动的其他人物");
+    }
+    await this.generation.generate({
+      kind: "interaction",
+      account: snapshot.people.find((person) => person.id === account.id)!,
+      candidates,
+      scopeId: account.scopeId,
+      scope: { ...this.#dependencies.data.getSnapshot().context },
+      guidance: snapshot.data.replyGuidance?.[account.scopeId] ?? {},
+      moment: this.#moment(snapshot.data, account.scopeId, momentId),
     });
   }
 
@@ -92,7 +135,7 @@ export class WechatMomentsService {
 
   #accountForWriting(): WechatPerson {
     const snapshot = this.#dependencies.snapshot();
-    if (this.#dependencies.busy()) {
+    if (this.#dependencies.busy() || this.generation.busy) {
       throw new Error("请等待当前生成或保存完成");
     }
     const { account } = snapshot.data;

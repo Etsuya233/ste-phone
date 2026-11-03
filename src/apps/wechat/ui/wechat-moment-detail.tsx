@@ -80,6 +80,7 @@ function useMomentDetail({
     replyTo,
     setReplyTo,
     error,
+    setError,
     status,
     confirmation,
     setConfirmation,
@@ -122,6 +123,23 @@ export function WechatMomentDetail(
         >
           {moment ? (
             <>
+              <div className="wechat-moment-ai-actions">
+                <Button
+                  disabled={
+                    locked || !state.people.some((person) => person.id !== state.data.account?.id)
+                  }
+                  onClick={() =>
+                    void props.wechat.moments
+                      .generateInteraction(id)
+                      .catch((error: Error) => editor.setError(error.message))
+                  }
+                >
+                  AI 生成互动
+                </Button>
+                {!state.people.some((person) => person.id !== state.data.account?.id) ? (
+                  <p className="wechat-notice">没有可参与互动的其他人物。</p>
+                ) : null}
+              </div>
               <article className="wechat-moment">
                 <MomentAuthor author={moment.author} state={state} navigation={navigation} />
                 <MomentContentView moment={moment} />
