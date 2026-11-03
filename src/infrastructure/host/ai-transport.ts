@@ -95,6 +95,8 @@ export function createStAiTransport(
         let textCharacters = 0;
         let responseStatus: number | undefined;
         let responseBody: string | undefined;
+        let requestInput: Record<string, unknown> | undefined;
+        let failure: Record<string, unknown> | undefined;
         const record = (event: string, details: Readonly<Record<string, unknown>>) =>
           log({
             app: diagnostics?.app,
@@ -138,34 +140,12 @@ export function createStAiTransport(
               throw new Error("请通过连接快照提供模型鉴权和请求头");
             }
             const messages = completionMessages(context);
-            stage = "request";
-            record("request", {
-              endpoint: "/api/backends/chat-completions/generate",
-              baseUrl: connection.baseUrl,
-              model: requestModel.id,
-              maxTokens: options?.maxTokens,
-              temperature: options?.temperature,
-              stream: true,
-              messages: messages.map((message) => ({
-                role: message.role,
-                characters:
-                  typeof message.content === "string" ? message.content.length : undefined,
-              })),
-              tools: context.tools?.map((tool) => tool.name),
-              customHeaderNames: Object.keys(connection.customHeaders),
-            });
-            const response = await fetchImpl("/api/backends/chat-completions/generate", {
-              method: "POST",
-              headers: getRequestHeaders(),
-              signal: signal,
-              body: JSON.stringify({
+            // 输入快照与实际发送共用同一份协议载荷；鉴权只在 fetch 边界加入。
+            requestInput = JSON.parse(
+              JSON.stringify({
                 type: "normal",
                 chat_completion_source: "custom",
                 custom_url: connection.baseUrl,
-                custom_include_headers: JSON.stringify({
-                  Authorization: connection.apiKey ? `Bearer ${connection.apiKey}` : "",
-                  ...connection.customHeaders,
-                }),
                 model: requestModel.id,
                 messages,
                 stream: true,
@@ -191,6 +171,35 @@ export function createStAiTransport(
                       custom_include_body: JSON.stringify({ reasoning_effort: options.reasoning }),
                     }
                   : {}),
+              }),
+            ) as Record<string, unknown>;
+            stage = "request";
+            record("request", {
+              endpoint: "/api/backends/chat-completions/generate",
+              baseUrl: connection.baseUrl,
+              model: requestModel.id,
+              maxTokens: options?.maxTokens,
+              temperature: options?.temperature,
+              stream: true,
+              messages: messages.map((message) => ({
+                role: message.role,
+                characters:
+                  typeof message.content === "string" ? message.content.length : undefined,
+              })),
+              tools: context.tools?.map((tool) => tool.name),
+              customHeaderNames: Object.keys(connection.customHeaders),
+              input: requestInput,
+            });
+            const response = await fetchImpl("/api/backends/chat-completions/generate", {
+              method: "POST",
+              headers: getRequestHeaders(),
+              signal: signal,
+              body: JSON.stringify({
+                ...requestInput,
+                custom_include_headers: JSON.stringify({
+                  Authorization: connection.apiKey ? `Bearer ${connection.apiKey}` : "",
+                  ...connection.customHeaders,
+                }),
               }),
             });
             stage = "response";
@@ -228,12 +237,6 @@ export function createStAiTransport(
                 streamEvent = event;
               },
             );
-            record("complete", { stopReason: output.stopReason, textCharacters, streamEvent });
-            stream.push({
-              type: "done",
-              reason: output.stopReason as "stop" | "length" | "toolUse",
-              message: output,
-            });
           } catch (error) {
             output.stopReason = signal.aborted ? "aborted" : "error";
             const originalMessage = formatThrownValue(error);
@@ -253,18 +256,38 @@ export function createStAiTransport(
                 streamEvent,
               }),
             );
-            record(output.stopReason, {
+            failure = {
               stage,
               message: output.errorMessage,
-              textCharacters,
-              streamEvent,
               status: responseStatus,
               responseBody,
               originalError: error,
               diagnostics: output.diagnostics,
-            });
+            };
             output.errorMessage += `（请求 ${requestId}，详情见控制台 STE Phone AI 日志）`;
+          }
+          // 每次调用只在这里写结束记录，输入与完整/部分输出可一起复制排查。
+          // 保存消息快照，避免 Agent 或调用方后续修改消息影响已记录的事实。
+          record(failure ? output.stopReason : "complete", {
+            ...failure,
+            stopReason: output.stopReason,
+            textCharacters,
+            streamEvent,
+            input: requestInput,
+            output: {
+              ...output,
+              content: structuredClone(output.content),
+              usage: structuredClone(output.usage),
+            },
+          });
+          if (output.stopReason === "error" || output.stopReason === "aborted") {
             stream.push({ type: "error", reason: output.stopReason, error: output });
+          } else {
+            stream.push({
+              type: "done",
+              reason: output.stopReason as "stop" | "length" | "toolUse",
+              message: output,
+            });
           }
         })();
         return stream;

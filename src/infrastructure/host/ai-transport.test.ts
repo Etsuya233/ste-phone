@@ -52,9 +52,10 @@ test("request logs retain the exact malformed response and its original cause", 
   const details = logs[2]!.streamEvent as { delta: Record<string, unknown> };
   assert.deepEqual(details.delta.tool_calls, { type: "object" });
   const serialized = JSON.stringify(logs);
-  for (const secret of ["private-key", "private-header", "private-prompt"]) {
+  for (const secret of ["private-key", "private-header"]) {
     assert.ok(!serialized.includes(secret));
   }
+  assert.ok(serialized.includes("private-prompt"));
   assert.ok(serialized.includes("private-reply"));
   assert.ok(serialized.includes("private-thought"));
 });
