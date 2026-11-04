@@ -91,7 +91,7 @@ export class WechatMomentsService {
     });
   }
 
-  async generatePost(authorId: string): Promise<MomentDraft> {
+  async generatePost(authorId: string, userDirection = ""): Promise<MomentDraft> {
     const account = this.#accountForWriting();
     const snapshot = this.#dependencies.snapshot();
     const author = snapshot.people.find((person) => person.id === authorId);
@@ -100,6 +100,7 @@ export class WechatMomentsService {
     }
     return this.generation.generate({
       kind: "post",
+      userDirection: userDirection.trim(),
       author,
       scopeId: account.scopeId,
       scope: { ...this.#dependencies.data.getSnapshot().context },
@@ -111,6 +112,7 @@ export class WechatMomentsService {
   async generateInteraction(
     momentId: string,
     participantIds: readonly string[] = [],
+    userDirection = "",
   ): Promise<void> {
     const account = this.#accountForWriting();
     const snapshot = this.#dependencies.snapshot();
@@ -138,6 +140,7 @@ export class WechatMomentsService {
     }
     await this.generation.generate({
       kind: "interaction",
+      userDirection: userDirection.trim(),
       account: snapshot.people.find((person) => person.id === account.id)!,
       candidates,
       requiredAuthorIds: [...participantIds],

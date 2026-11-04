@@ -22,6 +22,7 @@ export function WechatMomentParticipants({
   onInteracted(count: number): void;
 }) {
   const [selected, setSelected] = useState<readonly string[]>([]);
+  const [userDirection, setUserDirection] = useState("");
   const [complete, setComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const candidates = state.people.filter((person) => person.id !== state.data.account?.id);
@@ -36,7 +37,7 @@ export function WechatMomentParticipants({
     setError(null);
     const before = commentCount(wechat.getSnapshot(), scopeId, id);
     try {
-      await wechat.moments.generateInteraction(id, selected);
+      await wechat.moments.generateInteraction(id, selected, userDirection);
       const snapshot = wechat.getSnapshot();
       if (snapshot.momentGeneration.status === "complete") {
         onInteracted(commentCount(snapshot, scopeId, id) - before);
@@ -62,6 +63,18 @@ export function WechatMomentParticipants({
     >
       <p className="wechat-notice">最多选择 5 人，每人至少回复一条；不选则由 AI 自行挑选。</p>
       {reason ? <p className="wechat-notice">{reason}</p> : null}
+      <div className="wechat-moment-editor">
+        <label className="wechat-moment-label">
+          本次用户指引
+          <textarea
+            rows={3}
+            value={userDirection}
+            disabled={!!reason}
+            placeholder="选填，例如围绕照片里的猫聊天，让大家自然接话"
+            onChange={(event) => setUserDirection(event.target.value)}
+          />
+        </label>
+      </div>
       <div className="wechat-moment-ai-actions">
         <span>{selected.length ? `已选择 ${selected.length} 人` : "由 AI 自行选择参与人物"}</span>
         {selected.length ? (

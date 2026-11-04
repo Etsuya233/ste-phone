@@ -14,6 +14,7 @@ export function WechatMomentAiAuthor(
   const { wechat, state, navigation, scopeId } = props;
   const [draft, setDraft] = useState<MomentDraft | null>(null);
   const [working, setWorking] = useState(false);
+  const [userDirection, setUserDirection] = useState("");
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
   const running = useRef(false);
@@ -32,7 +33,7 @@ export function WechatMomentAiAuthor(
     setWorking(true);
     running.current = true;
     try {
-      const result = await wechat.moments.generatePost(id);
+      const result = await wechat.moments.generatePost(id, userDirection);
       if (mounted.current) {
         setDraft(result);
       }
@@ -58,7 +59,19 @@ export function WechatMomentAiAuthor(
   }
   return (
     <Page navBar={<NavBar title="AI 生成动态" back={{ label: "朋友圈", onClick: back }} />}>
-      <p className="wechat-notice">选择一名人物，AI 将以其身份起草动态，编辑后再发布。</p>
+      <p className="wechat-notice">可先填写本次指引，再点击人物生成草稿，编辑后再发布。</p>
+      <div className="wechat-moment-editor">
+        <label className="wechat-moment-label">
+          本次用户指引
+          <textarea
+            rows={3}
+            value={userDirection}
+            disabled={working || !!reason}
+            placeholder="选填，例如分享逛街日常，语气轻松，配两张图片"
+            onChange={(event) => setUserDirection(event.target.value)}
+          />
+        </label>
+      </div>
       {reason ? <p className="wechat-notice">{reason}</p> : null}
       <div className="wechat-rows">
         {state.people.map((person) => (

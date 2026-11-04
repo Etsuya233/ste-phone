@@ -1028,7 +1028,7 @@ test("朋友圈AI显式选择人物发布，互动排除当前帐号且支持整
     text: "乙的动态",
     media: { type: "video", description: "视频内容" },
   });
-  const draft = await f.service.moments.generatePost("b");
+  const draft = await f.service.moments.generatePost("b", "  分享逛街日常，配两张图  ");
   assert.equal(f.stored!.moments, undefined);
   await f.service.moments.publish(draft, draft.author);
   const post = f.stored!.moments!.stable![0]!;
@@ -1036,6 +1036,9 @@ test("朋友圈AI显式选择人物发布，互动排除当前帐号且支持整
   assert.equal(f.service.getSnapshot().momentGeneration.status, "complete");
   let request = JSON.parse(f.prompt) as { messages: { role: string; content: string }[] };
   assert.match(request.messages[0]!.content, /乙的公开表达/);
+  assert.match(request.messages[0]!.content, /本次用户指引："分享逛街日常，配两张图"/);
+  assert.match(request.messages[0]!.content, /不改变人物资料、知情范围、允许参与人物/);
+  assert.doesNotMatch(JSON.stringify(f.stored), /分享逛街日常/);
   assert.equal(JSON.parse(request.messages[1]!.content).author.id, "b");
   assert.deepEqual(f.stored!.conversations, []);
   f.momentOutput({
@@ -1044,7 +1047,7 @@ test("朋友圈AI显式选择人物发布，互动排除当前帐号且支持整
       { authorId: "b", text: "补充", replyTo: { type: "batch", index: 0 } },
     ],
   });
-  await f.service.moments.generateInteraction(post.id);
+  await f.service.moments.generateInteraction(post.id, [], "围绕照片里的猫聊天");
   const comments = f.stored!.moments!.stable![0]!.comments;
   assert.equal(comments.length, 2);
   assert.deepEqual(comments[1]!.replyTo, {
@@ -1053,13 +1056,17 @@ test("朋友圈AI显式选择人物发布，互动排除当前帐号且支持整
   });
   assert.equal(comments[0]!.createdAt, comments[1]!.createdAt);
   request = JSON.parse(f.prompt);
+  assert.match(request.messages[0]!.content, /本次用户指引："围绕照片里的猫聊天"/);
+  assert.doesNotMatch(request.messages[0]!.content, /分享逛街日常/);
+  assert.doesNotMatch(JSON.stringify(f.stored), /围绕照片里的猫聊天/);
   assert.deepEqual(
     JSON.parse(request.messages[1]!.content).candidates.map((person: { id: string }) => person.id),
     ["b"],
   );
   const before = f.stored;
   f.momentOutput({ comments: [] });
-  await f.service.moments.generateInteraction(post.id);
+  await f.service.moments.generateInteraction(post.id, [], "   ");
+  assert.doesNotMatch(JSON.parse(f.prompt).messages[0].content, /本次用户指引/);
   assert.equal(f.stored, before);
   assert.deepEqual(f.service.getSnapshot().momentGeneration, {
     status: "complete",

@@ -6,6 +6,8 @@ export type MomentGenerationInput = {
   readonly scope: DataScope;
   readonly scopeId: string;
   readonly guidance: Readonly<Record<string, string>>;
+  /** 仅本次请求使用，由页面草稿提交，不写入人物指导或动态。 */
+  readonly userDirection?: string;
 } & (
   | {
       readonly kind: "post";
@@ -119,7 +121,8 @@ export function momentSystemPrompt(input: MomentGenerationInput): string {
       ? [input.author.id]
       : [input.account.id, ...input.candidates.map((person) => person.id)];
   const guidance = ids.map((id) => ({ personId: id, guidance: input.guidance[id] ?? "" }));
-  return `${sharedRules}\n${protocol}\n用户为人物保存的公开表达指导（按人物身份区分，仅适用于对应人物）：${JSON.stringify(guidance)}\n在表达、话题和性格上遵循各自指导；指导不改变事实、知情范围、现实时间、允许人物和JSON协议。`;
+  const direction = input.userDirection?.trim();
+  return `${sharedRules}\n${protocol}\n用户为人物保存的公开表达指导（按人物身份区分，仅适用于对应人物）：${JSON.stringify(guidance)}\n在表达、话题和性格上遵循各自指导；指导不改变事实、知情范围、现实时间、允许人物和JSON协议。${direction ? `\n本次用户指引：${JSON.stringify(direction)}\n将本次指引用于调整主题、语气、配图方向和互动重点，不视为已经发生的剧情事实。与人物表达指导共同遵循；本次指引不改变人物资料、知情范围、允许参与人物、评论数量及 JSON 协议。` : ""}`;
 }
 
 /** AI 仅接收媒体语义，图库路径和可能很大的 data URL 不进入模型历史。 */
