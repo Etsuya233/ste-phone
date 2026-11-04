@@ -1,21 +1,18 @@
 import { Button } from "../../../frontend/foundation/button.tsx";
-import { MomentDraftImage } from "./wechat-moment-draft-image.tsx";
 import type { MomentMedia } from "../wechat-moments.ts";
 
 export function MomentMediaEditor({
   media,
-  onChange,
   disabled,
-  onChoose,
-  onRefine,
-  onGenerate,
+  onEdit,
+  onAdd,
+  onVideoChange,
 }: {
   media: MomentMedia;
-  onChange(media: MomentMedia): void;
   disabled: boolean;
-  onChoose(index: number): void;
-  onRefine(index: number): void;
-  onGenerate(index: number): void;
+  onEdit(index: number): void;
+  onAdd(): void;
+  onVideoChange(description: string): void;
 }) {
   if (media.type === "none") {
     return null;
@@ -25,55 +22,56 @@ export function MomentMediaEditor({
       <label className="wechat-moment-label">
         视频描述
         <textarea
-          rows={5}
+          rows={4}
           value={media.description}
           disabled={disabled}
-          onChange={(event) => onChange({ type: "video", description: event.target.value })}
+          placeholder="画面里发生了什么…"
+          onChange={(event) => onVideoChange(event.target.value)}
         />
       </label>
     );
   }
-  const items = media.items;
-  function move(index: number, direction: number) {
-    const next = [...items];
-    [next[index], next[index + direction]] = [next[index + direction]!, next[index]!];
-    onChange({ type: "images", items: next });
-  }
-  function remove(index: number) {
-    onChange({
-      type: "images",
-      items: items.filter((_, position) => position !== index),
-    });
-  }
   return (
-    <div className="wechat-moment-images-editor">
-      {items.map((item, index) => (
-        <MomentDraftImage
-          key={index}
-          item={item}
-          index={index}
-          count={items.length}
-          disabled={disabled}
-          onChoose={() => onChoose(index)}
-          onRefine={() => onRefine(index)}
-          onGenerate={() => onGenerate(index)}
-          onRemove={() => remove(index)}
-          onMove={(direction) => move(index, direction)}
-          onChange={(next) =>
-            onChange({
-              type: "images",
-              items: items.map((current, position) => (position === index ? next : current)),
-            })
-          }
-        />
-      ))}
-      <Button
-        className="wechat-moment-add-image"
-        disabled={disabled || items.length >= 9}
-        onClick={() => onChange({ type: "images", items: [...items, { description: "" }] })}
-      >
-        添加图片
-      </Button>
+    <div className="wechat-moment-media-editor">
+      <div className="wechat-moment-media-heading">
+        <span>图片</span>
+        <span>{media.items.length}/9</span>
+      </div>
+      <div className="wechat-moment-media-grid">
+        {media.items.map((item, index) => {
+          const missing = !item.description.trim();
+          return (
+            <button
+              type="button"
+              key={index}
+              className={`wechat-moment-media-tile ${missing ? "wechat-moment-media-tile--missing" : ""}`}
+              disabled={disabled}
+              aria-label={`编辑图片 ${index + 1}${missing ? "，待填写描述" : ""}`}
+              onClick={() => onEdit(index)}
+            >
+              {item.image ? (
+                <img className="wechat-moment-media-tile-photo" src={item.image.imagePath} alt="" />
+              ) : (
+                <span className="wechat-moment-media-tile-text">
+                  {item.description || "添加描述"}
+                </span>
+              )}
+              <span className="wechat-moment-media-tile-index" aria-hidden="true">
+                {index + 1}
+              </span>
+              {missing ? (
+                <span className="wechat-moment-media-tile-dot" aria-hidden="true" />
+              ) : null}
+            </button>
+          );
+        })}
+        {media.items.length < 9 ? (
+          <Button className="wechat-moment-media-add" disabled={disabled} onClick={onAdd}>
+            添加图片
+          </Button>
+        ) : null}
+      </div>
+      <p className="wechat-moment-media-hint">点按图片可编辑描述和绘图提示词。</p>
     </div>
   );
 }

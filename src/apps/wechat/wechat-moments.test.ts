@@ -2,7 +2,7 @@ import type { ImageRecord } from "../../core/image-hub/public.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { emptyWechat, type WechatData, type WechatSnapshot } from "./wechat.ts";
-import { normalizeMomentContent, type MomentContent } from "./wechat-moments.ts";
+import { momentDraftIssue, normalizeMomentContent, type MomentContent } from "./wechat-moments.ts";
 import { migrateWechatMoments, validateWechatMoments } from "./wechat-moments-storage.ts";
 import { WechatMomentsService } from "./wechat-moments-service.ts";
 import { WechatWrites } from "./wechat-writes.ts";
@@ -132,6 +132,30 @@ test("朋友圈文字和媒体去首尾空白并保留段落，接受仅媒体�
   ]) {
     assert.throws(() => normalizeMomentContent(content as MomentContent));
   }
+});
+
+test("发布页在提交前标出空正文、空视频描述和缺描述的图片", () => {
+  assert.equal(momentDraftIssue({ text: " ", media: { type: "none" } })?.kind, "empty");
+  assert.equal(
+    momentDraftIssue({ text: " ", media: { type: "images", items: [] } })?.kind,
+    "empty",
+  );
+  assert.equal(
+    momentDraftIssue({ text: " ", media: { type: "video", description: " " } })?.kind,
+    "video",
+  );
+  assert.deepEqual(
+    momentDraftIssue({
+      text: "",
+      media: { type: "images", items: [{ description: "图片" }, { description: " " }] },
+    }),
+    { kind: "image", index: 1, message: "第 2 张图片需要填写描述。" },
+  );
+  assert.equal(
+    momentDraftIssue({ text: "", media: { type: "images", items: [{ description: "图片" }] } }),
+    null,
+  );
+  assert.equal(momentDraftIssue({ text: "", media: { type: "video", description: "视频" } }), null);
 });
 
 test("共享朋友圈按追加排序，同名人物按身份评论回复，删除目标保留署名", async () => {

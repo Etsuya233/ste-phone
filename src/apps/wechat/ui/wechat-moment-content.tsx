@@ -62,10 +62,12 @@ export function MomentAuthor({
 export function MomentContentView({
   moment,
   compact = false,
+  showTime = true,
   onImage,
 }: {
   moment: WechatMoment;
   compact?: boolean;
+  showTime?: boolean;
   onImage?(index: number): void;
 }) {
   const descriptions =
@@ -92,6 +94,9 @@ export function MomentContentView({
         >
           {descriptions.map((description, index) => {
             const item = moment.media.type === "images" ? moment.media.items[index] : undefined;
+            const placeholder = `wechat-moment-placeholder wechat-moment-placeholder--${
+              item?.image ? "photo" : "text"
+            }`;
             const content = item?.image ? (
               <>
                 <img
@@ -114,25 +119,27 @@ export function MomentContentView({
             );
             return onImage && item ? (
               <button
-                className="wechat-moment-placeholder wechat-moment-image-open"
+                className={`${placeholder} wechat-moment-image-open`}
                 type="button"
                 key={index}
                 onClick={() => onImage(index)}
-                aria-label={`查看图片 ${index + 1}`}
+                aria-label={`编辑图片 ${index + 1}`}
               >
                 {content}
               </button>
             ) : (
-              <div className="wechat-moment-placeholder" key={index}>
+              <div className={placeholder} key={index}>
                 {content}
               </div>
             );
           })}
         </div>
       ) : null}
-      <time dateTime={moment.createdAt} title={fullTime}>
-        {compact ? formatWechatMomentTime(moment.createdAt, new Date()) : fullTime}
-      </time>
+      {showTime ? (
+        <time dateTime={moment.createdAt} title={fullTime}>
+          {compact ? formatWechatMomentTime(moment.createdAt, new Date()) : fullTime}
+        </time>
+      ) : null}
     </div>
   );
 }
@@ -158,27 +165,29 @@ export function MomentCommentView({
     comment.replyTo && !moment.comments.some((item) => item.id === comment.replyTo!.commentId);
   return (
     <div className="wechat-moment-comment" data-comment-id={comment.id}>
-      <p className="wechat-moment-comment-meta">
-        <strong>{name(comment.author)}</strong>
-        {comment.replyTo ? (
-          <span className="wechat-moment-reply-context">
-            {" "}
-            回复 <strong>{name(comment.replyTo.author)}</strong>
-            {deleted ? <span className="wechat-moment-reply-deleted">原评论已删除</span> : null}
-          </span>
-        ) : null}
-      </p>
-      <p className="wechat-moment-comment-text">{comment.text}</p>
-      {onReply || onDelete ? (
-        <div className="wechat-moment-comment-actions">
-          {onReply ? <Button onClick={onReply}>回复</Button> : null}
-          {onDelete ? (
-            <Button className="wechat-moment-delete" onClick={onDelete}>
-              删除
-            </Button>
+      <div className="wechat-moment-comment-head">
+        <p className="wechat-moment-comment-meta">
+          <strong>{name(comment.author)}</strong>
+          {comment.replyTo ? (
+            <span className="wechat-moment-reply-context">
+              {" "}
+              回复 <strong>{name(comment.replyTo.author)}</strong>
+              {deleted ? <span className="wechat-moment-reply-deleted">原评论已删除</span> : null}
+            </span>
           ) : null}
-        </div>
-      ) : null}
+        </p>
+        {onReply || onDelete ? (
+          <div className="wechat-moment-comment-actions">
+            {onReply ? <Button onClick={onReply}>回复</Button> : null}
+            {onDelete ? (
+              <Button className="wechat-moment-delete" onClick={onDelete}>
+                删除
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      <p className="wechat-moment-comment-text">{comment.text}</p>
     </div>
   );
 }

@@ -3,12 +3,8 @@ import { Page } from "../../../frontend/foundation/page.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import type { WechatPageProps } from "./wechat-page.tsx";
-import {
-  MomentAuthor,
-  MomentCommentView,
-  MomentContentView,
-  momentWritingReason,
-} from "./wechat-moment-content.tsx";
+import { momentWritingReason } from "./wechat-moment-content.tsx";
+import { MomentCard } from "./wechat-moment-card.tsx";
 
 export function WechatMoments({
   state,
@@ -38,6 +34,9 @@ export function WechatMoments({
   function aiPublish() {
     navigation.push({ page: "moment-ai-author", scopeId });
   }
+  function open(id: string) {
+    navigation.push({ page: "moment-detail", scopeId, id });
+  }
   return (
     <Page
       navBar={
@@ -54,7 +53,7 @@ export function WechatMoments({
     >
       {reason ? <p className="wechat-notice">{reason}</p> : null}
       {moments.length ? (
-        <div className="wechat-moment-ai-actions">
+        <div className="wechat-moment-ai-toolbar">
           <Button disabled={!!reason} onClick={aiPublish}>
             AI 生成动态
           </Button>
@@ -71,46 +70,21 @@ export function WechatMoments({
           >
             发布第一条动态
           </Button>
-          <Button disabled={!!reason} onClick={aiPublish}>
+          <Button className="wechat-moment-ai-empty" disabled={!!reason} onClick={aiPublish}>
             AI 生成动态
           </Button>
         </div>
       )}
       <div ref={feed} className="wechat-moments-feed">
-        {moments.toReversed().map((moment) => {
-          const comments = moment.comments.slice(-3);
-          return (
-            <article className="wechat-moment" key={moment.id}>
-              <MomentAuthor author={moment.author} state={state} navigation={navigation} />
-              <button
-                type="button"
-                className="wechat-moment-open"
-                aria-label={`查看动态：${moment.text || "媒体分享"}`}
-                onClick={() => navigation.push({ page: "moment-detail", scopeId, id: moment.id })}
-              >
-                <MomentContentView moment={moment} compact />
-              </button>
-              {comments.length ? (
-                <div className="wechat-moment-comment-panel">
-                  {comments.map((comment) => (
-                    <MomentCommentView
-                      key={comment.id}
-                      moment={moment}
-                      comment={comment}
-                      state={state}
-                    />
-                  ))}
-                </div>
-              ) : null}
-              <Button
-                className="wechat-moment-more"
-                onClick={() => navigation.push({ page: "moment-detail", scopeId, id: moment.id })}
-              >
-                {moment.comments.length > 3 ? `查看全部 ${moment.comments.length} 条评论` : "评论"}
-              </Button>
-            </article>
-          );
-        })}
+        {moments.toReversed().map((moment) => (
+          <MomentCard
+            key={moment.id}
+            moment={moment}
+            state={state}
+            navigation={navigation}
+            onOpen={() => open(moment.id)}
+          />
+        ))}
       </div>
     </Page>
   );

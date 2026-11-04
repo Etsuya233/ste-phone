@@ -123,6 +123,30 @@ export function normalizeMomentContent(content: MomentContent): MomentContent {
   return { text, media };
 }
 
+/** 发布页用它提前标出不能提交的位置，保存阶段仍由 normalizeMomentContent 做最终校验。 */
+export type MomentDraftIssue =
+  | { readonly kind: "empty" | "video"; readonly message: string }
+  | { readonly kind: "image"; readonly index: number; readonly message: string };
+
+export function momentDraftIssue(content: MomentContent): MomentDraftIssue | null {
+  if (content.media.type === "images") {
+    if (!content.media.items.length) {
+      return { kind: "empty", message: "添加至少一张图片。" };
+    }
+    const index = content.media.items.findIndex((item) => !item.description.trim());
+    if (index >= 0) {
+      return { kind: "image", index, message: `第 ${index + 1} 张图片需要填写描述。` };
+    }
+    return null;
+  }
+  if (content.media.type === "video") {
+    return content.media.description.trim()
+      ? null
+      : { kind: "video", message: "填写视频描述后可以发布。" };
+  }
+  return content.text.trim() ? null : { kind: "empty", message: "写点什么，或添加图片、视频。" };
+}
+
 export function addMoment(data: WechatData, moment: WechatMoment): WechatData {
   const scopeId = moment.author.scopeId;
   const moments = data.moments?.[scopeId] ?? [];

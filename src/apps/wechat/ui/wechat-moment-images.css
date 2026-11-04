@@ -4,11 +4,20 @@
   height: 180px;
   object-fit: cover;
 }
-:host .wechat-moment-content--compact .wechat-moment-photo {
-  height: 110px;
+:host .wechat-moment-content:not(.wechat-moment-content--compact) .wechat-moment-photo {
+  height: auto;
+  max-height: 520px;
+  background: #f5f5f5;
+  object-fit: contain;
 }
-:host .wechat-moment-media--single .wechat-moment-photo {
-  height: 220px;
+:host .wechat-moment-content--compact .wechat-moment-media--single .wechat-moment-photo {
+  height: auto;
+  aspect-ratio: 4 / 3;
+}
+:host .wechat-moment-content--compact .wechat-moment-media--two .wechat-moment-photo,
+:host .wechat-moment-content--compact .wechat-moment-media--grid .wechat-moment-photo {
+  height: auto;
+  aspect-ratio: 1;
 }
 :host .wechat-moment-placeholder:has(.wechat-moment-photo) {
   padding: 0;
@@ -26,8 +35,9 @@
 }
 :host .wechat-moment-draft-photo {
   width: 100%;
-  max-height: 180px;
-  object-fit: cover;
+  max-height: 240px;
+  object-fit: contain;
+  background: #f5f5f5;
 }
 :host .wechat-moment-full-photo {
   display: block;

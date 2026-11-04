@@ -52,7 +52,7 @@ export function WechatMomentParticipants({
       navBar={
         <NavBar
           title="选择参与人物"
-          back={{ label: "动态详情", onClick: navigation.pop }}
+          back={{ label: "返回", onClick: navigation.pop }}
           right={
             <Button disabled={!!reason || !candidates.length} onClick={() => void generate()}>
               生成互动
@@ -63,26 +63,25 @@ export function WechatMomentParticipants({
     >
       <p className="wechat-notice">最多选择 5 人，每人至少回复一条；不选则由 AI 自行挑选。</p>
       {reason ? <p className="wechat-notice">{reason}</p> : null}
-      <div className="wechat-moment-editor">
-        <label className="wechat-moment-label">
-          本次用户指引
-          <textarea
-            rows={3}
-            value={userDirection}
-            disabled={!!reason}
-            placeholder="选填，例如围绕照片里的猫聊天，让大家自然接话"
-            onChange={(event) => setUserDirection(event.target.value)}
-          />
-        </label>
-      </div>
       <div className="wechat-moment-ai-actions">
-        <span>{selected.length ? `已选择 ${selected.length} 人` : "由 AI 自行选择参与人物"}</span>
+        <span>{selected.length ? `已选 ${selected.length}/5 人` : "未指定，由 AI 自行挑选"}</span>
         {selected.length ? (
           <Button disabled={!!reason} onClick={() => setSelected([])}>
             清空选择
           </Button>
         ) : null}
       </div>
+      <details className="wechat-moment-optional">
+        <summary>本次用户指引（选填）</summary>
+        <textarea
+          rows={3}
+          aria-label="本次用户指引"
+          value={userDirection}
+          disabled={!!reason}
+          placeholder="例如围绕照片里的猫聊天，让大家自然接话"
+          onChange={(event) => setUserDirection(event.target.value)}
+        />
+      </details>
       <div className="wechat-rows">
         {candidates.map((person) => {
           const checked = selected.includes(person.id);

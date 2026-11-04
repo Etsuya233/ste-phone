@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { MomentDraft, MomentMedia } from "../wechat-moments.ts";
+import type { MomentDraft, MomentImage, MomentMedia } from "../wechat-moments.ts";
 import { useMomentDraftImages } from "./use-wechat-moment-draft-images.ts";
 import type { WechatPageProps } from "./wechat-page.tsx";
 
@@ -33,6 +33,7 @@ export function useMomentCompose({
   );
   const [status, setStatus] = useState<"editing" | "saving" | "saved">("editing");
   const [error, setError] = useState<string | null>(null);
+  const [editingImage, setEditingImage] = useState<number | null>(null);
   const images = useMomentDraftImages({ draft, setDraft, wechat, navigation });
   const mounted = useRef(true);
   useEffect(() => {
@@ -68,7 +69,13 @@ export function useMomentCompose({
     if (status !== "editing") {
       return;
     }
-    if (draft.text || draft.media.type !== "none") {
+    // 空图片槽或空视频描述没有需要保留的内容，不弹舍弃确认。
+    const hasContent =
+      !!draft.text.trim() ||
+      (draft.media.type === "images" &&
+        draft.media.items.some((item) => item.description.trim() || item.image || item.prompt)) ||
+      (draft.media.type === "video" && !!draft.media.description.trim());
+    if (hasContent) {
       setConfirmation({ type: "discard" });
     } else {
       navigation.pop();
@@ -92,6 +99,7 @@ export function useMomentCompose({
       setConfirmation({ type: "media", media });
     } else {
       setDraft({ ...draft, media });
+      setEditingImage(type === "images" ? 0 : null);
     }
   }
   function confirm() {
@@ -100,8 +108,63 @@ export function useMomentCompose({
       navigation.pop();
     } else if (confirmation?.type === "media") {
       setDraft({ ...draft, media: confirmation.media });
+      setEditingImage(confirmation.media.type === "images" ? 0 : null);
     }
     setConfirmation(null);
+  }
+  function openImage(index: number) {
+    setEditingImage(index);
+  }
+  function closeImage() {
+    setEditingImage(null);
+  }
+  function addImage() {
+    if (draft.media.type !== "images" || draft.media.items.length >= 9) {
+      return;
+    }
+    setEditingImage(draft.media.items.length);
+    setDraft({
+      ...draft,
+      media: { type: "images", items: [...draft.media.items, { description: "" }] },
+    });
+  }
+  function updateImage(index: number, item: MomentImage) {
+    if (draft.media.type !== "images") {
+      return;
+    }
+    setDraft({
+      ...draft,
+      media: {
+        type: "images",
+        items: draft.media.items.map((current, position) => (position === index ? item : current)),
+      },
+    });
+  }
+  function removeImage(index: number) {
+    if (draft.media.type !== "images") {
+      return;
+    }
+    setDraft({
+      ...draft,
+      media: {
+        type: "images",
+        items: draft.media.items.filter((_, position) => position !== index),
+      },
+    });
+    setEditingImage(null);
+  }
+  function moveImage(index: number, direction: number) {
+    if (draft.media.type !== "images") {
+      return;
+    }
+    const target = index + direction;
+    if (target < 0 || target >= draft.media.items.length) {
+      return;
+    }
+    const items = [...draft.media.items];
+    [items[index], items[target]] = [items[target]!, items[index]!];
+    setDraft({ ...draft, media: { type: "images", items } });
+    setEditingImage(target);
   }
 
   return {
@@ -110,6 +173,13 @@ export function useMomentCompose({
     imageBusy: images.imageBusy,
     chooseImage: images.chooseImage,
     imageTask: images.imageTask,
+    editingImage,
+    openImage,
+    closeImage,
+    addImage,
+    updateImage,
+    removeImage,
+    moveImage,
     status,
     error,
     imageError: images.imageError,

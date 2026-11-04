@@ -58,7 +58,7 @@ export function WechatMomentAiAuthor(
     return <WechatMomentCompose {...props} initialDraft={draft} onPublished={() => {}} />;
   }
   return (
-    <Page navBar={<NavBar title="AI 生成动态" back={{ label: "朋友圈", onClick: back }} />}>
+    <Page navBar={<NavBar title="AI 生成动态" back={{ label: "返回", onClick: back }} />}>
       <p className="wechat-notice">可先填写本次指引，再点击人物生成草稿，编辑后再发布。</p>
       <div className="wechat-moment-editor">
         <label className="wechat-moment-label">

@@ -1,6 +1,7 @@
 import { Button } from "../../../frontend/foundation/button.tsx";
 import type { MomentImage } from "../wechat-moments.ts";
 
+/** 单张图片的完整编辑页内容；草稿仍由发布页持有，本组件只提交当前槽位的变更。 */
 export function MomentDraftImage({
   item,
   index,
@@ -25,35 +26,33 @@ export function MomentDraftImage({
   onChange(item: MomentImage): void;
 }) {
   return (
-    <div className="wechat-moment-image-editor">
-      <div className="wechat-moment-image-heading">
-        <span>
-          图片 {index + 1}/{count}
-        </span>
-        <Button disabled={disabled} onClick={onRemove}>
-          删除
-        </Button>
-      </div>
+    <div className="wechat-moment-image-page">
+      <p className="wechat-moment-image-caption">
+        第 {index + 1} 张，共 {count} 张
+      </p>
       {item.image ? (
         <img
           className="wechat-moment-draft-photo"
           src={item.image.imagePath}
           alt={item.description}
         />
-      ) : null}
+      ) : (
+        <div className="wechat-moment-draft-empty">还没有实图，保存发布后会显示描述占位。</div>
+      )}
       <label className="wechat-moment-label">
         描述
         <textarea
           rows={3}
           value={item.description}
           disabled={disabled}
+          placeholder="这张图里有什么…"
           onChange={(event) => onChange({ ...item, description: event.target.value })}
         />
       </label>
       <label className="wechat-moment-label">
         绘图提示词
         <textarea
-          rows={6}
+          rows={4}
           value={item.prompt ?? ""}
           disabled={disabled}
           placeholder="人物、场景、构图、光线与画面风格…"
@@ -76,20 +75,20 @@ export function MomentDraftImage({
           {item.image ? "更换图片" : "从图库选图"}
         </Button>
       </div>
-      <div className="wechat-moment-image-actions">
-        <Button
-          aria-label={`上移图片 ${index + 1}`}
-          disabled={disabled || index === 0}
-          onClick={() => onMove(-1)}
-        >
-          ↑
+      <div className="wechat-moment-image-footer">
+        <Button disabled={disabled || index === 0} onClick={() => onMove(-1)}>
+          上移
+        </Button>
+        <Button disabled={disabled || index === count - 1} onClick={() => onMove(1)}>
+          下移
         </Button>
         <Button
-          aria-label={`下移图片 ${index + 1}`}
-          disabled={disabled || index === count - 1}
-          onClick={() => onMove(1)}
+          className="wechat-moment-delete"
+          variant="danger"
+          disabled={disabled}
+          onClick={onRemove}
         >
-          ↓
+          删除图片
         </Button>
       </div>
     </div>
