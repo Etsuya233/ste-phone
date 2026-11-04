@@ -8,7 +8,8 @@ export type DiaryImageAction =
   | { type: "prompt"; prompt: string }
   | { type: "select"; image: ImageRecord }
   | { type: "generate" }
-  | { type: "create-prompt" };
+  | { type: "create-prompt" }
+  | { type: "remove" };
 
 interface ImageTaskOwner {
   ownsTask(): boolean;
@@ -50,6 +51,10 @@ export class DiaryImages {
           ...entry,
           image: { id: action.image.id, imagePath: action.image.imagePath },
         });
+        return;
+      case "remove":
+        // 只解除关联；图片仍归图库，配图描述留给之后重新生成。
+        await owner.save({ ...entry, image: undefined });
         return;
       case "create-prompt": {
         owner.phase("prompting");

@@ -6,20 +6,27 @@ import { Page } from "../foundation/page.tsx";
 /** 缩略图读取失败时显示占位，不把浏览器裂图带进列表。 */
 function ImageTile({
   image,
+  selected,
   onOpen,
 }: {
   image: ImageRecord;
+  selected: boolean;
   onOpen: (image: ImageRecord) => void;
 }) {
   const [failed, setFailed] = useState(false);
   const label = image.prompt.length > 40 ? `${image.prompt.slice(0, 40)}…` : image.prompt;
   return (
-    <button type="button" onClick={() => onOpen(image)} aria-label={`查看图片：${label}`}>
+    <button
+      type="button"
+      onClick={() => onOpen(image)}
+      aria-label={`查看图片：${label}${selected ? "（当前配图）" : ""}`}
+    >
       {failed ? (
         <span className="image-tile-missing">图片不可用</span>
       ) : (
         <img src={image.imagePath} alt={label} loading="lazy" onError={() => setFailed(true)} />
       )}
+      {selected ? <span className="image-tile-current">当前</span> : null}
     </button>
   );
 }
@@ -28,10 +35,12 @@ export function ImageGrid({
   images,
   onOpen,
   empty,
+  selectedId,
 }: {
   images: readonly ImageRecord[];
   onOpen: (image: ImageRecord) => void;
   empty: string;
+  selectedId?: string;
 }) {
   if (images.length === 0) {
     return (
@@ -44,7 +53,7 @@ export function ImageGrid({
     <ul className="image-grid" aria-label="图片列表">
       {images.map((image) => (
         <li key={image.id}>
-          <ImageTile image={image} onOpen={onOpen} />
+          <ImageTile image={image} selected={image.id === selectedId} onOpen={onOpen} />
         </li>
       ))}
     </ul>

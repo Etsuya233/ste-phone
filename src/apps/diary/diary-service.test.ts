@@ -685,6 +685,31 @@ test("image failures preserve saved text and prompts, and association failure di
   }
 });
 
+test("removing an image keeps its prompt and blocks other writes while the task runs", async () => {
+  const app = fixture(undefined, {
+    listImages: async () => [],
+    generate: async () => [image],
+  });
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    await app.service.generate();
+    const entry = app.saved.get("phone-A")!.entries[0]!;
+    await app.service.selectImage(entry.id, image);
+
+    const removing = app.service.removeImage(entry.id);
+    await assert.rejects(app.service.deleteEntry(entry.id), /等待/);
+    await removing;
+
+    const saved = app.saved.get("phone-A")!.entries[0]!;
+    assert.equal(saved.image, undefined);
+    assert.equal(saved.imagePrompt, entry.imagePrompt);
+    assert.equal(app.service.getSnapshot().imageTask.status, "idle");
+  } finally {
+    app.close();
+  }
+});
+
 test("quitting ignores late Hub association while the Hub request continues", async () => {
   let finish!: (images: readonly ImageRecord[]) => void;
   const app = fixture(undefined, {

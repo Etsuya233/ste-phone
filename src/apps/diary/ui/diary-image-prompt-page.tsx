@@ -44,6 +44,11 @@ function ImagePromptEditor({
         error={error}
       >
         <div className="diary-image-editor">
+          {entry.image ? (
+            <p className="diary-image-current-hint">
+              重新生成会替换当前配图；旧图仍保留在图库，描述也会保留。
+            </p>
+          ) : null}
           <label htmlFor={`diary-prompt-${entry.id}`}>想把怎样的画面留在这一页？</label>
           <textarea
             id={`diary-prompt-${entry.id}`}
@@ -54,9 +59,9 @@ function ImagePromptEditor({
           />
           <p>描述会随日记保存，生成时使用已保存的描述。</p>
           <div className="diary-write-buttons">
-            {!entry.imagePrompt ? (
-              <Button disabled={busy || dirty} onClick={() => void extract()}>
-                从正文提炼描述
+            {!dirty ? (
+              <Button disabled={busy} onClick={() => void extract()}>
+                {entry.imagePrompt ? "从正文重新提炼" : "从正文提炼描述"}
               </Button>
             ) : null}
             <Button disabled={busy || !prompt.trim() || !dirty} onClick={() => void submit(false)}>
@@ -67,7 +72,7 @@ function ImagePromptEditor({
               disabled={busy || !prompt.trim()}
               onClick={() => void submit(true)}
             >
-              保存并生成配图
+              {entry.image ? "重新生成并替换" : "保存并生成配图"}
             </Button>
           </div>
           {message ? <p role="status">{message}</p> : null}

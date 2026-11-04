@@ -258,6 +258,10 @@ export class DiaryService {
     await this.#runImageTask(entryId, { type: "create-prompt" });
   }
 
+  async removeImage(entryId: string): Promise<void> {
+    await this.#runImageTask(entryId, { type: "remove" });
+  }
+
   async #runImageTask(entryId: string, action: DiaryImageAction): Promise<void> {
     if (this.#task || this.#writing) {
       throw new Error("请等待当前日记任务完成");

@@ -1,5 +1,6 @@
 import type { ImageHub } from "../../../core/image-hub/public.ts";
-import { DiaryImagePicker, DiaryImageView } from "./diary-image-pages.tsx";
+import { DiaryImagePicker } from "./diary-image-picker.tsx";
+import { DiaryImageView } from "./diary-image-view.tsx";
 import { DiaryImagePromptPage } from "./diary-image-prompt-page.tsx";
 import { useEffect, useSyncExternalStore } from "react";
 import type { DiaryService } from "../diary-service.ts";

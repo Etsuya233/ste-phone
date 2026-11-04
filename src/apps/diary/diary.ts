@@ -73,6 +73,10 @@ export function isDiaryRunning(generation: DiaryGeneration): boolean {
   );
 }
 
+export function isDiaryImageTaskRunning(task: DiaryImageTask): boolean {
+  return task.status === "generating" || task.status === "prompting" || task.status === "saving";
+}
+
 export function createDiaryEntry(author: DiaryAuthor, worldTime: string, body: string): DiaryEntry {
   const id = [...crypto.getRandomValues(new Uint8Array(16))]
     .map((byte) => byte.toString(16).padStart(2, "0"))

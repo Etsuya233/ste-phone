@@ -1,7 +1,7 @@
 import { DiaryEntryImage } from "./diary-entry-image.tsx";
 import { useState } from "react";
 import type { DiaryEntry } from "../diary.ts";
-import { isDiaryRunning } from "../diary.ts";
+import { isDiaryImageTaskRunning, isDiaryRunning } from "../diary.ts";
 import { readDiaryBooks, sameDiaryAuthor } from "../diary-books.ts";
 import { formatWrittenAt } from "../diary-time.ts";
 import { ActionSheet } from "../../../frontend/foundation/action-sheet.tsx";
@@ -68,14 +68,12 @@ export function DiaryDetailPage(props: DiaryPageProps & { id: string; fromBookKe
 }
 
 export function DiaryEntryPage({ diary, state, navigation, entry, onWrite }: DiaryEntryPageProps) {
-  const [deleting, setDeleting] = useState(false);
+  const [confirm, setConfirm] = useState<"remove-image" | "delete" | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { message: copyMessage, copy } = useDiaryCopy(entry.body);
   const busy =
-    state.preparing ||
-    isDiaryRunning(state.generation) ||
-    (state.imageTask.status !== "idle" && state.imageTask.status !== "error");
+    state.preparing || isDiaryRunning(state.generation) || isDiaryImageTaskRunning(state.imageTask);
 
   async function writeAnother() {
     setError(null);
@@ -87,13 +85,23 @@ export function DiaryEntryPage({ diary, state, navigation, entry, onWrite }: Dia
   }
 
   async function deleteEntry() {
-    setDeleting(false);
+    setConfirm(null);
     setError(null);
     try {
       await diary.deleteEntry(entry.id);
       navigation.pop();
     } catch (cause) {
       setError((cause as Error).message);
+    }
+  }
+
+  async function removeEntryImage() {
+    setConfirm(null);
+    setError(null);
+    try {
+      await diary.removeImage(entry.id);
+    } catch {
+      // 移除失败由 imageTask 在配图区展示，这里捕获拒绝避免未处理。
     }
   }
 
@@ -104,7 +112,7 @@ export function DiaryEntryPage({ diary, state, navigation, entry, onWrite }: Dia
         title="日记"
         onBack={navigation.pop}
         backLabel="日记本"
-        inert={deleting || actionsOpen}
+        inert={confirm !== null || actionsOpen}
         error={error}
         right={
           <Button
@@ -133,7 +141,12 @@ export function DiaryEntryPage({ diary, state, navigation, entry, onWrite }: Dia
               {entry.author.name}
             </p>
           </DiarySheet>
-          <DiaryEntryImage entry={entry} state={state} navigation={navigation} />
+          <DiaryEntryImage
+            entry={entry}
+            state={state}
+            navigation={navigation}
+            onRequestRemove={() => setConfirm("remove-image")}
+          />
           <p className="diary-written-at">{formatWrittenAt(entry.createdAt)}</p>
           {copyMessage ? (
             <p className="diary-copy-status" role="status">
@@ -152,22 +165,36 @@ export function DiaryEntryPage({ diary, state, navigation, entry, onWrite }: Dia
               disabled: busy,
               onClick: () => void writeAnother(),
             },
-            { label: "删除", destructive: true, disabled: busy, onClick: () => setDeleting(true) },
+            {
+              label: "删除",
+              destructive: true,
+              disabled: busy,
+              onClick: () => setConfirm("delete"),
+            },
           ]}
           onDismiss={() => setActionsOpen(false)}
         />
       ) : null}
-      {deleting ? (
+      {confirm ? (
         <Alert
-          title="删除这一页？"
+          title={confirm === "delete" ? "删除这一页？" : "移除这一页的配图？"}
           active={navigation.current}
-          onDismiss={() => setDeleting(false)}
-          actions={[
-            { label: "保留", onClick: () => setDeleting(false), primary: true },
-            { label: "删除", onClick: () => void deleteEntry() },
-          ]}
+          onDismiss={() => setConfirm(null)}
+          actions={
+            confirm === "delete"
+              ? [
+                  { label: "保留", onClick: () => setConfirm(null), primary: true },
+                  { label: "删除", onClick: () => void deleteEntry() },
+                ]
+              : [
+                  { label: "保留", onClick: () => setConfirm(null), primary: true },
+                  { label: "移除", onClick: () => void removeEntryImage() },
+                ]
+          }
         >
-          <p>删除后无法恢复。</p>
+          <p>
+            {confirm === "delete" ? "删除后无法恢复。" : "图片仍保留在图库，配图描述也会保留。"}
+          </p>
         </Alert>
       ) : null}
     </>
