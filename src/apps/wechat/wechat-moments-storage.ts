@@ -3,7 +3,7 @@ import { normalizeMomentContent, type WechatMoment } from "./wechat-moments.ts";
 /** 元数据来自宿主或 localStorage，运行时校验，禁止把损坏数据当作空历史。 */
 export function validateWechatMoments(value: unknown): void {
   if (value === undefined) {
-    return; // 旧 v1 未包含朋友圈字段。
+    return; // 尚未发布动态时可省略朋友圈字段。
   }
   const scopes = object(value);
   for (const [scopeId, records] of Object.entries(scopes)) {
@@ -94,7 +94,7 @@ function nonempty(value: unknown): void {
   }
 }
 
-/** 读取边界将旧动态级媒体转换为有序附件；读取不写盘，下次正常保存时持久化。 */
+/** v1 升级步骤将旧动态级媒体转换为有序附件；调用方在副本上执行。 */
 export function migrateWechatMoments(value: unknown): void {
   if (value === undefined) {
     return;

@@ -154,7 +154,7 @@ test("malformed barriers fail explicitly; failed first message retains an empty 
   const empty = { ...conversation, messages: [], pendingReplies: {}, memoryBarriers: [barrier] };
   const next = appendWechatMessage(empty, conversation.messages[0]!);
   const rolled = rollbackWechatMessage(
-    { version: 1, account: empty.people[0], conversations: [next] },
+    { version: 2, account: empty.people[0], conversations: [next] },
     empty,
     "0",
   );

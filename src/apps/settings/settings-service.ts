@@ -10,6 +10,8 @@ import { appCatalog, defaultHomeLayout } from "../../core/launcher/catalog.ts";
 import type { HomeLayout } from "../../core/launcher/catalog.ts";
 import { validateModelConnection } from "./model-connections.ts";
 import type { ModelConnection } from "./model-connections.ts";
+import { migrateData } from "../../core/storage/migrations.ts";
+import { phoneSettingsMigrationPlan, validateWechatHistoryLimit } from "./settings-migrations.ts";
 
 import type {
   PhoneSettings,
@@ -132,47 +134,21 @@ export class PhoneSettingsService {
   constructor(storage: SettingsStorage) {
     this.storage = storage;
     const stored = storage.read();
-    if (!stored) {
+    if (stored === undefined) {
       this.state = defaultSettings;
-    } else if (stored.version === 1) {
-      // Version 1 selected host backgrounds and external URLs; neither belongs to the Phone library.
-      this.state = { ...defaultSettings, wallpaper: { kind: "gradient" }, blur: stored.blur };
-      storage.save(this.state);
-    } else if (stored.version === 2) {
-      this.state = { ...defaultSettings, wallpaper: stored.wallpaper, blur: stored.blur };
-      storage.save(this.state);
-    } else if (stored.version === 3) {
-      this.state = {
-        ...stored,
-        version: 6,
-        wechatHistoryMessageLimit: 100,
-        homeLayout: defaultHomeLayout,
-        wechatSendMode: "delayed",
-      };
-      storage.save(this.state);
-    } else if (stored.version === 4 || stored.version === 5 || stored.version === 6) {
-      // 其他分支或旧构建可能保存过当前目录没有的应用 ID，主屏无法渲染，加载时丢弃。
-      const grid = stored.homeLayout.grid.filter((id) => Object.hasOwn(appCatalog, id));
-      const dock = stored.homeLayout.dock.filter((id) => Object.hasOwn(appCatalog, id));
+    } else {
+      const migration = migrateData(stored, phoneSettingsMigrationPlan);
+      const settings = migration.data;
+      // 应用目录随构建变化；当前 schema 也要清理已移除的图标。
+      const grid = settings.homeLayout.grid.filter((id) => Object.hasOwn(appCatalog, id));
+      const dock = settings.homeLayout.dock.filter((id) => Object.hasOwn(appCatalog, id));
       const changed =
-        grid.length !== stored.homeLayout.grid.length ||
-        dock.length !== stored.homeLayout.dock.length;
-      this.state = {
-        ...stored,
-        version: 6,
-        wechatHistoryMessageLimit: stored.version === 6 ? stored.wechatHistoryMessageLimit : 100,
-        homeLayout: { grid, dock },
-        wechatSendMode: stored.version === 4 ? "delayed" : stored.wechatSendMode,
-      };
-      if (this.state.wechatSendMode !== "immediate" && this.state.wechatSendMode !== "delayed") {
-        throw new Error("不支持的微信发送模式");
-      }
-      validateWechatHistoryLimit(this.state.wechatHistoryMessageLimit);
-      if (changed || stored.version !== 6) {
+        grid.length !== settings.homeLayout.grid.length ||
+        dock.length !== settings.homeLayout.dock.length;
+      this.state = { ...settings, homeLayout: { grid, dock } };
+      if (changed || migration.executed.length > 0) {
         storage.save(this.state);
       }
-    } else {
-      throw new Error("不支持的手机设置版本");
     }
     this.updateSnapshots();
   }
@@ -269,8 +245,4 @@ export class PhoneSettingsService {
   }
 }
 
-export function validateWechatHistoryLimit(limit: number): void {
-  if (!Number.isSafeInteger(limit) || limit <= 0) {
-    throw new Error("历史消息条数须为正安全整数");
-  }
-}
+export { validateWechatHistoryLimit } from "./settings-migrations.ts";

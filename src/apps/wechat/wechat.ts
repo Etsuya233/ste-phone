@@ -34,7 +34,7 @@ export interface WechatConversation {
   readonly memoryBarriers?: readonly WechatMemoryBarrier[];
 }
 export interface WechatData {
-  readonly version: 1;
+  readonly version: 2;
   readonly account: WechatPerson | null;
   readonly conversations: readonly WechatConversation[];
   /** 旧 v1 数据未填写指导；按稳定空间、稳定人物身份保存，所有微信帐号共享。 */
@@ -67,7 +67,7 @@ export interface WechatSnapshot {
   readonly barrierSaving: boolean;
   readonly operationError: string | null;
 }
-export const emptyWechat = (): WechatData => ({ version: 1, account: null, conversations: [] });
+export const emptyWechat = (): WechatData => ({ version: 2, account: null, conversations: [] });
 export const conversationId = (scopeId: string, a: string, b: string) =>
   JSON.stringify([scopeId, ...[a, b].sort()]);
 

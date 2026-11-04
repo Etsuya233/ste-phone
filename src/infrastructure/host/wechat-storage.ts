@@ -2,10 +2,7 @@ import type { WechatData } from "../../apps/wechat/wechat.ts";
 import type { WechatStorage } from "../../apps/wechat/ports/wechat-storage.ts";
 import type { ChatContext } from "../../core/chat/public.ts";
 import type { StChatContext } from "./chat-context.ts";
-import {
-  migrateWechatMoments,
-  validateWechatMoments,
-} from "../../apps/wechat/wechat-moments-storage.ts";
+import { readWechatData, validateWechatData } from "../../apps/wechat/wechat-migrations.ts";
 
 export interface StWechatContext extends StChatContext {
   readonly characters: readonly { avatar: string; name: string }[];
@@ -30,20 +27,15 @@ export function createStWechatStorage(
   return {
     read(chatId) {
       const context = current(chatId);
-      const phone = context.chatMetadata.ste_phone as { wechat?: WechatData } | undefined;
+      const phone = context.chatMetadata.ste_phone as { wechat?: unknown } | undefined;
       if (phone?.wechat === undefined) {
         return null;
       }
-      if (phone.wechat.version !== 1) {
-        throw new Error("微信数据版本不受支持");
-      }
-      const data = structuredClone(phone.wechat);
-      migrateWechatMoments(data.moments);
-      return data;
+      return readWechatData(phone.wechat);
     },
     async write(chatId, data, signal) {
       signal?.throwIfAborted();
-      validateWechatMoments(data.moments);
+      validateWechatData(data);
       const context = current(chatId);
       const sequence = ++latestWrite;
       const save = captureWechatSave(context, data);

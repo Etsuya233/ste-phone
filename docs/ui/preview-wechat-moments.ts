@@ -5,7 +5,7 @@ export function previewWechatMoments(): WechatData {
   const red: WechatPerson = { id: "red", name: "小红", scopeId: "preview-space" };
   const blue: WechatPerson = { id: "blue", name: "小蓝", scopeId: "preview-space" };
   return {
-    version: 1,
+    version: 2,
     account: red,
     conversations: [],
     moments: {
