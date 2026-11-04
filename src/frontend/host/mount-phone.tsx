@@ -11,7 +11,7 @@ export function mountPhone(options: ComponentProps<typeof PhoneApp>): void {
   const fonts = document.createElement("link");
   fonts.rel = "stylesheet";
   fonts.href =
-    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;600&display=swap";
+    "https://fonts.googleapis.com/css2?family=Inter:wght@200;400;500;600;700&family=Noto+Serif+SC:wght@400;600&display=swap";
   document.head.append(fonts);
   // 日记正文使用手写体；LXGW WenKai 的字体文件按页面用字分片下载，未加载时回退到楷体或衬线体。
   const handwriting = document.createElement("link");

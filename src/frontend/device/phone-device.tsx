@@ -15,6 +15,8 @@ import { appSession } from "./app-session.ts";
 import type { AppId } from "./app-session.ts";
 import type { AppDefinition } from "./app-lifecycle.ts";
 import type { WallpaperReader, HomeScreenSettings } from "../../apps/settings/public.ts";
+import { LockScreen, SleepingScreen } from "./lock-screen.tsx";
+import { useScreenLock } from "./use-screen-lock.ts";
 import { Expose } from "./expose.tsx";
 import type { ExposeDrag } from "./expose.tsx";
 
@@ -62,6 +64,8 @@ export function PhoneDevice({
   apps: Record<AppId, AppDefinition>;
 }) {
   const screen = useRef<HTMLDivElement>(null);
+  const lock = useScreenLock(screen, visible);
+  const interactive = visible && lock.state === "unlocked";
   const [editingHome, setEditingHome] = useState(false);
   const [session, dispatch] = useReducer(appSession, {
     foreground: initialApp,
@@ -87,7 +91,7 @@ export function PhoneDevice({
         clearTimeout(homeTimer.current);
       }
     };
-  }, [visible, page]);
+  }, [visible, page, lock.state]);
   useLayoutEffect(() => {
     if (!visible) {
       return;
@@ -123,8 +127,8 @@ export function PhoneDevice({
     setExposeDrag(emptyDrag);
   };
   useEffect(() => {
-    // Closing settles every visible operation; native dialog hiding must not strand a transition.
-    if (visible) {
+    // Hiding or locking settles visible operations so the preserved session cannot strand a transition.
+    if (interactive) {
       return;
     }
     setExposeDrag(emptyDrag);
@@ -137,9 +141,9 @@ export function PhoneDevice({
     if (transition) {
       setTransition(null);
     }
-  }, [visible, transition, quittingApp]);
+  }, [interactive, transition, quittingApp]);
   useEffect(() => {
-    if (!visible || transition || page === "expose") {
+    if (!interactive || transition || page === "expose") {
       return;
     }
     const target =
@@ -268,6 +272,12 @@ export function PhoneDevice({
   );
   const stride = previewWidth + 28;
   const homePress = () => {
+    if (lock.state !== "unlocked") {
+      if (lock.state === "asleep") {
+        lock.wake();
+      }
+      return;
+    }
     if (editingHome) {
       setEditingHome(false);
       return;
@@ -288,7 +298,13 @@ export function PhoneDevice({
       <span className="device-mute" aria-hidden="true" />
       <span className="device-volume device-volume--up" aria-hidden="true" />
       <span className="device-volume device-volume--down" aria-hidden="true" />
-      <span className="device-power" aria-hidden="true" />
+      <button
+        type="button"
+        className="device-power"
+        aria-label={lock.state === "asleep" ? "唤醒屏幕" : "锁屏"}
+        onPointerDown={(event) => event.preventDefault()}
+        onClick={lock.power}
+      />
       <div
         className={`device-top ${draggable ? "device-top--draggable" : ""}`}
         aria-hidden="true"
@@ -297,8 +313,10 @@ export function PhoneDevice({
         <span className="device-camera" />
         <span className="device-speaker" />
       </div>
-      <div ref={screen} className="phone-screen">
+      <div ref={screen} className={`phone-screen phone-screen--${lock.state}`}>
         <div
+          inert={!interactive}
+          aria-hidden={!interactive}
           className={`system-workspace ${page === "expose" ? "system-workspace--expose" : ""} ${exposeDrag.x || exposeDrag.y ? "system-workspace--dragging" : ""} ${transition === "expose-home" ? "system-workspace--expose-home" : ""}`}
         >
           <div
@@ -314,12 +332,12 @@ export function PhoneDevice({
           <div className="expose-shade" />
           <div
             className={`home-layer ${page !== "home" && transition !== "expose-home" ? "home-layer--covered" : ""}`}
-            inert={page !== "home" || !visible}
+            inert={page !== "home" || !interactive}
           >
             <Home
               onOpen={open}
               homeScreen={homeScreen}
-              active={visible && page === "home"}
+              active={interactive && page === "home"}
               editing={editingHome}
               onEditingChange={setEditingHome}
               onUninstall={(app) => {
@@ -334,7 +352,7 @@ export function PhoneDevice({
           {session.recent.map((app, index) => {
             const foreground = page === app;
             const inExpose = page === "expose";
-            const active = visible && foreground && !transition;
+            const active = interactive && foreground && !transition;
             const x = previewLeft + (index - exposeIndex) * stride + exposeDrag.x;
             const y =
               quittingApp === app
@@ -381,8 +399,8 @@ export function PhoneDevice({
                   <RunningApp
                     definition={apps[app]}
                     active={active}
-                    foreground={foreground}
-                    windowVisible={visible}
+                    foreground={foreground && lock.state === "unlocked"}
+                    windowVisible={interactive}
                     onHome={home}
                     onOpen={openApp}
                   />
@@ -403,7 +421,7 @@ export function PhoneDevice({
               }}
               drag={exposeDrag}
               deviceScale={scale}
-              visible={visible}
+              visible={interactive}
               blocked={transition !== null || quittingApp !== null}
               quitting={quittingApp}
               leaving={transition === "expose-home"}
@@ -418,9 +436,32 @@ export function PhoneDevice({
             />
           ) : null}
         </div>
-        {page !== "expose" ? <StatusBar light={page === "home"} active={visible} /> : null}
-        <div className="software-home">
-          <button aria-label="Home，单击返回主屏幕，双击查看后台" onClick={homePress}>
+        {lock.state === "unlocked" && page !== "expose" ? (
+          <StatusBar light={page === "home"} active={visible} />
+        ) : null}
+        {visible && lock.state === "asleep" ? <SleepingScreen onWake={lock.wake} /> : null}
+        {visible && lock.state === "locked" ? (
+          <LockScreen wallpaper={selectedSettings} onUnlock={lock.unlock} />
+        ) : null}
+        <div className="software-home" inert={lock.state === "asleep"}>
+          <button
+            type="button"
+            className="software-lock"
+            aria-label="锁屏"
+            onPointerDown={(event) => event.preventDefault()}
+            onClick={lock.power}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="5" y="10" width="14" height="11" rx="2" />
+              <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+            </svg>
+          </button>
+          <button
+            aria-label={
+              lock.state === "unlocked" ? "Home，单击返回主屏幕，双击查看后台" : "Home，唤醒到锁屏"
+            }
+            onClick={homePress}
+          >
             <span />
           </button>
         </div>
@@ -428,7 +469,9 @@ export function PhoneDevice({
       <div className="device-bottom">
         <button
           className="device-home"
-          aria-label="Home，单击返回主屏幕，双击查看后台"
+          aria-label={
+            lock.state === "unlocked" ? "Home，单击返回主屏幕，双击查看后台" : "Home，唤醒到锁屏"
+          }
           onClick={homePress}
         />
       </div>

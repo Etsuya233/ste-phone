@@ -1,0 +1,123 @@
+:host .lock-screen,
+:host .sleeping-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 0;
+  padding: 0;
+  outline: none;
+  background: #000;
+}
+:host .sleeping-screen {
+  cursor: pointer;
+}
+:host .lock-screen {
+  color: white;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  transition: transform 260ms ease;
+  container-type: inline-size;
+}
+:host .lock-screen--dragging {
+  cursor: grabbing;
+  transition: none;
+}
+:host .lock-screen-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(#0003, #0000 45%, #0005);
+}
+:host .lock-screen-clock {
+  position: absolute;
+  top: 9%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  text-shadow: 0 1px 8px #0003;
+}
+:host .lock-screen-clock time {
+  display: block;
+  font-size: 25cqw;
+  font-weight: 200;
+  line-height: 1.15;
+  letter-spacing: -0.055em;
+  font-variant-numeric: tabular-nums;
+}
+:host .lock-screen-clock > div {
+  margin-top: 8px;
+  font-size: 5cqw;
+  font-weight: 400;
+}
+:host .lock-screen-hint {
+  position: absolute;
+  bottom: max(12%, calc(var(--safe-bottom) + 28px));
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 6.5cqw;
+  font-weight: 300;
+}
+:host .lock-screen-hint > span:first-child {
+  font-size: 1.7em;
+  line-height: 1;
+}
+:host .lock-screen-hint > span:last-child {
+  color: transparent;
+  background: linear-gradient(100deg, #ffffff65 25%, #fff 50%, #ffffff65 75%) 100% 0 / 250% 100%;
+  background-clip: text;
+  animation: ste-phone-unlock-shimmer 3.5s linear infinite;
+}
+@keyframes ste-phone-unlock-shimmer {
+  to {
+    background-position: -100% 0;
+  }
+}
+/* The software controls stay usable above the lock page, and disappear on a black screen. */
+:host .phone-screen--locked .software-home {
+  z-index: 16;
+  background: transparent;
+  border-color: transparent;
+  backdrop-filter: none;
+}
+:host .phone-screen--asleep .software-home {
+  visibility: hidden;
+}
+:host .phone-screen--locked .software-home span {
+  border-color: #ffffff90;
+}
+:host .phone-screen--locked .software-home .software-lock {
+  color: white;
+}
+:host .phone-panel--responsive:has(.phone-screen--locked, .phone-screen--asleep) .phone-close {
+  color: white;
+}
+:host .software-home .software-lock {
+  position: absolute;
+  left: 6px;
+  top: 0;
+  width: 44px;
+  height: 44px;
+  color: #555;
+}
+:host .software-lock svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+@media (prefers-reduced-motion: reduce) {
+  :host .lock-screen {
+    transition: none;
+  }
+  :host .lock-screen-hint > span:last-child {
+    animation: none;
+  }
+}

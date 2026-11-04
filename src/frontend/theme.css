@@ -1,6 +1,7 @@
 @import "./foundation/tokens.css";
 @import "./foundation/foundation.css";
 @import "./device/device.css";
+@import "./device/lock-screen.css";
 @import "./system/system.css";
 @import "./system/app-icon.css";
 @import "./apps/home/home.css";

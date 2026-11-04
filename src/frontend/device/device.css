@@ -148,9 +148,30 @@
   top: 256px;
 }
 :host .device-power {
-  right: -2px;
+  right: -14px;
   top: 185px;
+  width: 28px;
   height: 58px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  z-index: 1;
+  cursor: pointer;
+}
+:host .device-power::before {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  border: 1px solid #3a3c40;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #3d3f43, #929397, #36383c);
+}
+:host .device-power:focus-visible {
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 2px;
 }
 :host .software-home {
   display: none;

@@ -30,6 +30,10 @@ Foundation 组件应用位于 `src/apps/foundation/ui/`，可从主屏打开，�
 
 ## 手机会话与设置
 
+锁屏属于设备内存会话，`device/use-screen-lock.ts` 持有 `unlocked / asleep / locked` 三态：电源键从使用中或锁屏进入黑屏，黑屏点击、电源键或物理 Home 只唤醒到锁屏，再向右滑动解锁。桌面使用右侧机身电源键，响应式模式在软件 Home 左侧提供锁屏按钮；黑屏隐藏屏幕内的状态栏和软件控件，外层关闭按钮仍可用。Home 在亮起的锁屏页不导航，关闭重开保留熄屏或锁屏，刷新结束会话。应用保持挂载，锁屏时工作区设为 inert 并关闭前台显示副作用，已有生成任务沿用后台规则；解锁恢复原页面及锁屏前焦点。锁屏与关闭会收敛正在进行的应用转场并清除待执行 Home 单击。
+
+`device/lock-screen.tsx` 展示当前壁纸、现实本地时间与中文日期；`device/use-unlock-swipe.ts` 集中管理 pointer capture、设备缩放、取消和解锁动画。右滑距离达到逻辑屏宽 30% 且大于纵向位移才解锁，其余回弹；取消手势不解锁，关闭手机卸载锁屏展示并清除拖动。Enter/空格提供键盘解锁，减少动态效果下直接完成解锁。`system/use-local-time.ts` 为锁屏和状态栏共用分钟边界校时，锁屏状态栏隐藏中央时间并停用自己的计时器，熄屏不运行锁屏时钟。
+
 机身缩放使用布局视口尺寸，键盘后的可见视口只参与窗口位置和输入避让；触控主输入设备中，输入引发的同宽布局高度收缩保留输入前高度，直到键盘收起。宽度变化后重算比例，桌面真实窗口调整仍生效。视口订阅、帧调度和键盘阶段归 `device/use-phone-viewport.ts`；输入避让先按 Page 的 scroll-padding 滚动手机内部内容，再移动机身让焦点输入框位于可见视口内。可见区域必须先由 fixed dialog 的 client rect 与 CSS top 校准到输入框所在坐标系，避免 Safari 在键盘平移后重复计算 offsetTop。切换输入框、textarea 增高、键盘收起及窗口关闭均重新测量或清除偏移，不滚动 ST 文档。
 
 `src/bootstrap/create-phone.tsx` 向外壳提供各 App 的渲染定义，外壳只管理挂载与界面生命周期，不导入各 App 内部实现。各 App 首次打开时挂载，Home 退到后台；Expose 以 iOS 7 风格横向展示真实页面预览，只有明确退出动画完成才卸载 App 页面。固定 App 数量无需淘汰策略。dialog 关闭保留 `PhoneDevice` 和各 App 的内存会话，重开恢复原前台页，刷新 ST 结束会话。后台 App 保持 DOM，平时使用 `hidden`；Expose 只在原父节点上缩放、位移这些页面，内容 wrapper 始终按 `active` 使用 `inert` 与 `aria-hidden`。预览点击和手势由独立透明层处理，不复制 App、截取页面或改变组件 key。拖动时 memo 保留 App 组件，避免手势刷新整页内容。秒表使用 `performance.now()` 累计后台时间，`active` 只允许前台执行显示 RAF；状态栏关闭时停止时钟定时器。DB 滚动监听与恢复仅在前台页执行，避免隐藏容器的零尺寸污染按聊天的滚动缓存。
