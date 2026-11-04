@@ -28,6 +28,10 @@
 
 独立预览 `/?diary=1` 可直接进入日记书目；模型连接需在预览设置中添加，所有回复均为模拟且不请求真实模型。`diary-test=slow/error/length/save-error` 分别检查取消、生成错误、输出截断和保存失败；`diary-test=demo` 在没有已保存日记时展示多本书与样例版式。预览日记独立存于 localStorage，刷新后保留。
 
+「图库」展示 ST Image Hub 已保存的图片，首次打开读取，右上角「刷新」重新载入；点缩略图查看大图、描述与保存时间。「图乐园」输入描述后交给 Hub 生成，本次结果直接显示在页面，参考图由 Hub 自动匹配。两应用通过 `ST_IMAGE_HUB_API v1` 接入，需要安装并启用 ST Image Hub；缺失或版本不兼容会在操作时提示，不影响其他手机应用。生成与保存由 Hub 负责，不写 ST 聊天正文。Home、关闭手机和退出应用都让 Hub 继续生成；退出后可到图库刷新查看结果。已有桌面布局可从 App Store 获取两个应用。
+
+独立预览 `/?gallery=1`、`/?image-playground=1` 分别进入图库与图乐园，使用本地模拟图片和生成，不请求真实模型。`image-test=empty/error/missing/slow` 分别展示空图库、读取与生成失败、Hub 未安装和慢生成；生成结果仅保留在预览内存中，刷新重置。
+
 ## 安装与运行要求
 
 当前版本：**0.0.5**。资料与数据库功能需要 **[STE Memory](https://github.com/Etsuya233/ste-memory) 0.2.6 或更新版本**，该版本提供 `STE_MEMORY_API.database v1` 与日记所需的 `STE_MEMORY_API.chat v1`。请先安装或升级 Memory，再刷新 ST。未连接 Memory 时，手机外壳、秒表及组件应用仍可使用。

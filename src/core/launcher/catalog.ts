@@ -1,5 +1,11 @@
 /** 内置应用目录。安装只改变可用入口，业务数据仍由各应用拥有。 */
 export const appCatalog = {
+  gallery: { name: "图库", description: "浏览 Image Hub 保存的图片", removable: true },
+  "image-playground": {
+    name: "图乐园",
+    description: "描述画面，通过 Image Hub 生成图片",
+    removable: true,
+  },
   wechat: { name: "微信", description: "切换人物帐号，与故事中的好友聊天", removable: true },
   diary: { name: "日记", description: "以人物的视角记录故事与回忆", removable: true },
   database: {
@@ -33,6 +39,8 @@ export const defaultHomeLayout: HomeLayout = {
     "foundation",
     "settings",
     "app-store",
+    "gallery",
+    "image-playground",
   ],
   dock: ["stopwatch"],
 };

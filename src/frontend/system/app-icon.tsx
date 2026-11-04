@@ -10,6 +10,27 @@ import { Icon } from "../foundation/icon.tsx";
 export function AppIcon({ app }: { app: AppId }) {
   const maskId = `app-icon-mask-${useId().replace(/:/g, "")}`;
 
+  if (app === "gallery") {
+    return (
+      <Icon appearance="app" className="gallery-app-icon">
+        <svg viewBox="0 0 60 60">
+          <rect x="10" y="12" width="40" height="36" rx="5" />
+          <circle className="image-icon-cutout" cx="39" cy="23" r="4" />
+          <path className="image-icon-cutout" d="m14 43 11-16 9 12 6-7 7 11Z" />
+        </svg>
+      </Icon>
+    );
+  }
+  if (app === "image-playground") {
+    return (
+      <Icon appearance="app" className="playground-app-icon">
+        <svg viewBox="0 0 60 60">
+          <path d="m14 42 24-24 6 6-24 24Z" />
+          <path d="m17 10 2 6 6 2-6 2-2 6-2-6-6-2 6-2Zm26 22 2 7 7 2-7 2-2 7-2-7-7-2 7-2ZM36 6l2 5 5 2-5 2-2 5-2-5-5-2 5-2Z" />
+        </svg>
+      </Icon>
+    );
+  }
   if (app === "wechat") {
     return (
       <Icon appearance="app" className="wechat-app-icon">

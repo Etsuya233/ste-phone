@@ -16,3 +16,5 @@
 @import "../apps/app-store/ui/app-store.css";
 @import "../apps/wechat/ui/wechat-app.css";
 @import "../apps/wechat/ui/wechat-stickers.css";
+
+@import "./images/images.css";

@@ -1,0 +1,77 @@
+:host .image-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ios-space-tiny);
+  list-style: none;
+  padding: 0;
+  margin: var(--ios-space-large) 0;
+}
+:host .image-grid button {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  background: var(--ios-muted-fill);
+  cursor: pointer;
+}
+:host .image-grid img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+:host .image-message,
+:host .image-note {
+  margin: var(--ios-space-large);
+  color: var(--ios-secondary-ink);
+  line-height: var(--ios-copy-line-height);
+  overflow-wrap: anywhere;
+}
+:host .image-message[role="alert"] {
+  color: var(--ios-red);
+}
+:host .image-detail {
+  margin: var(--ios-space-large) 0;
+}
+:host .image-detail img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+:host .image-detail figcaption {
+  margin: var(--ios-space-large);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+:host .image-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ios-space-medium);
+  margin: var(--ios-space-large);
+}
+:host .image-composer label,
+:host .image-heading {
+  font-size: var(--ios-body-size);
+  font-weight: 500;
+}
+:host .image-composer textarea {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  min-height: 120px;
+  border: var(--ios-hairline) solid var(--ios-line);
+  border-radius: var(--ios-control-radius);
+  padding: var(--ios-space-medium);
+  background: var(--ios-row-surface);
+  color: var(--ios-ink);
+  font: inherit;
+  line-height: var(--ios-copy-line-height);
+}
+:host .image-composer .image-note {
+  margin: 0;
+  font-size: var(--ios-caption-size);
+}
+:host .image-heading {
+  margin: var(--ios-space-large);
+}

@@ -40,6 +40,9 @@
   --ios-app-icon-shadow: 0 2px 5px #0004, inset 0 1px 0 #ffffff33, inset 0 -1px 0 #0000001f;
   --ios-app-icon-radius: 13px;
   --ios-page-dot-size: 6px;
+  --gallery-icon-fill: linear-gradient(#eba76e, #db765a);
+  --playground-icon-fill: linear-gradient(#a78ae0, #7156b4);
+  --image-icon-cutout: #df8c66;
   --wechat-icon-fill: linear-gradient(#28dc69, #06b94e);
   --wechat-icon-mark: #0aa74b;
   --diary-icon-fill: linear-gradient(#c97b5b, #94442f);

@@ -133,3 +133,13 @@
   filter: brightness(0.88);
   transform: scale(0.94);
 }
+
+:host .gallery-app-icon {
+  background: var(--gallery-icon-fill);
+}
+:host .playground-app-icon {
+  background: var(--playground-icon-fill);
+}
+:host .gallery-app-icon .image-icon-cutout {
+  fill: var(--image-icon-cutout);
+}

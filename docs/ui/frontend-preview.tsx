@@ -1,3 +1,4 @@
+import { createPreviewImageHub } from "./preview-image-hub.ts";
 import { createPreviewSettingsStorage } from "./preview-wallpapers.ts";
 import { createPreviewAiTransport } from "./preview-ai-transport.ts";
 import { createPreviewChatContext } from "./preview-chat-context.ts";
@@ -43,6 +44,7 @@ if (options.get("logs-test") === "demo") {
   });
 }
 const phone = createPhone({
+  imageHub: createPreviewImageHub(options.get("image-test")),
   settingsStorage: await createPreviewSettingsStorage(),
   aiTransport: createPreviewAiTransport(
     options.get("moments-test") ??
@@ -66,23 +68,27 @@ mountPhone({
   wallpaper: phone.wallpaper,
   homeScreen: phone.homeScreen,
   initialApp:
-    options.get("wechat") === "1"
-      ? "wechat"
-      : options.get("diary") === "1"
-        ? "diary"
-        : options.get("app-store") === "1"
-          ? "app-store"
-          : options.get("settings") === "1"
-            ? "settings"
-            : options.get("database") === "1"
-              ? "database"
-              : options.get("data-source") === "1"
-                ? "data-source"
-                : options.get("logs") === "1"
-                  ? "logs"
-                  : options.get("foundation") === "1"
-                    ? "foundation"
-                    : "home",
+    options.get("gallery") === "1"
+      ? "gallery"
+      : options.get("image-playground") === "1"
+        ? "image-playground"
+        : options.get("wechat") === "1"
+          ? "wechat"
+          : options.get("diary") === "1"
+            ? "diary"
+            : options.get("app-store") === "1"
+              ? "app-store"
+              : options.get("settings") === "1"
+                ? "settings"
+                : options.get("database") === "1"
+                  ? "database"
+                  : options.get("data-source") === "1"
+                    ? "data-source"
+                    : options.get("logs") === "1"
+                      ? "logs"
+                      : options.get("foundation") === "1"
+                        ? "foundation"
+                        : "home",
   responsive: options.get("responsive") === "1",
   draggable: options.get("draggable") === "1",
 });

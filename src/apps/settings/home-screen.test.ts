@@ -89,6 +89,8 @@ test("moving between home and dock, uninstalling and reinstalling survive a new 
       "data-source",
       "logs",
       "app-store",
+      "gallery",
+      "image-playground",
       "database",
     ],
     dock: ["settings"],

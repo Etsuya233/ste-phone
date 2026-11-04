@@ -75,3 +75,9 @@ Foundation Alert 在当前 App 的页面坐标内绘制遮罩、圆角半透明�
 ## 主屏与 App Store
 
 应用静态目录位于 `src/core/launcher/catalog.ts`，统一 ID、名称、描述与卸载权限。设置模块通过 `HomeScreenSettings` 公开安装、卸载、移动及只读布局快照，生产与预览共用 v4 配置迁移；主屏和 App Store 不各自持有可修改的安装状态。应用图标由 `src/frontend/system/app-icon.tsx` 定义图形、`src/frontend/system/app-icon.css` 统一维护底色与细节，主屏、App Store 和 Expose 共用同一枚图标，业务应用不再各自覆盖图标样式。主屏拖动只更新手势内草稿，松手提交移动，取消手势恢复已保存布局。长按、右键或 F2 进入编辑，点击主屏空白处、Home 或 Escape 退出；关闭手机时结束编辑与未提交手势。资料、设置、App Store 可移动但不可卸载，Dock 容量四个。卸载保存成功后外壳通知运行中应用退出并移除会话，业务存储不清空；重新安装追加到主屏末尾。App Store 页面通过 bootstrap 注入系统打开应用的回调，不直接导入设备实现。
+
+## Image Hub 应用
+
+图库与图乐园分别位于 `src/apps/gallery/`、`src/apps/image-playground/`，通过 Core `ImageHub` 契约显式注入同一适配器，不读取彼此 UI 或 Hub 存储。`src/infrastructure/host/image-hub.ts` 在每次调用时检查全局 `ST_IMAGE_HUB_API v1`，因此 Hub 未安装或稍后初始化不阻断 Phone 启动。记录时间使用 ISO 字符串。
+
+图库首次挂载读取及手动刷新，不订阅图片变化；图片顺序由 Hub 的倒序列表决定。共享图片网格与详情位于 `src/frontend/images/`，只负责展示。图乐园固定提交时的描述，Hub 负责参考图匹配、生成和保存；页面退出只忽略迟到展示，不取消外部任务。Home 和手机关闭保留页面及本次结果，不按 ST 聊天保存或清理。安装与卸载沿用应用目录和现有桌面设置，无旧布局强制迁移。

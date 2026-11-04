@@ -1,3 +1,4 @@
+import { createStImageHub } from "../infrastructure/host/image-hub.ts";
 import { createStSettingsStorage } from "../infrastructure/host/st-settings.ts";
 import { createStAiTransport } from "../infrastructure/host/ai-transport.ts";
 import { createPhone } from "../bootstrap/create-phone.tsx";
@@ -27,6 +28,7 @@ const logs = createPhoneLog({
   storage: createLocalStorageLogStorage("ste-phone-logs-v1"),
 });
 const phone = createPhone({
+  imageHub: createStImageHub(),
   dataProvider: new MemoryDatabaseProvider(),
   settingsStorage: createStSettingsStorage(),
   aiTransport: createStAiTransport(() => window.SillyTavern.getContext().getRequestHeaders(), {

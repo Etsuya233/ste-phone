@@ -1,3 +1,6 @@
+import { GalleryApp } from "../apps/gallery/ui/gallery-app.tsx";
+import { ImagePlaygroundApp } from "../apps/image-playground/ui/image-playground-app.tsx";
+import type { ImageHub } from "../core/image-hub/public.ts";
 import { PhoneSettingsService } from "../apps/settings/settings-service.ts";
 import type { SettingsStorage } from "../apps/settings/ports/settings-storage.ts";
 import { createModelConnectionTest } from "../apps/settings/model-connection-test.ts";
@@ -52,6 +55,7 @@ export function createPhone(dependencies: {
   wechatStorage: WechatStorage;
   wechatStickerStorage: WechatStickerStorage;
   logs: PhoneLog;
+  imageHub: ImageHub;
 }): PhoneRuntime {
   const settings = new PhoneSettingsService(dependencies.settingsStorage);
   const data = new PhoneDataService(dependencies.dataProvider);
@@ -75,6 +79,16 @@ export function createPhone(dependencies: {
     transport: dependencies.aiTransport,
   });
   const apps: Record<AppId, AppDefinition> = {
+    gallery: {
+      render: ({ active, onHome }) => (
+        <GalleryApp active={active} hub={dependencies.imageHub} onHome={onHome} />
+      ),
+    },
+    "image-playground": {
+      render: ({ active, onHome }) => (
+        <ImagePlaygroundApp active={active} hub={dependencies.imageHub} onHome={onHome} />
+      ),
+    },
     wechat: {
       render: ({ active, onHome }) => (
         <WechatApp
