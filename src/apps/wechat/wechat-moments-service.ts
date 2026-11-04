@@ -1,3 +1,4 @@
+import type { MomentDraft, MomentImage } from "./wechat-moments.ts";
 import type { WechatData, WechatPerson, WechatSnapshot } from "./wechat.ts";
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
@@ -9,12 +10,20 @@ import {
   assertMomentOwner,
   createMomentRecord,
   normalizeMomentContent,
+  momentImageAt,
   removeMomentComment,
   type MomentContent,
   type WechatMoment,
 } from "./wechat-moments.ts";
 
+import type { ImageHub, ImageRecord } from "../../core/image-hub/public.ts";
+import {
+  generateRefinedMomentImagePrompt,
+  momentImagePromptInput,
+} from "./wechat-moments-image-prompt.ts";
+
 interface Dependencies {
+  imageHub: ImageHub;
   data: DataAppPublic;
   transport: AiTransport;
   connections: ModelConnectionsReader;
@@ -36,8 +45,15 @@ export class WechatMomentsService {
     });
   }
 
-  async publish(content: MomentContent): Promise<string> {
-    const author = this.#accountForWriting();
+  async publish(content: MomentContent, fixedAuthor?: WechatPerson): Promise<string> {
+    const account = this.#accountForWriting();
+    const author = fixedAuthor ?? account;
+    if (
+      author.scopeId !== account.scopeId ||
+      !this.#dependencies.snapshot().people.some((person) => person.id === author.id)
+    ) {
+      throw new Error("草稿作者不属于当前资料空间");
+    }
     const normalized = normalizeMomentContent(content);
     let id!: string;
     await this.#dependencies.save((data) => {
@@ -75,14 +91,14 @@ export class WechatMomentsService {
     });
   }
 
-  async generatePost(authorId: string): Promise<void> {
+  async generatePost(authorId: string): Promise<MomentDraft> {
     const account = this.#accountForWriting();
     const snapshot = this.#dependencies.snapshot();
     const author = snapshot.people.find((person) => person.id === authorId);
     if (!author) {
       throw new Error("请选择当前资料中的发布人物");
     }
-    await this.generation.generate({
+    return this.generation.generate({
       kind: "post",
       author,
       scopeId: account.scopeId,
@@ -135,6 +151,137 @@ export class WechatMomentsService {
       ),
       moment: this.#moment(snapshot.data, account.scopeId, momentId),
     });
+  }
+
+  async saveImagePrompt(momentId: string, index: number, prompt: string): Promise<void> {
+    const account = this.#accountForWriting();
+    if (!prompt.trim()) {
+      throw new Error("请填写绘图 Prompt");
+    }
+    await this.#dependencies.save((data) =>
+      this.#updateImage(data, account.scopeId, momentId, index, (item) => ({
+        ...item,
+        prompt: prompt.trim(),
+      })),
+    );
+  }
+
+  async selectImage(momentId: string, index: number, image: ImageRecord): Promise<void> {
+    const account = this.#accountForWriting();
+    await this.#dependencies.save((data) =>
+      this.#updateImage(data, account.scopeId, momentId, index, (item) => ({
+        ...item,
+        image: { id: image.id, imagePath: image.imagePath },
+      })),
+    );
+  }
+
+  async generateImage(momentId: string, index: number): Promise<void> {
+    const account = this.#accountForWriting();
+    const moment = this.#moment(this.#dependencies.snapshot().data, account.scopeId, momentId);
+    const item = momentImageAt(moment, index);
+    if (!item.prompt?.trim()) {
+      throw new Error("请先填写并保存绘图 Prompt");
+    }
+    await this.generation.imageTask("image", account.scopeId, async (signal, saving) => {
+      const images = await this.#dependencies.imageHub.generate({ prompt: item.prompt! });
+      signal.throwIfAborted();
+      if (!images.length) {
+        throw new Error("Image Hub 未返回图片");
+      }
+      saving();
+      try {
+        await this.#dependencies.save(
+          (data) =>
+            this.#updateImage(data, account.scopeId, momentId, index, (current) => ({
+              ...current,
+              image: { id: images[0]!.id, imagePath: images[0]!.imagePath },
+            })),
+          signal,
+        );
+      } catch (error) {
+        if (signal.aborted && (error as Error).name === "AbortError") {
+          throw error;
+        }
+        throw new Error(`图片已保存在图库，关联朋友圈失败：${(error as Error).message}`, {
+          cause: error,
+        });
+      }
+    });
+  }
+
+  async refineImagePrompt(momentId: string, index: number, prompt?: string): Promise<string> {
+    const account = this.#accountForWriting();
+    const snapshot = this.#dependencies.snapshot();
+    const moment = this.#moment(snapshot.data, account.scopeId, momentId);
+    const item = momentImageAt(moment, index);
+    const input = momentImagePromptInput(moment, item, snapshot.people, prompt);
+    return this.generation.imageTask("image-prompt", account.scopeId, (signal) =>
+      generateRefinedMomentImagePrompt(this.#dependencies, input, signal),
+    );
+  }
+
+  async generateDraftImage(draft: MomentDraft, index: number): Promise<MomentImage> {
+    const account = this.#accountForWriting();
+    if (draft.author.scopeId !== account.scopeId) {
+      throw new Error("草稿不属于当前资料空间");
+    }
+    const item = structuredClone(momentImageAt(draft, index));
+    if (!item.prompt?.trim()) {
+      throw new Error("请先填写绘图 Prompt");
+    }
+    return this.generation.imageTask("image", account.scopeId, async (signal) => {
+      const images = await this.#dependencies.imageHub.generate({ prompt: item.prompt! });
+      signal.throwIfAborted();
+      if (!images.length) {
+        throw new Error("Image Hub 未返回图片");
+      }
+      return { ...item, image: { id: images[0]!.id, imagePath: images[0]!.imagePath } };
+    });
+  }
+
+  async refineDraftImagePrompt(
+    draft: MomentDraft,
+    index: number,
+    prompt?: string,
+  ): Promise<string> {
+    const account = this.#accountForWriting();
+    if (draft.author.scopeId !== account.scopeId) {
+      throw new Error("草稿不属于当前资料空间");
+    }
+    const input = momentImagePromptInput(
+      draft,
+      momentImageAt(draft, index),
+      this.#dependencies.snapshot().people,
+      prompt,
+    );
+    return this.generation.imageTask("image-prompt", account.scopeId, (signal) =>
+      generateRefinedMomentImagePrompt(this.#dependencies, input, signal),
+    );
+  }
+
+  #updateImage(
+    data: WechatData,
+    scopeId: string,
+    momentId: string,
+    index: number,
+    update: (item: MomentImage) => MomentImage,
+  ): WechatData {
+    const moment = this.#moment(data, scopeId, momentId);
+    const current = momentImageAt(moment, index);
+    if (moment.media.type !== "images") {
+      throw new Error("朋友圈媒体类型已变化");
+    }
+    const content = normalizeMomentContent({
+      text: moment.text,
+      media: {
+        type: "images",
+        items: moment.media.items.map((item, position) =>
+          position === index ? update(current) : item,
+        ),
+      },
+    });
+    return this.#replace(data, scopeId, { ...moment, ...content });
   }
 
   async deleteMoment(momentId: string): Promise<void> {

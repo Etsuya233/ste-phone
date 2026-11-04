@@ -2,6 +2,7 @@
 @import "./wechat-reply-guidance.css";
 @import "./wechat-moments.css";
 @import "./wechat-moment-editor.css";
+@import "./wechat-moment-images.css";
 
 :host .wechat-app {
   --wechat-link-ink: #576b95;

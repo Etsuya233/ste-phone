@@ -1,14 +1,25 @@
 import type { WechatData, WechatPerson } from "./wechat.ts";
 
+export interface MomentImage {
+  readonly description: string;
+  readonly prompt?: string;
+  readonly image?: { readonly id: string; readonly imagePath: string };
+}
+
 export type MomentMedia =
   | { readonly type: "none" }
-  | { readonly type: "images"; readonly descriptions: readonly string[] }
+  | { readonly type: "images"; readonly items: readonly MomentImage[] }
   | { readonly type: "video"; readonly description: string };
 
 export interface MomentContent {
   readonly text: string;
   readonly media: MomentMedia;
 }
+/** 页面持有未发布内容；作者在生成时固定，只有显式发布才创建记录。 */
+export interface MomentDraft extends MomentContent {
+  readonly author: WechatPerson;
+}
+
 export interface MomentReplyTarget {
   readonly commentId: string;
   /** 删除原评论后仍保留署名，不保存原评论正文。 */
@@ -45,7 +56,11 @@ export function normalizeMomentContent(content: MomentContent): MomentContent {
   let media: MomentMedia;
   switch (content.media.type) {
     case "none":
-      if ("description" in content.media || "descriptions" in content.media) {
+      if (
+        "description" in content.media ||
+        "items" in content.media ||
+        "descriptions" in content.media
+      ) {
         throw new Error("纯文字动态不能包含媒体描述");
       }
       media = { type: "none" };
@@ -54,19 +69,42 @@ export function normalizeMomentContent(content: MomentContent): MomentContent {
       if ("description" in content.media) {
         throw new Error("图片和视频不能出现在同一条动态中");
       }
-      const descriptions = content.media.descriptions.map((description) => description.trim());
-      if (
-        descriptions.length < 1 ||
-        descriptions.length > 9 ||
-        descriptions.some((item) => !item)
-      ) {
+      if (!Array.isArray(content.media.items) || "descriptions" in content.media) {
+        throw new Error("朋友圈图片数据无效");
+      }
+      const items = content.media.items.map((item) => {
+        if (!item || typeof item.description !== "string" || !item.description.trim()) {
+          throw new Error("图片需要非空描述");
+        }
+        if (item.prompt !== undefined && (typeof item.prompt !== "string" || !item.prompt.trim())) {
+          throw new Error("绘图 Prompt 不能为空");
+        }
+        if (
+          item.image !== undefined &&
+          (!item.image ||
+            typeof item.image.id !== "string" ||
+            !item.image.id.trim() ||
+            typeof item.image.imagePath !== "string" ||
+            !item.image.imagePath.trim())
+        ) {
+          throw new Error("朋友圈图片引用无效");
+        }
+        return {
+          description: item.description.trim(),
+          ...(item.prompt === undefined ? {} : { prompt: item.prompt.trim() }),
+          ...(item.image === undefined
+            ? {}
+            : { image: { id: item.image.id, imagePath: item.image.imagePath } }),
+        };
+      });
+      if (items.length < 1 || items.length > 9) {
         throw new Error("图片需要 1—9 条非空描述");
       }
-      media = { type: "images", descriptions };
+      media = { type: "images", items };
       break;
     }
     case "video": {
-      if ("descriptions" in content.media) {
+      if ("items" in content.media || "descriptions" in content.media) {
         throw new Error("图片和视频不能出现在同一条动态中");
       }
       const description = content.media.description.trim();
@@ -136,4 +174,17 @@ export function assertMomentOwner(author: WechatPerson, account: WechatPerson): 
   if (author.id !== account.id || author.scopeId !== account.scopeId) {
     throw new Error("只能删除当前帐号发布的内容");
   }
+}
+
+/** 图片槽位按当前草稿/动态顺序寻址，拒绝非图片媒体和失效索引。 */
+export function momentImageAt(moment: MomentContent, index: number): MomentImage {
+  if (
+    moment.media.type !== "images" ||
+    !Number.isSafeInteger(index) ||
+    index < 0 ||
+    !moment.media.items[index]
+  ) {
+    throw new Error("朋友圈图片位置无效");
+  }
+  return moment.media.items[index]!;
 }

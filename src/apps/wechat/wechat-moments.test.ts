@@ -1,8 +1,9 @@
+import type { ImageRecord } from "../../core/image-hub/public.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { emptyWechat, type WechatData, type WechatSnapshot } from "./wechat.ts";
 import { normalizeMomentContent, type MomentContent } from "./wechat-moments.ts";
-import { validateWechatMoments } from "./wechat-moments-storage.ts";
+import { migrateWechatMoments, validateWechatMoments } from "./wechat-moments-storage.ts";
 import { WechatMomentsService } from "./wechat-moments-service.ts";
 import { WechatWrites } from "./wechat-writes.ts";
 
@@ -27,6 +28,7 @@ function fixture() {
   const stored = new Map<string, WechatData>();
   let failSave = false;
   let generating = false;
+  let generateImages: () => Promise<readonly ImageRecord[]> = async () => [];
   const writes = new WechatWrites(
     {
       read: (chatId) => stored.get(chatId) ?? null,
@@ -44,6 +46,7 @@ function fixture() {
     },
   );
   const service = new WechatMomentsService({
+    imageHub: { listImages: async () => [], generate: () => generateImages() },
     data: {} as ConstructorParameters<typeof WechatMomentsService>[0]["data"],
     transport: {
       createStream: () => {
@@ -66,6 +69,9 @@ function fixture() {
   });
   return {
     service,
+    imageGenerator: (generate: typeof generateImages) => {
+      generateImages = generate;
+    },
     writes,
     stored,
     snapshot: () => snapshot,
@@ -106,15 +112,21 @@ test("朋友圈文字和媒体去首尾空白并保留段落，接受仅媒体�
   assert.equal(
     normalizeMomentContent({
       text: "",
-      media: { type: "images", descriptions: Array(9).fill(" 图片 ") },
+      media: { type: "images", items: Array(9).fill({ description: " 图片 " }) },
     }).media.type,
     "images",
   );
   for (const content of [
     { text: " ", media: { type: "none" } },
-    { text: "正文", media: { type: "images", descriptions: [] } },
-    { text: "正文", media: { type: "images", descriptions: [" "] } },
-    { text: "正文", media: { type: "images", descriptions: Array(10).fill("图片") } },
+    { text: "正文", media: { type: "images", items: [] } },
+    {
+      text: "正文",
+      media: {
+        type: "images",
+        items: [" "].map((description) => ({ description, prompt: description.trim() })),
+      },
+    },
+    { text: "正文", media: { type: "images", items: Array(10).fill({ description: "图片" }) } },
     { text: "正文", media: { type: "video", description: " " } },
     { text: "正文", media: { type: "audio" } },
   ]) {
@@ -193,7 +205,10 @@ test("朋友圈元数据显式兼容旧 v1，拒绝损坏媒体、跨空间人�
   f.account("a");
   const id = await f.service.publish({
     text: "正文",
-    media: { type: "images", descriptions: ["图片"] },
+    media: {
+      type: "images",
+      items: ["图片"].map((description) => ({ description, prompt: description.trim() })),
+    },
   });
   await f.service.comment(id, "评论");
   const moment = f.snapshot().data.moments!.stable![0]!;
@@ -212,4 +227,162 @@ test("朋友圈元数据显式兼容旧 v1，拒绝损坏媒体、跨空间人�
   ]) {
     assert.throws(() => validateWechatMoments({ stable: records }));
   }
+});
+
+test("旧图片描述只在读取时迁移，混用字段与非法新图片拒绝保存", () => {
+  const data = {
+    stable: [
+      {
+        id: "old",
+        author: { id: "a", name: "甲", scopeId: "stable" },
+        createdAt: "2026-11-04T00:00:00Z",
+        text: "",
+        media: { type: "images", descriptions: ["旧图片"] },
+        comments: [],
+      },
+    ],
+  };
+  assert.throws(() => validateWechatMoments(data));
+  migrateWechatMoments(data);
+  assert.deepEqual(data.stable[0]!.media, { type: "images", items: [{ description: "旧图片" }] });
+  assert.throws(() =>
+    normalizeMomentContent({
+      text: "",
+      media: { type: "images", items: [{ description: "图", image: { id: "", imagePath: "x" } }] },
+    }),
+  );
+  assert.throws(() =>
+    migrateWechatMoments({
+      stable: [
+        {
+          ...data.stable[0],
+          media: { type: "images", descriptions: ["旧"], items: [{ description: "新" }] },
+        },
+      ],
+    }),
+  );
+});
+
+const imageRecord = {
+  id: "hub-first",
+  imagePath: "/images/first.png",
+  prompt: "画",
+  startedAt: "2026-11-04T00:00:00Z",
+  savedAt: "2026-11-04T00:00:01Z",
+};
+
+test("图片调序保留引用，跨作者手动生成仅关联选定图片，其他结果留图库", async () => {
+  const f = fixture();
+  f.account("a");
+  const id = await f.service.publish({
+    text: "动态",
+    media: {
+      type: "images",
+      items: [
+        {
+          description: "第二张",
+          prompt: "窗边的笔记本",
+          image: { id: "previous", imagePath: "/previous.png" },
+        },
+        { description: "第一张", prompt: "树叶" },
+      ],
+    },
+  });
+  f.account("b");
+  let received = "";
+  f.imageGenerator(async () => {
+    received = "called";
+    return [imageRecord, { ...imageRecord, id: "hub-second" }];
+  });
+  await f.service.saveImagePrompt(id, 1, "新 Prompt");
+  await f.service.generateImage(id, 1);
+  const media = f.snapshot().data.moments!.stable![0]!.media;
+  assert.equal(received, "called");
+  assert.equal(media.type, "images");
+  if (media.type !== "images") {
+    throw new Error("预期图片");
+  }
+  assert.deepEqual(media.items[0]!.image, { id: "previous", imagePath: "/previous.png" });
+  assert.deepEqual(media.items[1]!.image, { id: imageRecord.id, imagePath: imageRecord.imagePath });
+  assert.equal(media.items[1]!.prompt, "新 Prompt");
+  assert.equal(f.snapshot().data.moments!.stable![0]!.author.id, "a");
+});
+
+test("Hub失败和关联保存失败保留原图片，取消后迟到结果不关联", async () => {
+  const f = fixture();
+  f.account("a");
+  const id = await f.service.publish({
+    text: "",
+    media: { type: "images", items: [{ description: "图", prompt: "完整描述" }] },
+  });
+  f.imageGenerator(async () => {
+    throw new Error("Hub失败");
+  });
+  await assert.rejects(f.service.generateImage(id, 0), /Hub失败/);
+  let finish!: (images: readonly (typeof imageRecord)[]) => void;
+  f.imageGenerator(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const task = f.service.generateImage(id, 0);
+  assert.equal(f.service.generation.busy, true);
+  f.service.generation.cancel();
+  finish([imageRecord]);
+  await assert.rejects(task, { name: "AbortError" });
+  assert.equal(f.service.generation.busy, false);
+  f.imageGenerator(async () => [imageRecord]);
+  f.failSave();
+  await assert.rejects(f.service.generateImage(id, 0), /图片已保存在图库/);
+  const media = f.snapshot().data.moments!.stable![0]!.media;
+  assert.equal(media.type === "images" && media.items[0]!.image, undefined);
+});
+
+test("草稿逐图生成只返回所选槽，取消与失败不保存动态", async () => {
+  const f = fixture();
+  f.account("a");
+  const draft = {
+    author: { id: "b", name: "同名", scopeId: "stable" },
+    text: "待发布",
+    media: {
+      type: "images" as const,
+      items: [
+        { description: "第一张", prompt: "第一张Prompt" },
+        { description: "第二张", prompt: "第二张Prompt" },
+      ],
+    },
+  };
+  f.imageGenerator(async () => [imageRecord, { ...imageRecord, id: "other" }]);
+  const generated = await f.service.generateDraftImage(draft, 1);
+  assert.equal(generated.description, "第二张");
+  assert.equal(generated.image!.id, "hub-first");
+  assert.equal(f.snapshot().data.moments, undefined);
+  assert.equal("image" in draft.media.items[1]!, false);
+  let finish!: (images: readonly (typeof imageRecord)[]) => void;
+  f.imageGenerator(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const canceled = assert.rejects(f.service.generateDraftImage(draft, 0), { name: "AbortError" });
+  f.service.generation.cancel();
+  finish([imageRecord]);
+  await canceled;
+  assert.equal(f.snapshot().data.moments, undefined);
+  f.imageGenerator(async () => {
+    throw new Error("Hub失败");
+  });
+  await assert.rejects(f.service.generateDraftImage(draft, 0), /Hub失败/);
+  assert.equal(f.snapshot().data.moments, undefined);
+  await assert.rejects(f.service.publish(draft, { ...draft.author, scopeId: "other" }), /草稿作者/);
+  const id = await f.service.publish(
+    { ...draft, media: { type: "images", items: [draft.media.items[0]!, generated] } },
+    draft.author,
+  );
+  const saved = f.snapshot().data.moments!.stable![0]!;
+  assert.equal(saved.id, id);
+  assert.equal(saved.author.id, "b");
+  assert.equal(saved.media.type === "images" && saved.media.items[1]!.image!.id, "hub-first");
 });

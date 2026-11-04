@@ -20,7 +20,10 @@ import { wechatMemoryBoundaries } from "./wechat-memory.ts";
 import type { WechatStickerLibrary } from "./wechat-sticker-library.ts";
 import { WechatMomentsService } from "./wechat-moments-service.ts";
 
+import type { ImageHub } from "../../core/image-hub/public.ts";
+
 interface Dependencies {
+  imageHub: ImageHub;
   storage: WechatStorage;
   preferences: WechatPreferences;
   chat: ChatContext;

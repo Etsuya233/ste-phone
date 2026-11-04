@@ -180,6 +180,7 @@ function fixture() {
       getConnection: () => connection,
       subscribe: () => () => {},
     },
+    imageHub: { listImages: async () => [], generate: async () => [] },
     transport: createStAiTransport(() => ({}), {
       fetchImpl: async (_, init) => {
         calls++;
@@ -1027,7 +1028,9 @@ test("朋友圈AI显式选择人物发布，互动排除当前帐号且支持整
     text: "乙的动态",
     media: { type: "video", description: "视频内容" },
   });
-  await f.service.moments.generatePost("b");
+  const draft = await f.service.moments.generatePost("b");
+  assert.equal(f.stored!.moments, undefined);
+  await f.service.moments.publish(draft, draft.author);
   const post = f.stored!.moments!.stable![0]!;
   assert.equal(post.author.id, "b");
   assert.equal(f.service.getSnapshot().momentGeneration.status, "complete");
@@ -1082,18 +1085,20 @@ test("朋友圈AI非法整批、截断与保存失败均不修改历史，重新
   assert.equal(f.stored, before);
   f.momentOutput({ authorId: "a", text: "AI动态", media: { type: "none" } });
   f.failSave(true);
-  await f.service.moments.generatePost("a");
+  const draft = await f.service.moments.generatePost("a");
   assert.equal(f.stored, before);
-  assert.match(JSON.stringify(f.service.getSnapshot().momentGeneration), /保存失败/);
+  await assert.rejects(f.service.moments.publish(draft, draft.author), /磁盘失败/);
+  assert.equal(f.stored, before);
   const calls = f.calls;
   f.failSave(false);
-  await f.service.moments.generatePost("a");
+  const retry = await f.service.moments.generatePost("a");
   assert.equal(f.calls, calls + 1);
+  assert.equal(f.stored!.moments!.stable!.length, 1);
+  await f.service.moments.publish(retry, retry.author);
   assert.equal(f.stored!.moments!.stable!.length, 2);
   f.truncate();
-  await f.service.moments.generatePost("a");
+  await assert.rejects(f.service.moments.generatePost("a"), /输出上限/);
   assert.equal(f.stored!.moments!.stable!.length, 2);
-  assert.match(JSON.stringify(f.service.getSnapshot().momentGeneration), /输出上限/);
   f.service.dispose();
 });
 
@@ -1104,7 +1109,7 @@ test("朋友圈与单聊互斥，指导更新不改变本轮输入，切帐号�
   await f.service.saveReplyGuidance("b", "原指导");
   f.momentOutput({ authorId: "b", text: "旧任务动态", media: { type: "none" } });
   const started = f.holdModel();
-  const generation = f.service.moments.generatePost("b");
+  const generation = assert.rejects(f.service.moments.generatePost("b"), { name: "AbortError" });
   await started;
   await assert.rejects(f.service.send("b", "不应发送"), /等待当前/);
   await assert.rejects(f.service.requestReply("b"), /等待当前/);
@@ -1123,13 +1128,14 @@ test("朋友圈与单聊互斥，指导更新不改变本轮输入，切帐号�
   f.service.dispose();
 });
 
-test("朋友圈保存期间停止等待原存储撤回，生成锁随后释放且没有待保存任务", async () => {
+test("朋友圈互动保存期间停止等待原存储撤回，生成锁随后释放", async () => {
   const f = fixture();
   await f.service.prepare();
   await f.service.selectAccount("a");
-  f.momentOutput({ authorId: "a", text: "待保存动态", media: { type: "none" } });
+  const id = await f.service.moments.publish({ text: "已有动态", media: { type: "none" } });
+  f.momentOutput({ comments: [{ authorId: "b", text: "待保存互动", replyTo: null }] });
   const started = f.holdNextSave();
-  const generation = f.service.moments.generatePost("a");
+  const generation = f.service.moments.generateInteraction(id);
   await started;
   assert.equal(f.service.getSnapshot().momentGeneration.status, "saving");
   f.service.moments.generation.cancel();
@@ -1140,10 +1146,8 @@ test("朋友圈保存期间停止等待原存储撤回，生成锁随后释放�
   );
   f.releaseSave();
   await generation;
-  assert.equal(f.stored!.moments, undefined);
+  assert.equal(f.stored!.moments!.stable![0]!.comments.length, 0);
   assert.equal(f.service.getSnapshot().momentGeneration.status, "idle");
-  await f.service.moments.publish({ text: "停止后手动发布", media: { type: "none" } });
-  assert.equal(f.stored!.moments!.stable![0]!.text, "停止后手动发布");
   f.service.dispose();
 });
 
@@ -1153,7 +1157,7 @@ test("更换资料实例取消朋友圈任务，即使稳定范围相同也不�
   await f.service.selectAccount("a");
   f.momentOutput({ authorId: "a", text: "旧实例", media: { type: "none" } });
   const started = f.holdModel();
-  const generation = f.service.moments.generatePost("a");
+  const generation = assert.rejects(f.service.moments.generatePost("a"), { name: "AbortError" });
   await started;
   f.sourceChanged(true, "new-instance");
   await f.service.prepare();
@@ -1184,7 +1188,7 @@ test("普通保存和单聊生成期间不能启动朋友圈AI，取消后的新
   await reply;
   f.momentOutput({ authorId: "a", text: "旧聊天迟到", media: { type: "none" } });
   const started = f.holdModel();
-  const generation = f.service.moments.generatePost("a");
+  const generation = assert.rejects(f.service.moments.generatePost("a"), { name: "AbortError" });
   await started;
   f.switchChat("new-chat");
   f.releaseModel();
@@ -1201,7 +1205,7 @@ test("朋友圈缺模型连接、无互动候选及人物删除均明确拒绝�
   await f.service.selectAccount("a");
   const id = await f.service.moments.publish({ text: "已有动态", media: { type: "none" } });
   f.withoutDefaultConnection();
-  await f.service.moments.generatePost("a");
+  await assert.rejects(f.service.moments.generatePost("a"), /默认模型连接/);
   assert.match(JSON.stringify(f.service.getSnapshot().momentGeneration), /默认模型连接/);
   assert.equal(f.calls, 0);
   f.removePerson("b");
@@ -1298,5 +1302,34 @@ test("朋友圈互动选择拒绝当前帐号、未知人物、重复与超限�
     status: "complete",
     message: "本次无人回应。",
   });
+  f.service.dispose();
+});
+
+test("草稿完善Prompt返回编辑值且不发布，非法输出与取消保留原草稿", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const draft = {
+    author: { id: "b", name: "乙", scopeId: "stable" },
+    text: "窗边",
+    media: { type: "images" as const, items: [{ description: "乙在窗边", prompt: "原Prompt" }] },
+  };
+  f.momentOutput({ prompt: "乙在窗边，第三人称侧面近景，窗外光线照亮面部，背景是柔和的窗框。" });
+  const refined = await f.service.moments.refineDraftImagePrompt(draft, 0);
+  assert.match(refined, /第三人称/);
+  assert.equal(draft.media.items[0]!.prompt, "原Prompt");
+  assert.equal(f.stored!.moments, undefined);
+  f.momentOutput({ prompt: "", extra: "非法" });
+  await assert.rejects(f.service.moments.refineDraftImagePrompt(draft, 0), /输出无效/);
+  const started = f.holdModel();
+  const canceled = assert.rejects(f.service.moments.refineDraftImagePrompt(draft, 0), {
+    name: "AbortError",
+  });
+  await started;
+  f.service.cancel();
+  f.releaseModel();
+  await canceled;
+  assert.equal(f.stored!.moments, undefined);
+  assert.equal(draft.media.items[0]!.prompt, "原Prompt");
   f.service.dispose();
 });

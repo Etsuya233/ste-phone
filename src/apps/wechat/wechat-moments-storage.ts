@@ -30,21 +30,17 @@ function validateMoment(value: unknown, scopeId: string): asserts value is Wecha
   }
   switch (media.type) {
     case "none":
-      if ("description" in media || "descriptions" in media) {
+      if ("description" in media || "descriptions" in media || "items" in media) {
         throw new Error("纯文字动态不能包含媒体描述");
       }
       break;
     case "images":
-      if (
-        !Array.isArray(media.descriptions) ||
-        media.descriptions.some((item) => typeof item !== "string") ||
-        "description" in media
-      ) {
+      if (!Array.isArray(media.items) || "descriptions" in media || "description" in media) {
         throw new Error("朋友圈图片描述无效");
       }
       break;
     case "video":
-      if (typeof media.description !== "string" || "descriptions" in media) {
+      if (typeof media.description !== "string" || "descriptions" in media || "items" in media) {
         throw new Error("朋友圈视频描述无效");
       }
       break;
@@ -116,4 +112,30 @@ function nonempty(value: unknown): void {
   if (typeof value !== "string" || !value.trim()) {
     throw new Error("朋友圈身份或署名无效");
   }
+}
+
+/** 只在读取边界迁移旧描述数组；新旧字段混用和损坏记录仍交给校验明确报错。 */
+export function migrateWechatMoments(value: unknown): void {
+  if (value === undefined) {
+    return;
+  }
+  for (const records of Object.values(object(value))) {
+    if (!Array.isArray(records)) {
+      throw new Error("朋友圈空间数据无效");
+    }
+    for (const raw of records) {
+      const media = object(object(raw).media);
+      if (media.type === "images" && "descriptions" in media && !("items" in media)) {
+        if (
+          !Array.isArray(media.descriptions) ||
+          media.descriptions.some((item) => typeof item !== "string")
+        ) {
+          throw new Error("朋友圈图片描述无效");
+        }
+        media.items = media.descriptions.map((description) => ({ description }));
+        delete media.descriptions;
+      }
+    }
+  }
+  validateWechatMoments(value);
 }

@@ -56,7 +56,7 @@ export function WechatMoments({
       {moments.length ? (
         <div className="wechat-moment-ai-actions">
           <Button disabled={!!reason} onClick={aiPublish}>
-            AI 发布动态
+            AI 生成动态
           </Button>
         </div>
       ) : state.loading || state.error ? null : (
@@ -72,7 +72,7 @@ export function WechatMoments({
             发布第一条动态
           </Button>
           <Button disabled={!!reason} onClick={aiPublish}>
-            AI 发布动态
+            AI 生成动态
           </Button>
         </div>
       )}

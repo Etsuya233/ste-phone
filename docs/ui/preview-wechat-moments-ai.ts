@@ -21,7 +21,16 @@ export function previewMomentOutput(messages: readonly unknown[], mode: string |
     return JSON.stringify({
       authorId: input.author.id,
       text: "【模拟动态】把今天的小小日常留在这里。",
-      media: { type: "images", descriptions: ["窗边摊开的笔记本，阳光照亮书页上的字句。"] },
+      media: {
+        type: "images",
+        items: [
+          {
+            description: "窗边摊开的笔记本，阳光照亮书页上的字句。",
+            prompt:
+              "第三人称静物近景：窗边的桌上摊开一本笔记本，午后阳光从侧窗落在纸页与桌面上，书页边缘明亮，背景简洁柔和，画面以笔记本为中心，避免可读文字。",
+          },
+        ],
+      },
     });
   }
   if (mode === "empty") {

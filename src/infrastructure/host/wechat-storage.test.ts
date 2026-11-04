@@ -230,3 +230,31 @@ test("an older acknowledgement cannot replay its metadata over a later write", a
   await old;
   assert.deepEqual(f.storage.read("a"), newer);
 });
+
+test("legacy moments migrate on read without changing host metadata until an explicit save", () => {
+  const { storage, context } = fixture(async () => new Response(null, { status: 200 }));
+  const oldMedia = { type: "images", descriptions: ["旧图片"] };
+  const legacy = {
+    ...emptyWechat(),
+    moments: {
+      stable: [
+        {
+          id: "old",
+          author: { id: "a", name: "甲", scopeId: "stable" },
+          text: "旧动态",
+          media: oldMedia,
+          createdAt: "2026-11-04T00:00:00Z",
+          comments: [],
+        },
+      ],
+    },
+  };
+  context.chatMetadata.ste_phone = { diary: { version: 1, entries: ["kept"] }, wechat: legacy };
+  const loaded = storage.read("a")!;
+  assert.deepEqual(loaded.moments!.stable![0]!.media, {
+    type: "images",
+    items: [{ description: "旧图片" }],
+  });
+  assert.deepEqual(legacy.moments.stable[0]!.media, oldMedia);
+  assert.ok("descriptions" in oldMedia);
+});

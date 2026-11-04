@@ -1,103 +1,18 @@
-import { useEffect, useState } from "react";
 import { Page } from "../../../frontend/foundation/page.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { Alert } from "../../../frontend/foundation/alert.tsx";
 import { SegmentedControl } from "../../../frontend/foundation/segmented-control.tsx";
-import type { MomentContent, MomentMedia } from "../wechat-moments.ts";
-import type { WechatPageProps } from "./wechat-page.tsx";
+import type { MomentMedia } from "../wechat-moments.ts";
 import { MomentMediaEditor } from "./wechat-moment-media-editor.tsx";
+import { useMomentCompose, type MomentComposeProps } from "./use-wechat-moment-compose.ts";
 import { momentWritingReason } from "./wechat-moment-content.tsx";
 
-type Confirmation = { type: "discard" } | { type: "media"; media: MomentMedia } | null;
-
-function useMomentCompose({
-  wechat,
-  navigation,
-  active,
-  onPublished,
-}: WechatPageProps & { active: boolean; onPublished(): void }) {
-  const [draft, setDraft] = useState<MomentContent>({ text: "", media: { type: "none" } });
-  const [status, setStatus] = useState<"editing" | "saving" | "saved">("editing");
-  const [error, setError] = useState<string | null>(null);
-  const [confirmation, setConfirmation] = useState<Confirmation>(null);
-  useEffect(() => {
-    // 保存完成后仅在本页回到前台时返回；Home 和关闭手机不触发后台导航。
-    if (active && status === "saved") {
-      onPublished();
-      navigation.pop();
-    }
-  }, [active, status, navigation, onPublished]);
-  async function publish() {
-    setStatus("saving");
-    setError(null);
-    try {
-      await wechat.moments.publish(draft);
-      setStatus("saved");
-    } catch (error) {
-      setStatus("editing");
-      setError((error as Error).message);
-    }
-  }
-  function back() {
-    if (status !== "editing") {
-      return;
-    }
-    if (draft.text || draft.media.type !== "none") {
-      setConfirmation({ type: "discard" });
-    } else {
-      navigation.pop();
-    }
-  }
-  function selectMedia(type: MomentMedia["type"]) {
-    if (draft.media.type === type) {
-      return;
-    }
-    const media: MomentMedia =
-      type === "images"
-        ? { type, descriptions: [""] }
-        : type === "video"
-          ? { type, description: "" }
-          : { type };
-    const hasDescription =
-      draft.media.type === "images"
-        ? draft.media.descriptions.some((item) => item.length)
-        : draft.media.type === "video" && !!draft.media.description;
-    if (hasDescription) {
-      setConfirmation({ type: "media", media });
-    } else {
-      setDraft({ ...draft, media });
-    }
-  }
-  function confirm() {
-    if (confirmation?.type === "discard") {
-      navigation.pop();
-    } else if (confirmation?.type === "media") {
-      setDraft({ ...draft, media: confirmation.media });
-    }
-    setConfirmation(null);
-  }
-  return {
-    draft,
-    setDraft,
-    status,
-    error,
-    confirmation,
-    setConfirmation,
-    publish,
-    back,
-    selectMedia,
-    confirm,
-  };
-}
-
-export function WechatMomentCompose(
-  props: WechatPageProps & { scopeId: string; active: boolean; onPublished(): void },
-) {
+export function WechatMomentCompose(props: MomentComposeProps) {
   const { state, scopeId, active } = props;
   const editor = useMomentCompose(props);
   const reason = momentWritingReason(state, scopeId);
-  const locked = editor.status !== "editing";
+  const locked = editor.status !== "editing" || editor.imageBusy;
   return (
     <>
       <div className="wechat-moment-page" inert={!!editor.confirmation}>
@@ -119,12 +34,7 @@ export function WechatMomentCompose(
           }
         >
           <div className="wechat-moment-editor">
-            <p className="wechat-notice">
-              以{" "}
-              {state.people.find((person) => person.id === state.data.account?.id)?.name ??
-                "当前帐号"}{" "}
-              的身份发布
-            </p>
+            <p className="wechat-notice">以 {editor.draft.author.name} 的身份发布</p>
             {reason ? <p className="wechat-notice">{reason}</p> : null}
             <label className="wechat-moment-label">
               正文
@@ -150,7 +60,15 @@ export function WechatMomentCompose(
               media={editor.draft.media}
               disabled={locked}
               onChange={(media) => editor.setDraft({ ...editor.draft, media })}
+              onChoose={editor.chooseImage}
+              onRefine={(index) => void editor.imageTask(index, "refine")}
+              onGenerate={(index) => void editor.imageTask(index, "generate")}
             />
+            {editor.imageError ? (
+              <p className="wechat-notice" role="alert">
+                {editor.imageError}
+              </p>
+            ) : null}
             {editor.error ? (
               <p className="wechat-notice" role="alert">
                 {editor.error}

@@ -59,38 +59,43 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
             stream.push({ type: "error", reason: "error", error: output });
             return;
           }
-          const text = context.systemPrompt?.includes("微信朋友圈内容")
-            ? previewMomentOutput(context.messages, mode)
-            : context.systemPrompt?.includes("微信单聊")
+          const text =
+            operation === "朋友圈配图提示词"
               ? mode === "invalid"
                 ? "模拟非法 JSON"
-                : JSON.stringify({
-                    messages: [
-                      { type: "text", text: "【模拟回复】刚看到消息。" },
-                      {
-                        type: "text",
-                        text:
-                          previewWechatSticker(context.messages) ??
-                          "明天一起去图书馆吧，稿件我会带上。",
-                      },
-                    ],
-                  })
-              : operation === "日记配图描述"
-                ? mode === "invalid"
-                  ? "模拟非法 JSON"
-                  : JSON.stringify({
-                      imagePrompt:
-                        "小红和小蓝坐在图书馆窗边，共同翻阅蓝色笔记本，暖色日光落在稿纸上，安静温柔的午后。",
-                    })
-                : context.systemPrompt?.includes("日记")
+                : previewMomentImagePrompt(context.messages)
+              : context.systemPrompt?.includes("微信朋友圈内容")
+                ? previewMomentOutput(context.messages, mode)
+                : context.systemPrompt?.includes("微信单聊")
                   ? mode === "invalid"
                     ? "模拟非法 JSON"
                     : JSON.stringify({
-                        body: "【模拟日记，未请求真实模型】\n\n图书馆里很安静，窗边的光照在蓝色笔记本上。我把本子推给小蓝的时候，心里还在想着周五的朗读会。听见他说明天会带来校对好的稿件，我松了一口气。\n\n准备的事情似乎总也做不完，可有人一起认真对待，就没有那么慌张了。现在只想把这一点小小的安心记下来。",
-                        imagePrompt:
-                          "小红把蓝色笔记本推给图书馆窗边的小蓝，桌面散落朗读会稿纸，午后阳光柔和，人物神情安心。",
+                        messages: [
+                          { type: "text", text: "【模拟回复】刚看到消息。" },
+                          {
+                            type: "text",
+                            text:
+                              previewWechatSticker(context.messages) ??
+                              "明天一起去图书馆吧，稿件我会带上。",
+                          },
+                        ],
                       })
-                  : `模拟回复：${model.id} 的预览测试完成，未请求真实服务。`;
+                  : operation === "日记配图描述"
+                    ? mode === "invalid"
+                      ? "模拟非法 JSON"
+                      : JSON.stringify({
+                          imagePrompt:
+                            "小红和小蓝坐在图书馆窗边，共同翻阅蓝色笔记本，暖色日光落在稿纸上，安静温柔的午后。",
+                        })
+                    : context.systemPrompt?.includes("日记")
+                      ? mode === "invalid"
+                        ? "模拟非法 JSON"
+                        : JSON.stringify({
+                            body: "【模拟日记，未请求真实模型】\n\n图书馆里很安静，窗边的光照在蓝色笔记本上。我把本子推给小蓝的时候，心里还在想着周五的朗读会。听见他说明天会带来校对好的稿件，我松了一口气。\n\n准备的事情似乎总也做不完，可有人一起认真对待，就没有那么慌张了。现在只想把这一点小小的安心记下来。",
+                            imagePrompt:
+                              "小红把蓝色笔记本推给图书馆窗边的小蓝，桌面散落朗读会稿纸，午后阳光柔和，人物神情安心。",
+                          })
+                      : `模拟回复：${model.id} 的预览测试完成，未请求真实服务。`;
           output.content = [{ type: "text", text: "" }];
           stream.push({ type: "text_start", contentIndex: 0, partial: output });
           output.content[0] = { type: "text", text };
@@ -114,6 +119,26 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
       return stream;
     },
   };
+}
+
+/** 用本次图片描述模拟完善后的独立绘图提示词，便于检查多图是否串位。 */
+function previewMomentImagePrompt(messages: readonly unknown[]): string {
+  const user = messages.at(-1) as { content: string | { type: string; text?: string }[] };
+  const text =
+    typeof user.content === "string"
+      ? user.content
+      : user.content
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join("");
+  const input = JSON.parse(text) as {
+    description: string;
+    prompt?: string;
+    characters: { name: string }[];
+  };
+  return JSON.stringify({
+    prompt: `【模拟完善】${input.description}。${input.characters.map((person) => person.name).join("、")}。${input.prompt ?? ""} 使用自然纪实构图，主体清楚，前景与背景层次分明，光线柔和，保留描述中的人物动作与场景，不额外添加人物、文字或边框。`,
+  });
 }
 
 /** 预览只从本轮实际传入的清单选表情，便于验证开关与双方发送，仍不请求模型。 */

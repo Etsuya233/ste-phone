@@ -166,7 +166,10 @@ export function WechatMomentDetail(
             <>
               <article className="wechat-moment">
                 <MomentAuthor author={moment.author} state={state} navigation={navigation} />
-                <MomentContentView moment={moment} />
+                <MomentContentView
+                  moment={moment}
+                  onImage={(index) => navigation.push({ page: "moment-image", scopeId, id, index })}
+                />
               </article>
               <div className="wechat-moment-ai-actions">
                 <Button

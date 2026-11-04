@@ -1,3 +1,6 @@
+import type { ImageHub } from "../../../core/image-hub/public.ts";
+import { WechatMomentImage, WechatMomentImageView } from "./wechat-moment-image.tsx";
+import { WechatMomentImagePicker } from "./wechat-moment-image-picker.tsx";
 import type { WechatPreferences } from "../../settings/public.ts";
 import { useEffect, useSyncExternalStore } from "react";
 import { NavigationStack } from "../../../frontend/foundation/navigation-stack.tsx";
@@ -21,12 +24,14 @@ export function WechatApp({
   wechat,
   preferences,
   stickers,
+  hub,
   active,
   onHome,
 }: {
   wechat: WechatService;
   preferences: WechatPreferences;
   stickers: WechatStickerLibrary;
+  hub: ImageHub;
   active: boolean;
   onHome(): void;
 }) {
@@ -64,6 +69,34 @@ export function WechatApp({
               preferences,
             };
             switch (route.page) {
+              case "moment-image-picker":
+                return (
+                  <WechatMomentImagePicker
+                    {...props}
+                    hub={hub}
+                    selectedId={route.selectedId}
+                    onSelect={route.onSelect}
+                    active={active && navigation.current}
+                  />
+                );
+              case "moment-image":
+                return (
+                  <WechatMomentImage
+                    {...props}
+                    scopeId={route.scopeId}
+                    id={route.id}
+                    index={route.index}
+                    active={active && navigation.current}
+                  />
+                );
+              case "moment-image-view":
+                return (
+                  <WechatMomentImageView
+                    navigation={navigation}
+                    imagePath={route.imagePath}
+                    description={route.description}
+                  />
+                );
               case "moment-participants":
                 return (
                   <WechatMomentParticipants

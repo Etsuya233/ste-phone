@@ -3,10 +3,10 @@ import type { DataAppPublic } from "../data-source/public.ts";
 import type { ModelConnectionsReader } from "../settings/public.ts";
 import type { WechatData, WechatPerson } from "./wechat.ts";
 import {
-  addMoment,
   addMomentComment,
   createMomentRecord,
   type WechatMoment,
+  type MomentDraft,
   type MomentComment,
 } from "./wechat-moments.ts";
 import { generateMomentOutput } from "./wechat-moments-generation.ts";
@@ -26,7 +26,7 @@ export type MomentGenerationState =
   | { readonly status: "idle" }
   | {
       readonly status: "running" | "saving" | "stopping";
-      readonly kind: "post" | "interaction";
+      readonly kind: "post" | "interaction" | "image" | "image-prompt";
       readonly scopeId: string;
     }
   | { readonly status: "complete" | "error"; readonly message: string };
@@ -40,7 +40,7 @@ interface Dependencies {
 }
 interface Task {
   controller: AbortController;
-  input: MomentGenerationInput;
+  input: MomentGenerationInput | { kind: "image" | "image-prompt"; scopeId: string };
   committing: boolean;
 }
 
@@ -58,16 +58,18 @@ export class WechatMomentsSession {
     return this.#task?.committing === true;
   }
 
-  async generate(input: MomentGenerationInput): Promise<void> {
+  async generate(input: Extract<MomentGenerationInput, { kind: "post" }>): Promise<MomentDraft>;
+  async generate(input: Extract<MomentGenerationInput, { kind: "interaction" }>): Promise<void>;
+  async generate(input: MomentGenerationInput): Promise<MomentDraft | void> {
     if (this.busy) {
       throw new Error("请等待当前朋友圈生成完成");
     }
+    const fixed = structuredClone(input);
     const task: Task = {
       controller: new AbortController(),
-      input: structuredClone(input),
+      input: fixed,
       committing: false,
     };
-    const fixed = task.input;
     this.#task = task;
     const { signal } = task.controller;
     this.#publishTask(task, "running");
@@ -89,6 +91,14 @@ export class WechatMomentsSession {
         signal,
       });
       signal.throwIfAborted();
+      if (fixed.kind === "post") {
+        const content = parseGeneratedMoment(output, fixed.author.id);
+        this.#dependencies.publish({ status: "complete", message: "动态草稿已生成。" });
+        return {
+          ...content,
+          author: { id: fixed.author.id, name: fixed.author.name, scopeId: fixed.scopeId },
+        };
+      }
       const update = this.#validatedUpdate(fixed, output);
       if (update) {
         task.committing = true;
@@ -98,8 +108,7 @@ export class WechatMomentsSession {
       }
       this.#dependencies.publish({
         status: "complete",
-        message:
-          fixed.kind === "post" ? "动态已发布。" : update ? "互动已保存。" : "本次无人回应。",
+        message: update ? "互动已保存。" : "本次无人回应。",
       });
     } catch (error) {
       if (this.#task === task) {
@@ -114,6 +123,53 @@ export class WechatMomentsSession {
               },
         );
       }
+      if (fixed.kind === "post") {
+        throw error;
+      }
+    } finally {
+      if (this.#task === task) {
+        this.#task = null;
+      }
+    }
+  }
+
+  /** 图片任务与文字生成共用锁和取消归属；Hub 不接受取消，迟到资产仍归图库。 */
+  async imageTask<T>(
+    kind: "image" | "image-prompt",
+    scopeId: string,
+    run: (signal: AbortSignal, saving: () => void) => Promise<T>,
+  ): Promise<T> {
+    if (this.busy) {
+      throw new Error("请等待当前朋友圈生成完成");
+    }
+    const task: Task = {
+      controller: new AbortController(),
+      input: { kind, scopeId },
+      committing: false,
+    };
+    this.#task = task;
+    this.#publishTask(task, "running");
+    try {
+      const result = await run(task.controller.signal, () => {
+        task.controller.signal.throwIfAborted();
+        task.committing = true;
+        this.#publishTask(task, "saving");
+      });
+      task.controller.signal.throwIfAborted();
+      this.#dependencies.publish({
+        status: "complete",
+        message: kind === "image" ? "图片已生成。" : "Prompt 已完善。",
+      });
+      return result;
+    } catch (error) {
+      if (this.#task === task) {
+        this.#dependencies.publish(
+          task.controller.signal.aborted && (error as Error).name === "AbortError"
+            ? { status: "idle" }
+            : { status: "error", message: (error as Error).message },
+        );
+      }
+      throw error;
     } finally {
       if (this.#task === task) {
         this.#task = null;
@@ -122,22 +178,9 @@ export class WechatMomentsSession {
   }
 
   #validatedUpdate(
-    input: MomentGenerationInput,
+    input: Extract<MomentGenerationInput, { kind: "interaction" }>,
     output: string,
   ): ((data: WechatData) => WechatData) | null {
-    if (input.kind === "post") {
-      const content = parseGeneratedMoment(output, input.author.id);
-      return (data) =>
-        addMoment(data, {
-          ...content,
-          ...createMomentRecord({
-            id: input.author.id,
-            name: input.author.name,
-            scopeId: input.scopeId,
-          }),
-          comments: [],
-        });
-    }
     const window = momentInteractionWindow(input.moment);
     const generated = parseGeneratedInteraction(
       output,

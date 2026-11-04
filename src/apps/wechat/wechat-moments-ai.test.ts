@@ -1,3 +1,4 @@
+import { momentImagePromptInput } from "./wechat-moments-image-prompt.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { parseGeneratedInteraction, parseGeneratedMoment } from "./wechat-moments-output.ts";
@@ -39,11 +40,20 @@ test("AI动态严格校验身份/字段/内容，空动态、混合媒体与非�
       JSON.stringify({
         authorId: "a",
         text: " ",
-        media: { type: "images", descriptions: [" 图 "] },
+        media: {
+          type: "images",
+          items: [" 图 "].map((description) => ({ description, prompt: description.trim() })),
+        },
       }),
       "a",
     ),
-    { text: "", media: { type: "images", descriptions: ["图"] } },
+    {
+      text: "",
+      media: {
+        type: "images",
+        items: ["图"].map((description) => ({ description, prompt: description.trim() })),
+      },
+    },
   );
   for (const value of [
     { authorId: "other", text: "分享", media: { type: "none" } },
@@ -51,7 +61,11 @@ test("AI动态严格校验身份/字段/内容，空动态、混合媒体与非�
     {
       authorId: "a",
       text: "分享",
-      media: { type: "images", descriptions: ["图"], description: "视频" },
+      media: {
+        type: "images",
+        items: ["图"].map((description) => ({ description, prompt: description.trim() })),
+        description: "视频",
+      },
     },
     { authorId: "a", text: "分享", media: { type: "video", description: "" } },
     { authorId: "a", text: "分享", media: { type: "audio" } },
@@ -290,4 +304,66 @@ test("朋友圈拒绝意外工具调用且不发起后续模型调用", async ()
     /未注册工具/,
   );
   assert.equal(calls, 1);
+});
+
+test("朋友圈提示词只包含媒体文字，过滤图库路径与data URL", async () => {
+  const privateImage = {
+    ...moment,
+    media: {
+      type: "images" as const,
+      items: [
+        {
+          description: "甲在窗边",
+          prompt: "甲的侧面近景",
+          image: { id: "secret", imagePath: "data:image/png;base64,PRIVATE" },
+        },
+      ],
+    },
+  };
+  const data = {
+    readSummary: async () => "",
+    readWorldState: async () => "",
+    readRecentChat: async () => [],
+    readRelatedBackground: async () => null,
+  } as unknown as DataAppPublic;
+  const result = await readMomentPrompt(data, {
+    kind: "interaction",
+    scope: {} as MomentGenerationInput["scope"],
+    scopeId: "stable",
+    guidance: {},
+    account: { id: "a", name: "甲", profileText: "" },
+    candidates: [{ id: "b", name: "乙", profileText: "" }],
+    requiredAuthorIds: [],
+    moment: privateImage,
+  });
+  assert.ok(result.includes("甲在窗边"));
+  assert.ok(!result.includes("PRIVATE"));
+  assert.ok(!result.includes("imagePath"));
+});
+
+test("旧动态完善Prompt只提供作者及明确点名人物，AI新图必须返回完整Prompt字段", () => {
+  const input = JSON.parse(
+    momentImagePromptInput(moment, { description: "我和乙站在窗边", prompt: "第三人称近景" }, [
+      { id: "a", name: "甲", profileText: "短发" },
+      { id: "b", name: "乙", profileText: "蓝色外套" },
+      { id: "c", name: "丙", profileText: "不相关的秘密" },
+    ]),
+  );
+  assert.deepEqual(
+    input.characters.map((person: { id: string }) => person.id),
+    ["a", "b"],
+  );
+  assert.ok(!JSON.stringify(input).includes("不相关的秘密"));
+  for (const items of [
+    [{ description: "图" }],
+    [{ description: "图", prompt: " " }],
+    [{ description: "图", prompt: "内容", image: { id: "x", imagePath: "x" } }],
+  ]) {
+    assert.throws(() =>
+      parseGeneratedMoment(
+        JSON.stringify({ authorId: "a", text: "", media: { type: "images", items } }),
+        "a",
+      ),
+    );
+  }
 });

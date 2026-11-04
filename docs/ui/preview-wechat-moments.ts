@@ -16,11 +16,11 @@ export function previewWechatMoments(): WechatData {
           text: "今天的光很温柔。\n\n把小小的日常留在这里。",
           media: {
             type: "images",
-            descriptions: [
+            items: [
               "窗边摊开的蓝色笔记本，纸上留着几行修改后的句子。",
               "图书馆外的树叶，阳光从叶片之间落下来。",
               "一杯热牛奶，杯沿上方有很淡的热气。",
-            ],
+            ].map((description) => ({ description, prompt: description.trim() })),
           },
           createdAt: "2026-11-03T08:00:00.000Z",
           comments: [

@@ -22,16 +22,27 @@ export function parseGeneratedMoment(text: string, authorId: string): MomentCont
       fields(media, ["type"]);
       return normalizeMomentContent({ text: value.text, media: { type: "none" } });
     case "images":
-      fields(media, ["type", "descriptions"]);
-      if (
-        !Array.isArray(media.descriptions) ||
-        media.descriptions.some((item) => typeof item !== "string")
-      ) {
+      fields(media, ["type", "items"]);
+      if (!Array.isArray(media.items)) {
         throw new Error("朋友圈图片描述无效");
       }
       return normalizeMomentContent({
         text: value.text,
-        media: { type: "images", descriptions: media.descriptions as string[] },
+        media: {
+          type: "images",
+          items: media.items.map((raw) => {
+            const item = record(raw);
+            fields(item, ["description", "prompt"]);
+            if (
+              typeof item.description !== "string" ||
+              typeof item.prompt !== "string" ||
+              !item.prompt.trim()
+            ) {
+              throw new Error("朋友圈图片描述与绘图 Prompt 无效");
+            }
+            return { description: item.description, prompt: item.prompt };
+          }),
+        },
       });
     case "video":
       fields(media, ["type", "description"]);

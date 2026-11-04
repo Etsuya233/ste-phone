@@ -1,14 +1,21 @@
 import { Button } from "../../../frontend/foundation/button.tsx";
+import { MomentDraftImage } from "./wechat-moment-draft-image.tsx";
 import type { MomentMedia } from "../wechat-moments.ts";
 
 export function MomentMediaEditor({
   media,
   onChange,
   disabled,
+  onChoose,
+  onRefine,
+  onGenerate,
 }: {
   media: MomentMedia;
   onChange(media: MomentMedia): void;
   disabled: boolean;
+  onChoose(index: number): void;
+  onRefine(index: number): void;
+  onGenerate(index: number): void;
 }) {
   if (media.type === "none") {
     return null;
@@ -26,70 +33,46 @@ export function MomentMediaEditor({
       </label>
     );
   }
-  const descriptions = media.descriptions;
+  const items = media.items;
   function move(index: number, direction: number) {
-    const next = [...descriptions];
+    const next = [...items];
     [next[index], next[index + direction]] = [next[index + direction]!, next[index]!];
-    onChange({ type: "images", descriptions: next });
+    onChange({ type: "images", items: next });
   }
   function remove(index: number) {
     onChange({
       type: "images",
-      descriptions: descriptions.filter((_, position) => position !== index),
+      items: items.filter((_, position) => position !== index),
     });
   }
   return (
     <div className="wechat-moment-images-editor">
-      {descriptions.map((description, index) => (
-        <div className="wechat-moment-image-editor" key={index}>
-          <div className="wechat-moment-image-heading">
-            <span>
-              图片 {index + 1}/{descriptions.length}
-            </span>
-            <Button disabled={disabled} onClick={() => remove(index)}>
-              删除
-            </Button>
-          </div>
-          <label className="wechat-moment-label">
-            描述
-            <textarea
-              rows={3}
-              value={description}
-              disabled={disabled}
-              onChange={(event) =>
-                onChange({
-                  type: "images",
-                  descriptions: descriptions.map((item, position) =>
-                    position === index ? event.target.value : item,
-                  ),
-                })
-              }
-            />
-          </label>
-          <div className="wechat-moment-image-actions">
-            <Button
-              aria-label={`上移图片 ${index + 1}`}
-              disabled={disabled || index === 0}
-              onClick={() => move(index, -1)}
-            >
-              ↑
-            </Button>
-            <Button
-              aria-label={`下移图片 ${index + 1}`}
-              disabled={disabled || index === descriptions.length - 1}
-              onClick={() => move(index, 1)}
-            >
-              ↓
-            </Button>
-          </div>
-        </div>
+      {items.map((item, index) => (
+        <MomentDraftImage
+          key={index}
+          item={item}
+          index={index}
+          count={items.length}
+          disabled={disabled}
+          onChoose={() => onChoose(index)}
+          onRefine={() => onRefine(index)}
+          onGenerate={() => onGenerate(index)}
+          onRemove={() => remove(index)}
+          onMove={(direction) => move(index, direction)}
+          onChange={(next) =>
+            onChange({
+              type: "images",
+              items: items.map((current, position) => (position === index ? next : current)),
+            })
+          }
+        />
       ))}
       <Button
         className="wechat-moment-add-image"
-        disabled={disabled || descriptions.length >= 9}
-        onClick={() => onChange({ type: "images", descriptions: [...descriptions, ""] })}
+        disabled={disabled || items.length >= 9}
+        onClick={() => onChange({ type: "images", items: [...items, { description: "" }] })}
       >
-        添加图片描述
+        添加图片
       </Button>
     </div>
   );

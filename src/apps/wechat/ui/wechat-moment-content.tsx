@@ -62,13 +62,15 @@ export function MomentAuthor({
 export function MomentContentView({
   moment,
   compact = false,
+  onImage,
 }: {
   moment: WechatMoment;
   compact?: boolean;
+  onImage?(index: number): void;
 }) {
   const descriptions =
     moment.media.type === "images"
-      ? moment.media.descriptions
+      ? moment.media.items.map((item) => item.description)
       : moment.media.type === "video"
         ? [moment.media.description]
         : [];
@@ -88,18 +90,44 @@ export function MomentContentView({
             compact ? `wechat-moment-media--${layout}` : ""
           }`}
         >
-          {descriptions.map((description, index) => (
-            <div className="wechat-moment-placeholder" key={index}>
-              <span>
-                {moment.media.type === "video"
-                  ? "视频"
-                  : descriptions.length > 1
-                    ? `图片 ${index + 1}/${descriptions.length}`
-                    : "图片"}
-              </span>
-              <p>{description}</p>
-            </div>
-          ))}
+          {descriptions.map((description, index) => {
+            const item = moment.media.type === "images" ? moment.media.items[index] : undefined;
+            const content = item?.image ? (
+              <>
+                <img
+                  className="wechat-moment-photo"
+                  src={item.image.imagePath}
+                  alt={description}
+                  loading="lazy"
+                />
+                {!compact ? <p>{description}</p> : null}
+              </>
+            ) : (
+              <>
+                <span>
+                  {moment.media.type === "video"
+                    ? "视频"
+                    : `图片 ${index + 1}/${descriptions.length}`}
+                </span>
+                <p>{description}</p>
+              </>
+            );
+            return onImage && item ? (
+              <button
+                className="wechat-moment-placeholder wechat-moment-image-open"
+                type="button"
+                key={index}
+                onClick={() => onImage(index)}
+                aria-label={`查看图片 ${index + 1}`}
+              >
+                {content}
+              </button>
+            ) : (
+              <div className="wechat-moment-placeholder" key={index}>
+                {content}
+              </div>
+            );
+          })}
         </div>
       ) : null}
       <time dateTime={moment.createdAt} title={fullTime}>

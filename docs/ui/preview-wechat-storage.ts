@@ -1,6 +1,9 @@
 import type { WechatData } from "../../src/apps/wechat/wechat.ts";
 import type { WechatStorage } from "../../src/apps/wechat/ports/wechat-storage.ts";
-import { validateWechatMoments } from "../../src/apps/wechat/wechat-moments-storage.ts";
+import {
+  migrateWechatMoments,
+  validateWechatMoments,
+} from "../../src/apps/wechat/wechat-moments-storage.ts";
 import { previewWechatMoments } from "./preview-wechat-moments.ts";
 
 /** 预览消息独立保存，刷新仍可回看，绝不接触宿主聊天。 */
@@ -18,12 +21,23 @@ export function createPreviewWechatStorage(
       if (data.version !== 1) {
         throw new Error("预览微信数据版本不受支持");
       }
-      validateWechatMoments(data.moments);
+      migrateWechatMoments(data.moments);
       return data;
     },
     async write(chatId, data, signal) {
       signal?.throwIfAborted();
       validateWechatMoments(data.moments);
+      if (
+        momentsMode === "image-save-error" &&
+        Object.values(data.moments ?? {}).some((moments) =>
+          moments.some(
+            (moment) =>
+              moment.media.type === "images" && moment.media.items.some((item) => item.image),
+          ),
+        )
+      ) {
+        throw new Error("模拟朋友圈图片关联保存失败");
+      }
       if (mode === "save-error" || momentsMode === "save-error") {
         throw new Error("模拟微信保存失败");
       }

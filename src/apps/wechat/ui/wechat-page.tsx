@@ -1,3 +1,4 @@
+import type { ImageRecord } from "../../../core/image-hub/public.ts";
 import type { WechatPreferences, WechatSendMode } from "../../settings/public.ts";
 import type { Navigation } from "../../../frontend/foundation/navigation-stack.tsx";
 import type { WechatService } from "../wechat-service.ts";
@@ -10,6 +11,13 @@ export type WechatRoute =
   | { page: "moments" | "moment-ai-author"; scopeId: string }
   | { page: "moment-compose"; scopeId: string; onPublished(): void }
   | { page: "moment-detail"; scopeId: string; id: string }
+  | { page: "moment-image"; scopeId: string; id: string; index: number }
+  | { page: "moment-image-view"; imagePath: string; description: string }
+  | {
+      page: "moment-image-picker";
+      selectedId?: string;
+      onSelect(image: ImageRecord): Promise<void>;
+    }
   | {
       page: "moment-participants";
       scopeId: string;
