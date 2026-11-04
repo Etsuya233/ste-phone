@@ -992,16 +992,13 @@ test("朋友圈阅读范围在来源断开后保留，新实例与新聊天不�
   const f = fixture();
   await f.service.prepare();
   await f.service.selectAccount("a");
-  await f.service.moments.publish({ text: "保存的动态", media: { type: "none" } });
+  await f.service.moments.publish({ text: "保存的动态", media: [] });
   f.sourceChanged(false, "");
   await f.service.prepare();
   assert.equal(f.service.getSnapshot().momentsScopeId, "stable");
   assert.equal(f.service.getSnapshot().scopeId, null);
   assert.equal(f.service.getSnapshot().data.moments!.stable![0]!.text, "保存的动态");
-  await assert.rejects(
-    f.service.moments.publish({ text: "断开时发布", media: { type: "none" } }),
-    /资料不可用/,
-  );
+  await assert.rejects(f.service.moments.publish({ text: "断开时发布", media: [] }), /资料不可用/);
   const restored = f.restore();
   assert.equal(restored.getSnapshot().momentsScopeId, null);
   assert.deepEqual(Object.keys(restored.getSnapshot().data.moments!), ["stable"]);
@@ -1026,7 +1023,7 @@ test("朋友圈AI显式选择人物发布，互动排除当前帐号且支持整
   f.momentOutput({
     authorId: "b",
     text: "乙的动态",
-    media: { type: "video", description: "视频内容" },
+    media: [{ type: "video", description: "视频内容" }],
   });
   const draft = await f.service.moments.generatePost("b", "  分享逛街日常，配两张图  ");
   assert.equal(f.stored!.moments, undefined);
@@ -1079,7 +1076,7 @@ test("朋友圈AI非法整批、截断与保存失败均不修改历史，重新
   const f = fixture();
   await f.service.prepare();
   await f.service.selectAccount("a");
-  const id = await f.service.moments.publish({ text: "手动动态", media: { type: "none" } });
+  const id = await f.service.moments.publish({ text: "手动动态", media: [] });
   const before = f.stored;
   f.momentOutput({
     comments: [
@@ -1090,7 +1087,7 @@ test("朋友圈AI非法整批、截断与保存失败均不修改历史，重新
   await f.service.moments.generateInteraction(id);
   assert.equal(f.service.getSnapshot().momentGeneration.status, "error");
   assert.equal(f.stored, before);
-  f.momentOutput({ authorId: "a", text: "AI动态", media: { type: "none" } });
+  f.momentOutput({ authorId: "a", text: "AI动态", media: [] });
   f.failSave(true);
   const draft = await f.service.moments.generatePost("a");
   assert.equal(f.stored, before);
@@ -1114,16 +1111,13 @@ test("朋友圈与单聊互斥，指导更新不改变本轮输入，切帐号�
   await f.service.prepare();
   await f.service.selectAccount("a");
   await f.service.saveReplyGuidance("b", "原指导");
-  f.momentOutput({ authorId: "b", text: "旧任务动态", media: { type: "none" } });
+  f.momentOutput({ authorId: "b", text: "旧任务动态", media: [] });
   const started = f.holdModel();
   const generation = assert.rejects(f.service.moments.generatePost("b"), { name: "AbortError" });
   await started;
   await assert.rejects(f.service.send("b", "不应发送"), /等待当前/);
   await assert.rejects(f.service.requestReply("b"), /等待当前/);
-  await assert.rejects(
-    f.service.moments.publish({ text: "不应发布", media: { type: "none" } }),
-    /等待当前/,
-  );
+  await assert.rejects(f.service.moments.publish({ text: "不应发布", media: [] }), /等待当前/);
   await f.service.saveReplyGuidance("b", "新指导");
   assert.match(f.prompt, /原指导/);
   assert.doesNotMatch(f.prompt, /新指导/);
@@ -1139,7 +1133,7 @@ test("朋友圈互动保存期间停止等待原存储撤回，生成锁随后�
   const f = fixture();
   await f.service.prepare();
   await f.service.selectAccount("a");
-  const id = await f.service.moments.publish({ text: "已有动态", media: { type: "none" } });
+  const id = await f.service.moments.publish({ text: "已有动态", media: [] });
   f.momentOutput({ comments: [{ authorId: "b", text: "待保存互动", replyTo: null }] });
   const started = f.holdNextSave();
   const generation = f.service.moments.generateInteraction(id);
@@ -1147,10 +1141,7 @@ test("朋友圈互动保存期间停止等待原存储撤回，生成锁随后�
   assert.equal(f.service.getSnapshot().momentGeneration.status, "saving");
   f.service.moments.generation.cancel();
   assert.equal(f.service.getSnapshot().momentGeneration.status, "stopping");
-  await assert.rejects(
-    f.service.moments.publish({ text: "冲突", media: { type: "none" } }),
-    /等待当前/,
-  );
+  await assert.rejects(f.service.moments.publish({ text: "冲突", media: [] }), /等待当前/);
   f.releaseSave();
   await generation;
   assert.equal(f.stored!.moments!.stable![0]!.comments.length, 0);
@@ -1162,7 +1153,7 @@ test("更换资料实例取消朋友圈任务，即使稳定范围相同也不�
   const f = fixture();
   await f.service.prepare();
   await f.service.selectAccount("a");
-  f.momentOutput({ authorId: "a", text: "旧实例", media: { type: "none" } });
+  f.momentOutput({ authorId: "a", text: "旧实例", media: [] });
   const started = f.holdModel();
   const generation = assert.rejects(f.service.moments.generatePost("a"), { name: "AbortError" });
   await started;
@@ -1180,7 +1171,7 @@ test("普通保存和单聊生成期间不能启动朋友圈AI，取消后的新
   await f.service.prepare();
   await f.service.selectAccount("a");
   const startedSave = f.holdNextSave();
-  const saving = f.service.moments.publish({ text: "手动保存", media: { type: "none" } });
+  const saving = f.service.moments.publish({ text: "手动保存", media: [] });
   await startedSave;
   await assert.rejects(f.service.moments.generatePost("a"), /等待当前/);
   assert.equal(f.calls, 0);
@@ -1193,7 +1184,7 @@ test("普通保存和单聊生成期间不能启动朋友圈AI，取消后的新
   f.service.cancel();
   f.releaseModel();
   await reply;
-  f.momentOutput({ authorId: "a", text: "旧聊天迟到", media: { type: "none" } });
+  f.momentOutput({ authorId: "a", text: "旧聊天迟到", media: [] });
   const started = f.holdModel();
   const generation = assert.rejects(f.service.moments.generatePost("a"), { name: "AbortError" });
   await started;
@@ -1210,7 +1201,7 @@ test("朋友圈缺模型连接、无互动候选及人物删除均明确拒绝�
   const f = fixture();
   await f.service.prepare();
   await f.service.selectAccount("a");
-  const id = await f.service.moments.publish({ text: "已有动态", media: { type: "none" } });
+  const id = await f.service.moments.publish({ text: "已有动态", media: [] });
   f.withoutDefaultConnection();
   await assert.rejects(f.service.moments.generatePost("a"), /默认模型连接/);
   assert.match(JSON.stringify(f.service.getSnapshot().momentGeneration), /默认模型连接/);
@@ -1222,10 +1213,7 @@ test("朋友圈缺模型连接、无互动候选及人物删除均明确拒绝�
   await f.service.prepare();
   assert.equal(f.service.getSnapshot().data.account, null);
   assert.equal(f.service.getSnapshot().data.moments!.stable![0]!.author.id, "a");
-  await assert.rejects(
-    f.service.moments.publish({ text: "失效帐号", media: { type: "none" } }),
-    /资料不可用/,
-  );
+  await assert.rejects(f.service.moments.publish({ text: "失效帐号", media: [] }), /资料不可用/);
   assert.equal(f.calls, 0);
   f.service.dispose();
 });
@@ -1238,13 +1226,17 @@ test("朋友圈指定互动固定所选名单并要求全部参与，遗漏或�
   await f.service.selectAccount("a");
   await f.service.saveReplyGuidance("c", "选中人物指导");
   await f.service.saveReplyGuidance("d", "未选人物指导");
-  const id = await f.service.moments.publish({ text: "指定互动", media: { type: "none" } });
+  const id = await f.service.moments.publish({ text: "指定互动", media: [] });
   const selected = ["b", "c"];
   const started = f.holdModel();
   const generation = f.service.moments.generateInteraction(id, selected);
   await started;
   selected.splice(0, selected.length, "d");
-  const request = JSON.parse(f.prompt) as { messages: { content: string }[] };
+  const request = JSON.parse(f.prompt) as {
+    messages: {
+      content: string;
+    }[];
+  };
   const material = JSON.parse(request.messages[1]!.content);
   assert.deepEqual(material.requiredAuthorIds, ["b", "c"]);
   assert.equal(material.participationMode, "selected");
@@ -1288,7 +1280,7 @@ test("朋友圈互动选择拒绝当前帐号、未知人物、重复与超限�
   }
   await f.service.prepare();
   await f.service.selectAccount("a");
-  const id = await f.service.moments.publish({ text: "互动人数边界", media: { type: "none" } });
+  const id = await f.service.moments.publish({ text: "互动人数边界", media: [] });
   for (const selected of [["a"], ["unknown"], ["b", "b"], ["b", "c", "d", "e", "f", "g"]]) {
     await assert.rejects(
       f.service.moments.generateInteraction(id, selected),
@@ -1319,12 +1311,12 @@ test("草稿完善Prompt返回编辑值且不发布，非法输出与取消保�
   const draft = {
     author: { id: "b", name: "乙", scopeId: "stable" },
     text: "窗边",
-    media: { type: "images" as const, items: [{ description: "乙在窗边", prompt: "原Prompt" }] },
+    media: [{ type: "image" as const, description: "乙在窗边", prompt: "原Prompt" }],
   };
   f.momentOutput({ prompt: "乙在窗边，第三人称侧面近景，窗外光线照亮面部，背景是柔和的窗框。" });
   const refined = await f.service.moments.refineDraftImagePrompt(draft, 0);
   assert.match(refined, /第三人称/);
-  assert.equal(draft.media.items[0]!.prompt, "原Prompt");
+  assert.equal(draft.media[0]!.prompt, "原Prompt");
   assert.equal(f.stored!.moments, undefined);
   f.momentOutput({ prompt: "", extra: "非法" });
   await assert.rejects(f.service.moments.refineDraftImagePrompt(draft, 0), /输出无效/);
@@ -1337,6 +1329,6 @@ test("草稿完善Prompt返回编辑值且不发布，非法输出与取消保�
   f.releaseModel();
   await canceled;
   assert.equal(f.stored!.moments, undefined);
-  assert.equal(draft.media.items[0]!.prompt, "原Prompt");
+  assert.equal(draft.media[0]!.prompt, "原Prompt");
   f.service.dispose();
 });

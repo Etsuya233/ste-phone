@@ -24,28 +24,8 @@ export function validateWechatMoments(value: unknown): void {
 function validateMoment(value: unknown, scopeId: string): asserts value is WechatMoment {
   const record = object(value);
   validateRecord(record, scopeId);
-  const media = object(record.media);
   if (typeof record.text !== "string") {
     throw new Error("朋友圈正文无效");
-  }
-  switch (media.type) {
-    case "none":
-      if ("description" in media || "descriptions" in media || "items" in media) {
-        throw new Error("纯文字动态不能包含媒体描述");
-      }
-      break;
-    case "images":
-      if (!Array.isArray(media.items) || "descriptions" in media || "description" in media) {
-        throw new Error("朋友圈图片描述无效");
-      }
-      break;
-    case "video":
-      if (typeof media.description !== "string" || "descriptions" in media || "items" in media) {
-        throw new Error("朋友圈视频描述无效");
-      }
-      break;
-    default:
-      throw new Error("朋友圈媒体类型无效");
   }
   normalizeMomentContent(record as unknown as WechatMoment);
   validateComments(record.comments, scopeId);
@@ -114,7 +94,7 @@ function nonempty(value: unknown): void {
   }
 }
 
-/** 只在读取边界迁移旧描述数组；新旧字段混用和损坏记录仍交给校验明确报错。 */
+/** 读取边界将旧动态级媒体转换为有序附件；读取不写盘，下次正常保存时持久化。 */
 export function migrateWechatMoments(value: unknown): void {
   if (value === undefined) {
     return;
@@ -124,18 +104,42 @@ export function migrateWechatMoments(value: unknown): void {
       throw new Error("朋友圈空间数据无效");
     }
     for (const raw of records) {
-      const media = object(object(raw).media);
-      if (media.type === "images" && "descriptions" in media && !("items" in media)) {
-        if (
-          !Array.isArray(media.descriptions) ||
-          media.descriptions.some((item) => typeof item !== "string")
-        ) {
-          throw new Error("朋友圈图片描述无效");
-        }
-        media.items = media.descriptions.map((description) => ({ description }));
-        delete media.descriptions;
+      const record = object(raw);
+      if (!Array.isArray(record.media)) {
+        record.media = migrateLegacyMedia(object(record.media));
       }
     }
   }
   validateWechatMoments(value);
+}
+
+/** 只接受已发布的三种旧结构，混用字段与损坏内容直接报错。 */
+function migrateLegacyMedia(media: Record<string, unknown>): unknown[] {
+  const keys = Object.keys(media);
+  if (media.type === "none" && keys.length === 1) {
+    return [];
+  }
+  if (media.type === "video" && keys.length === 2 && "description" in media) {
+    return [{ type: "video", description: media.description }];
+  }
+  if (media.type === "images" && keys.length === 2) {
+    if (Array.isArray(media.items) && media.items.length >= 1 && media.items.length <= 9) {
+      return media.items.map((item) => {
+        const image = object(item);
+        if ("type" in image) {
+          throw new Error("旧朋友圈图片不能包含媒体类型");
+        }
+        return { ...image, type: "image" };
+      });
+    }
+    if (
+      Array.isArray(media.descriptions) &&
+      media.descriptions.length >= 1 &&
+      media.descriptions.length <= 9 &&
+      media.descriptions.every((description) => typeof description === "string")
+    ) {
+      return media.descriptions.map((description) => ({ type: "image", description }));
+    }
+  }
+  throw new Error("旧朋友圈媒体数据无效");
 }

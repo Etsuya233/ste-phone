@@ -6,39 +6,20 @@ export function MomentMediaEditor({
   disabled,
   onEdit,
   onAdd,
-  onVideoChange,
 }: {
   media: MomentMedia;
   disabled: boolean;
   onEdit(index: number): void;
-  onAdd(): void;
-  onVideoChange(description: string): void;
+  onAdd(type: MomentMedia[number]["type"]): void;
 }) {
-  if (media.type === "none") {
-    return null;
-  }
-  if (media.type === "video") {
-    return (
-      <label className="wechat-moment-label">
-        视频描述
-        <textarea
-          rows={4}
-          value={media.description}
-          disabled={disabled}
-          placeholder="画面里发生了什么…"
-          onChange={(event) => onVideoChange(event.target.value)}
-        />
-      </label>
-    );
-  }
   return (
     <div className="wechat-moment-media-editor">
       <div className="wechat-moment-media-heading">
-        <span>图片</span>
-        <span>{media.items.length}/9</span>
+        <span>图片和视频</span>
+        <span>{media.length}/9</span>
       </div>
       <div className="wechat-moment-media-grid">
-        {media.items.map((item, index) => {
+        {media.map((item, index) => {
           const missing = !item.description.trim();
           return (
             <button
@@ -46,13 +27,14 @@ export function MomentMediaEditor({
               key={index}
               className={`wechat-moment-media-tile ${missing ? "wechat-moment-media-tile--missing" : ""}`}
               disabled={disabled}
-              aria-label={`编辑图片 ${index + 1}${missing ? "，待填写描述" : ""}`}
+              aria-label={`编辑${item.type === "image" ? "图片" : "视频"} ${index + 1}${missing ? "，待填写描述" : ""}`}
               onClick={() => onEdit(index)}
             >
-              {item.image ? (
+              {item.type === "image" && item.image ? (
                 <img className="wechat-moment-media-tile-photo" src={item.image.imagePath} alt="" />
               ) : (
                 <span className="wechat-moment-media-tile-text">
+                  {item.type === "video" ? "视频：" : ""}
                   {item.description || "添加描述"}
                 </span>
               )}
@@ -65,13 +47,18 @@ export function MomentMediaEditor({
             </button>
           );
         })}
-        {media.items.length < 9 ? (
-          <Button className="wechat-moment-media-add" disabled={disabled} onClick={onAdd}>
+      </div>
+      {media.length < 9 ? (
+        <div className="wechat-moment-image-tools">
+          <Button disabled={disabled} onClick={() => onAdd("image")}>
             添加图片
           </Button>
-        ) : null}
-      </div>
-      <p className="wechat-moment-media-hint">点按图片可编辑描述和绘图提示词。</p>
+          <Button disabled={disabled} onClick={() => onAdd("video")}>
+            添加视频
+          </Button>
+        </div>
+      ) : null}
+      <p className="wechat-moment-media-hint">图片和视频合计最多 9 个，点按可编辑、排序或删除。</p>
     </div>
   );
 }

@@ -94,40 +94,68 @@ function fixture() {
   };
 }
 
-test("朋友圈文字和媒体去首尾空白并保留段落，接受仅媒体和九图", () => {
-  assert.deepEqual(
-    normalizeMomentContent({ text: "  第一段\n\n第二段  ", media: { type: "none" } }),
-    {
-      text: "第一段\n\n第二段",
-      media: { type: "none" },
-    },
+test("混排媒体合计九个可发布，第十个拒绝，图片按混排位置更新", async () => {
+  const f = fixture();
+  f.account("a");
+  const media: MomentContent["media"] = Array.from({ length: 9 }, (_, index) =>
+    index % 2 === 0
+      ? { type: "video", description: `视频${index}` }
+      : { type: "image", description: `图片${index}`, prompt: `画面${index}` },
   );
+  const id = await f.service.publish({ text: "", media });
+  await f.service.saveImagePrompt(id, 3, "只修改第四个附件");
+  const saved = f.snapshot().data.moments!.stable![0]!;
   assert.deepEqual(
-    normalizeMomentContent({ text: " ", media: { type: "video", description: " 视频 " } }),
+    saved.media.map((item) => item.type),
+    media.map((item) => item.type),
+  );
+  assert.deepEqual(saved.media[3], { ...media[3], prompt: "只修改第四个附件" });
+  assert.deepEqual(saved.media[0], media[0]);
+  await assert.rejects(f.service.saveImagePrompt(id, 2, "视频无法绘图"), /图片位置无效/);
+  const tooMany = { text: "正文", media: [...media, media[0]!] };
+  assert.equal(momentDraftIssue(tooMany)?.kind, "limit");
+  await assert.rejects(f.service.publish(tooMany), /最多 9 个/);
+  assert.equal(f.snapshot().data.moments!.stable!.length, 1);
+});
+
+test("朋友圈文字和媒体去首尾空白并保留段落，接受仅媒体和九图", () => {
+  assert.deepEqual(normalizeMomentContent({ text: "  第一段\n\n第二段  ", media: [] }), {
+    text: "第一段\n\n第二段",
+    media: [],
+  });
+  assert.deepEqual(
+    normalizeMomentContent({ text: " ", media: [{ type: "video", description: " 视频 " }] }),
     {
       text: "",
-      media: { type: "video", description: "视频" },
+      media: [{ type: "video", description: "视频" }],
     },
   );
   assert.equal(
     normalizeMomentContent({
       text: "",
-      media: { type: "images", items: Array(9).fill({ description: " 图片 " }) },
-    }).media.type,
-    "images",
+      media: Array(9)
+        .fill({ description: " 图片 " })
+        .map((item) => ({ type: "image" as const, ...item })),
+    }).media.length,
+    9,
   );
   for (const content of [
-    { text: " ", media: { type: "none" } },
-    { text: "正文", media: { type: "images", items: [] } },
+    { text: " ", media: [] },
     {
       text: "正文",
-      media: {
-        type: "images",
-        items: [" "].map((description) => ({ description, prompt: description.trim() })),
-      },
+      media: [" "].map((description) => ({
+        type: "image" as const,
+        description,
+        prompt: description.trim(),
+      })),
     },
-    { text: "正文", media: { type: "images", items: Array(10).fill({ description: "图片" }) } },
-    { text: "正文", media: { type: "video", description: " " } },
+    {
+      text: "正文",
+      media: Array(10)
+        .fill({ description: "图片" })
+        .map((item) => ({ type: "image" as const, ...item })),
+    },
+    { text: "正文", media: [{ type: "video", description: " " }] },
     { text: "正文", media: { type: "audio" } },
   ]) {
     assert.throws(() => normalizeMomentContent(content as MomentContent));
@@ -135,34 +163,36 @@ test("朋友圈文字和媒体去首尾空白并保留段落，接受仅媒体�
 });
 
 test("发布页在提交前标出空正文、空视频描述和缺描述的图片", () => {
-  assert.equal(momentDraftIssue({ text: " ", media: { type: "none" } })?.kind, "empty");
+  assert.equal(momentDraftIssue({ text: " ", media: [] })?.kind, "empty");
   assert.equal(
-    momentDraftIssue({ text: " ", media: { type: "images", items: [] } })?.kind,
-    "empty",
-  );
-  assert.equal(
-    momentDraftIssue({ text: " ", media: { type: "video", description: " " } })?.kind,
+    momentDraftIssue({ text: " ", media: [{ type: "video", description: " " }] })?.kind,
     "video",
   );
   assert.deepEqual(
     momentDraftIssue({
       text: "",
-      media: { type: "images", items: [{ description: "图片" }, { description: " " }] },
+      media: [
+        { type: "image" as const, description: "图片" },
+        { type: "image" as const, description: " " },
+      ],
     }),
-    { kind: "image", index: 1, message: "第 2 张图片需要填写描述。" },
+    { kind: "image", index: 1, message: "第 2 个媒体（图片）需要填写描述。" },
   );
   assert.equal(
-    momentDraftIssue({ text: "", media: { type: "images", items: [{ description: "图片" }] } }),
+    momentDraftIssue({ text: "", media: [{ type: "image" as const, description: "图片" }] }),
     null,
   );
-  assert.equal(momentDraftIssue({ text: "", media: { type: "video", description: "视频" } }), null);
+  assert.equal(
+    momentDraftIssue({ text: "", media: [{ type: "video", description: "视频" }] }),
+    null,
+  );
 });
 
 test("共享朋友圈按追加排序，同名人物按身份评论回复，删除目标保留署名", async () => {
   const f = fixture();
   f.account("a");
-  const first = await f.service.publish({ text: "第一条", media: { type: "none" } });
-  const second = await f.service.publish({ text: "第二条", media: { type: "none" } });
+  const first = await f.service.publish({ text: "第一条", media: [] });
+  const second = await f.service.publish({ text: "第二条", media: [] });
   f.account("b");
   await f.service.comment(first, "  评论\n内容  ");
   const target = f.snapshot().data.moments!.stable![0]!.comments[0]!;
@@ -195,15 +225,12 @@ test("共享朋友圈按追加排序，同名人物按身份评论回复，删�
 
 test("空间与聊天独立，失败不发布结果，缺少有效帐号和生成期间拒绝写入", async () => {
   const f = fixture();
-  await assert.rejects(
-    f.service.publish({ text: "无帐号", media: { type: "none" } }),
-    /资料不可用/,
-  );
+  await assert.rejects(f.service.publish({ text: "无帐号", media: [] }), /资料不可用/);
   f.account("a");
-  const first = await f.service.publish({ text: "空间一", media: { type: "none" } });
+  const first = await f.service.publish({ text: "空间一", media: [] });
   f.account("a", "other");
   await assert.rejects(f.service.comment(first, "跨空间"), /不存在/);
-  await f.service.publish({ text: "空间二", media: { type: "none" } });
+  await f.service.publish({ text: "空间二", media: [] });
   assert.equal(f.snapshot().data.moments!.stable!.length, 1);
   assert.equal(f.snapshot().data.moments!.other!.length, 1);
   f.writes.changedChat();
@@ -211,11 +238,11 @@ test("空间与聊天独立，失败不发布结果，缺少有效帐号和生�
     chatId: "chat-b",
     data: { ...emptyWechat(), account: { id: "a", scopeId: "other", name: "甲" } },
   });
-  await f.service.publish({ text: "另一个聊天", media: { type: "none" } });
+  await f.service.publish({ text: "另一个聊天", media: [] });
   assert.equal(f.stored.get("chat-a")!.moments!.other![0]!.text, "空间二");
   const before = f.snapshot().data;
   f.failSave();
-  await assert.rejects(f.service.publish({ text: "失败", media: { type: "none" } }), /磁盘失败/);
+  await assert.rejects(f.service.publish({ text: "失败", media: [] }), /磁盘失败/);
   assert.equal(f.snapshot().data, before);
   f.generating();
   await assert.rejects(f.service.deleteMoment(first), /等待当前生成/);
@@ -229,10 +256,11 @@ test("朋友圈元数据显式兼容旧 v1，拒绝损坏媒体、跨空间人�
   f.account("a");
   const id = await f.service.publish({
     text: "正文",
-    media: {
-      type: "images",
-      items: ["图片"].map((description) => ({ description, prompt: description.trim() })),
-    },
+    media: ["图片"].map((description) => ({
+      type: "image" as const,
+      description,
+      prompt: description.trim(),
+    })),
   });
   await f.service.comment(id, "评论");
   const moment = f.snapshot().data.moments!.stable![0]!;
@@ -268,11 +296,11 @@ test("旧图片描述只在读取时迁移，混用字段与非法新图片拒�
   };
   assert.throws(() => validateWechatMoments(data));
   migrateWechatMoments(data);
-  assert.deepEqual(data.stable[0]!.media, { type: "images", items: [{ description: "旧图片" }] });
+  assert.deepEqual(data.stable[0]!.media, [{ type: "image" as const, description: "旧图片" }]);
   assert.throws(() =>
     normalizeMomentContent({
       text: "",
-      media: { type: "images", items: [{ description: "图", image: { id: "", imagePath: "x" } }] },
+      media: [{ type: "image" as const, description: "图", image: { id: "", imagePath: "x" } }],
     }),
   );
   assert.throws(() =>
@@ -300,17 +328,15 @@ test("图片调序保留引用，跨作者手动生成仅关联选定图片，�
   f.account("a");
   const id = await f.service.publish({
     text: "动态",
-    media: {
-      type: "images",
-      items: [
-        {
-          description: "第二张",
-          prompt: "窗边的笔记本",
-          image: { id: "previous", imagePath: "/previous.png" },
-        },
-        { description: "第一张", prompt: "树叶" },
-      ],
-    },
+    media: [
+      {
+        type: "image" as const,
+        description: "第二张",
+        prompt: "窗边的笔记本",
+        image: { id: "previous", imagePath: "/previous.png" },
+      },
+      { type: "image" as const, description: "第一张", prompt: "树叶" },
+    ],
   });
   f.account("b");
   let received = "";
@@ -322,13 +348,13 @@ test("图片调序保留引用，跨作者手动生成仅关联选定图片，�
   await f.service.generateImage(id, 1);
   const media = f.snapshot().data.moments!.stable![0]!.media;
   assert.equal(received, "called");
-  assert.equal(media.type, "images");
-  if (media.type !== "images") {
+  assert.equal(media[0]!.type, "image");
+  if (media[0]!.type !== "image" || media[1]!.type !== "image") {
     throw new Error("预期图片");
   }
-  assert.deepEqual(media.items[0]!.image, { id: "previous", imagePath: "/previous.png" });
-  assert.deepEqual(media.items[1]!.image, { id: imageRecord.id, imagePath: imageRecord.imagePath });
-  assert.equal(media.items[1]!.prompt, "新 Prompt");
+  assert.deepEqual(media[0]!.image, { id: "previous", imagePath: "/previous.png" });
+  assert.deepEqual(media[1]!.image, { id: imageRecord.id, imagePath: imageRecord.imagePath });
+  assert.equal(media[1]!.prompt, "新 Prompt");
   assert.equal(f.snapshot().data.moments!.stable![0]!.author.id, "a");
 });
 
@@ -337,7 +363,7 @@ test("Hub失败和关联保存失败保留原图片，取消后迟到结果不�
   f.account("a");
   const id = await f.service.publish({
     text: "",
-    media: { type: "images", items: [{ description: "图", prompt: "完整描述" }] },
+    media: [{ type: "image" as const, description: "图", prompt: "完整描述" }],
   });
   f.imageGenerator(async () => {
     throw new Error("Hub失败");
@@ -360,7 +386,7 @@ test("Hub失败和关联保存失败保留原图片，取消后迟到结果不�
   f.failSave();
   await assert.rejects(f.service.generateImage(id, 0), /图片已保存在图库/);
   const media = f.snapshot().data.moments!.stable![0]!.media;
-  assert.equal(media.type === "images" && media.items[0]!.image, undefined);
+  assert.equal(media[0]!.type === "image" && media[0]!.image, undefined);
 });
 
 test("草稿逐图生成只返回所选槽，取消与失败不保存动态", async () => {
@@ -369,20 +395,17 @@ test("草稿逐图生成只返回所选槽，取消与失败不保存动态", as
   const draft = {
     author: { id: "b", name: "同名", scopeId: "stable" },
     text: "待发布",
-    media: {
-      type: "images" as const,
-      items: [
-        { description: "第一张", prompt: "第一张Prompt" },
-        { description: "第二张", prompt: "第二张Prompt" },
-      ],
-    },
+    media: [
+      { type: "image" as const, description: "第一张", prompt: "第一张Prompt" },
+      { type: "image" as const, description: "第二张", prompt: "第二张Prompt" },
+    ],
   };
   f.imageGenerator(async () => [imageRecord, { ...imageRecord, id: "other" }]);
   const generated = await f.service.generateDraftImage(draft, 1);
   assert.equal(generated.description, "第二张");
   assert.equal(generated.image!.id, "hub-first");
   assert.equal(f.snapshot().data.moments, undefined);
-  assert.equal("image" in draft.media.items[1]!, false);
+  assert.equal("image" in draft.media[1]!, false);
   let finish!: (images: readonly (typeof imageRecord)[]) => void;
   f.imageGenerator(
     () =>
@@ -402,11 +425,11 @@ test("草稿逐图生成只返回所选槽，取消与失败不保存动态", as
   assert.equal(f.snapshot().data.moments, undefined);
   await assert.rejects(f.service.publish(draft, { ...draft.author, scopeId: "other" }), /草稿作者/);
   const id = await f.service.publish(
-    { ...draft, media: { type: "images", items: [draft.media.items[0]!, generated] } },
+    { ...draft, media: [draft.media[0]!, generated] },
     draft.author,
   );
   const saved = f.snapshot().data.moments!.stable![0]!;
   assert.equal(saved.id, id);
   assert.equal(saved.author.id, "b");
-  assert.equal(saved.media.type === "images" && saved.media.items[1]!.image!.id, "hub-first");
+  assert.equal(saved.media[1]!.type === "image" && saved.media[1]!.image!.id, "hub-first");
 });

@@ -143,9 +143,6 @@
   grid-template-columns: minmax(0, 1fr);
   max-width: 72%;
 }
-:host .wechat-moment-content--compact .wechat-moment-media--video {
-  max-width: 100%;
-}
 :host .wechat-moment-media--two {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -188,8 +185,10 @@
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
-:host .wechat-moment-content--compact .wechat-moment-media--single .wechat-moment-placeholder--text,
-:host .wechat-moment-content--compact .wechat-moment-media--video .wechat-moment-placeholder--text {
+:host
+  .wechat-moment-content--compact
+  .wechat-moment-media--single
+  .wechat-moment-placeholder--text {
   min-height: 88px;
 }
 :host .wechat-moment-content--compact .wechat-moment-media--two .wechat-moment-placeholder,

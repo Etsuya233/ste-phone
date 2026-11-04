@@ -1,5 +1,4 @@
-import { SegmentedControl } from "../../../frontend/foundation/segmented-control.tsx";
-import type { MomentDraftIssue, MomentMedia } from "../wechat-moments.ts";
+import type { MomentDraftIssue } from "../wechat-moments.ts";
 import type { WechatSnapshot } from "../wechat.ts";
 import { PersonAvatar } from "./wechat-page.tsx";
 import { MomentMediaEditor } from "./wechat-moment-media-editor.tsx";
@@ -50,24 +49,11 @@ export function MomentComposeForm({
           onChange={(event) => editor.setDraft({ ...editor.draft, text: event.target.value })}
         />
       </label>
-      <SegmentedControl
-        label="媒体"
-        value={editor.draft.media.type}
-        onValueChange={(value) => editor.selectMedia(value as MomentMedia["type"])}
-        options={[
-          { value: "none", label: "纯文字", disabled: locked },
-          { value: "images", label: "图片", disabled: locked },
-          { value: "video", label: "视频", disabled: locked },
-        ]}
-      />
       <MomentMediaEditor
         media={editor.draft.media}
         disabled={locked}
-        onEdit={editor.openImage}
-        onAdd={editor.addImage}
-        onVideoChange={(description) =>
-          editor.setDraft({ ...editor.draft, media: { type: "video", description } })
-        }
+        onEdit={editor.openMedia}
+        onAdd={editor.addMedia}
       />
       {issue ? (
         <p className="wechat-moment-publish-hint" role="status">

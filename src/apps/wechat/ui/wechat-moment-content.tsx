@@ -70,38 +70,29 @@ export function MomentContentView({
   showTime?: boolean;
   onImage?(index: number): void;
 }) {
-  const descriptions =
-    moment.media.type === "images"
-      ? moment.media.items.map((item) => item.description)
-      : moment.media.type === "video"
-        ? [moment.media.description]
-        : [];
   const layout =
-    descriptions.length === 1
+    moment.media.length === 1
       ? "single"
-      : descriptions.length === 2 || descriptions.length === 4
+      : moment.media.length === 2 || moment.media.length === 4
         ? "two"
         : "grid";
   const fullTime = formatWechatMomentFullTime(moment.createdAt);
   return (
     <div className={`wechat-moment-content ${compact ? "wechat-moment-content--compact" : ""}`}>
       {moment.text ? <p className="wechat-moment-text">{moment.text}</p> : null}
-      {descriptions.length ? (
-        <div
-          className={`wechat-moment-media wechat-moment-media--${moment.media.type} ${
-            compact ? `wechat-moment-media--${layout}` : ""
-          }`}
-        >
-          {descriptions.map((description, index) => {
-            const item = moment.media.type === "images" ? moment.media.items[index] : undefined;
+      {moment.media.length ? (
+        <div className={`wechat-moment-media ${compact ? `wechat-moment-media--${layout}` : ""}`}>
+          {moment.media.map((item, index) => {
+            const description = item.description;
+            const image = item.type === "image" ? item.image : undefined;
             const placeholder = `wechat-moment-placeholder wechat-moment-placeholder--${
-              item?.image ? "photo" : "text"
+              image ? "photo" : "text"
             }`;
-            const content = item?.image ? (
+            const content = image ? (
               <>
                 <img
                   className="wechat-moment-photo"
-                  src={item.image.imagePath}
+                  src={image.imagePath}
                   alt={description}
                   loading="lazy"
                 />
@@ -110,14 +101,12 @@ export function MomentContentView({
             ) : (
               <>
                 <span>
-                  {moment.media.type === "video"
-                    ? "视频"
-                    : `图片 ${index + 1}/${descriptions.length}`}
+                  {item.type === "video" ? "视频" : `图片 ${index + 1}/${moment.media.length}`}
                 </span>
                 <p>{description}</p>
               </>
             );
-            return onImage && item ? (
+            return onImage && item.type === "image" ? (
               <button
                 className={`${placeholder} wechat-moment-image-open`}
                 type="button"

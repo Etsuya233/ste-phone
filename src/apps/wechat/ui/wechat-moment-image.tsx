@@ -16,7 +16,8 @@ function useMomentImage({
   index,
 }: WechatPageProps & { scopeId: string; id: string; index: number; active: boolean }) {
   const moment = state.data.moments?.[scopeId]?.find((item) => item.id === id);
-  const image = moment?.media.type === "images" ? moment.media.items[index] : undefined;
+  const media = moment?.media[index];
+  const image = media?.type === "image" ? media : undefined;
   const [prompt, setPrompt] = useState(image?.prompt ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

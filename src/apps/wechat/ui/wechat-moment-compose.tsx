@@ -6,7 +6,7 @@ import { momentDraftIssue } from "../wechat-moments.ts";
 import { useMomentCompose, type MomentComposeProps } from "./use-wechat-moment-compose.ts";
 import { momentWritingReason } from "./wechat-moment-content.tsx";
 import { MomentComposeForm } from "./wechat-moment-compose-form.tsx";
-import { MomentComposeImage } from "./wechat-moment-compose-image.tsx";
+import { MomentComposeMedia } from "./wechat-moment-compose-media.tsx";
 
 export function WechatMomentCompose(props: MomentComposeProps) {
   const { state, scopeId, active } = props;
@@ -14,16 +14,11 @@ export function WechatMomentCompose(props: MomentComposeProps) {
   const reason = momentWritingReason(state, scopeId);
   const locked = editor.status !== "editing" || editor.imageBusy;
   const issue = momentDraftIssue(editor.draft);
-  const editingImage =
-    editor.editingImage !== null &&
-    editor.draft.media.type === "images" &&
-    editor.draft.media.items[editor.editingImage]
-      ? editor.editingImage
-      : null;
+  const editingMedia = editor.editingMedia;
   return (
     <>
-      <div className="wechat-moment-page" inert={!!editor.confirmation}>
-        {editingImage === null ? (
+      <div className="wechat-moment-page" inert={editor.discard}>
+        {editingMedia === null ? (
           <Page
             navBar={
               <NavBar
@@ -53,29 +48,27 @@ export function WechatMomentCompose(props: MomentComposeProps) {
           <Page
             navBar={
               <NavBar
-                title={`图片 ${editingImage + 1}`}
-                back={{ label: "返回", onClick: editor.closeImage }}
-                right={<Button onClick={editor.closeImage}>完成</Button>}
+                title={`${editor.draft.media[editingMedia]!.type === "image" ? "图片" : "视频"} ${editingMedia + 1}`}
+                back={{ label: "返回", onClick: editor.closeMedia }}
+                right={<Button onClick={editor.closeMedia}>完成</Button>}
               />
             }
           >
-            <MomentComposeImage editor={editor} index={editingImage} />
+            <MomentComposeMedia editor={editor} index={editingMedia} />
           </Page>
         )}
       </div>
-      {editor.confirmation ? (
+      {editor.discard ? (
         <Alert
           active={active}
-          title={editor.confirmation.type === "discard" ? "舍弃动态？" : "切换媒体类型？"}
-          onDismiss={() => editor.setConfirmation(null)}
+          title="舍弃动态？"
+          onDismiss={() => editor.setDiscard(false)}
           actions={[
-            { label: "继续编辑", onClick: () => editor.setConfirmation(null) },
-            { label: "舍弃", onClick: editor.confirm },
+            { label: "继续编辑", onClick: () => editor.setDiscard(false) },
+            { label: "舍弃", onClick: editor.discardDraft },
           ]}
         >
-          {editor.confirmation.type === "discard"
-            ? "尚未发布的内容将被舍弃。"
-            : "当前媒体描述将被舍弃，正文会保留。"}
+          尚未发布的内容将被舍弃。
         </Alert>
       ) : null}
     </>

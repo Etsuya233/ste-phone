@@ -14,14 +14,15 @@ export function previewWechatMoments(): WechatData {
           id: "moment-demo-images",
           author: red,
           text: "今天的光很温柔。\n\n把小小的日常留在这里。",
-          media: {
-            type: "images",
-            items: [
-              "窗边摊开的蓝色笔记本，纸上留着几行修改后的句子。",
-              "图书馆外的树叶，阳光从叶片之间落下来。",
-              "一杯热牛奶，杯沿上方有很淡的热气。",
-            ].map((description) => ({ description, prompt: description.trim() })),
-          },
+          media: [
+            "窗边摊开的蓝色笔记本，纸上留着几行修改后的句子。",
+            "图书馆外的树叶，阳光从叶片之间落下来。",
+            "一杯热牛奶，杯沿上方有很淡的热气。",
+          ].map((description) => ({
+            type: "image" as const,
+            description,
+            prompt: description.trim(),
+          })),
           createdAt: "2026-11-03T08:00:00.000Z",
           comments: [
             {
@@ -43,10 +44,12 @@ export function previewWechatMoments(): WechatData {
           id: "moment-demo-video",
           author: blue,
           text: "",
-          media: {
-            type: "video",
-            description: "短视频里，风吹过图书馆外的树梢，远处有人抱着书快步走过。",
-          },
+          media: [
+            {
+              type: "video",
+              description: "短视频里，风吹过图书馆外的树梢，远处有人抱着书快步走过。",
+            },
+          ],
           createdAt: "2026-11-03T08:03:00.000Z",
           comments: [],
         },
@@ -54,7 +57,7 @@ export function previewWechatMoments(): WechatData {
           id: "moment-demo-history",
           author: { id: "former-person", scopeId: "preview-space", name: "离开的人" },
           text: "曾经记录的这一刻，仍然留在这里。",
-          media: { type: "none" },
+          media: [],
           createdAt: "2026-11-03T08:04:00.000Z",
           comments: [],
         },

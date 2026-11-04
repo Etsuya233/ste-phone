@@ -16,46 +16,32 @@ export function parseGeneratedMoment(text: string, authorId: string): MomentCont
   if (value.authorId !== authorId || typeof value.text !== "string") {
     throw new Error("朋友圈发布人物或正文无效");
   }
-  const media = record(value.media);
-  switch (media.type) {
-    case "none":
-      fields(media, ["type"]);
-      return normalizeMomentContent({ text: value.text, media: { type: "none" } });
-    case "images":
-      fields(media, ["type", "items"]);
-      if (!Array.isArray(media.items)) {
-        throw new Error("朋友圈图片描述无效");
+  if (!Array.isArray(value.media)) {
+    throw new Error("朋友圈媒体需要为数组");
+  }
+  const media = value.media.map((raw) => {
+    const item = record(raw);
+    if (item.type === "image") {
+      fields(item, ["type", "description", "prompt"]);
+      if (
+        typeof item.description !== "string" ||
+        typeof item.prompt !== "string" ||
+        !item.prompt.trim()
+      ) {
+        throw new Error("朋友圈图片描述与绘图 Prompt 无效");
       }
-      return normalizeMomentContent({
-        text: value.text,
-        media: {
-          type: "images",
-          items: media.items.map((raw) => {
-            const item = record(raw);
-            fields(item, ["description", "prompt"]);
-            if (
-              typeof item.description !== "string" ||
-              typeof item.prompt !== "string" ||
-              !item.prompt.trim()
-            ) {
-              throw new Error("朋友圈图片描述与绘图 Prompt 无效");
-            }
-            return { description: item.description, prompt: item.prompt };
-          }),
-        },
-      });
-    case "video":
-      fields(media, ["type", "description"]);
-      if (typeof media.description !== "string") {
+      return { type: "image" as const, description: item.description, prompt: item.prompt };
+    }
+    if (item.type === "video") {
+      fields(item, ["type", "description"]);
+      if (typeof item.description !== "string") {
         throw new Error("朋友圈视频描述无效");
       }
-      return normalizeMomentContent({
-        text: value.text,
-        media: { type: "video", description: media.description },
-      });
-    default:
-      throw new Error("朋友圈媒体类型无效");
-  }
+      return { type: "video" as const, description: item.description };
+    }
+    throw new Error("朋友圈媒体类型无效");
+  });
+  return normalizeMomentContent({ text: value.text, media });
 }
 
 export function parseGeneratedInteraction(

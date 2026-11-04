@@ -28,7 +28,7 @@ export function MomentDraftImage({
   return (
     <div className="wechat-moment-image-page">
       <p className="wechat-moment-image-caption">
-        第 {index + 1} 张，共 {count} 张
+        第 {index + 1} 个媒体，共 {count} 个
       </p>
       {item.image ? (
         <img

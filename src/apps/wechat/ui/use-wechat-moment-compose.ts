@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { MomentDraft, MomentImage, MomentMedia } from "../wechat-moments.ts";
+import type { MomentDraft, MomentMedia } from "../wechat-moments.ts";
 import { useMomentDraftImages } from "./use-wechat-moment-draft-images.ts";
 import type { WechatPageProps } from "./wechat-page.tsx";
-
-type Confirmation = { type: "discard" } | { type: "media"; media: MomentMedia } | null;
 
 export type MomentComposeProps = WechatPageProps & {
   scopeId: string;
@@ -24,7 +22,7 @@ export function useMomentCompose({
     () =>
       initialDraft ?? {
         text: "",
-        media: { type: "none" },
+        media: [],
         author: {
           ...state.data.account!,
           name: state.people.find((person) => person.id === state.data.account!.id)!.name,
@@ -33,7 +31,7 @@ export function useMomentCompose({
   );
   const [status, setStatus] = useState<"editing" | "saving" | "saved">("editing");
   const [error, setError] = useState<string | null>(null);
-  const [editingImage, setEditingImage] = useState<number | null>(null);
+  const [editingMedia, setEditingMedia] = useState<number | null>(null);
   const images = useMomentDraftImages({ draft, setDraft, wechat, navigation });
   const mounted = useRef(true);
   useEffect(() => {
@@ -42,7 +40,7 @@ export function useMomentCompose({
       mounted.current = false;
     };
   }, [wechat]);
-  const [confirmation, setConfirmation] = useState<Confirmation>(null);
+  const [discard, setDiscard] = useState(false);
   useEffect(() => {
     // 保存完成后仅在本页回到前台时返回；Home 和关闭手机不触发后台导航。
     if (active && status === "saved") {
@@ -72,99 +70,52 @@ export function useMomentCompose({
     // 空图片槽或空视频描述没有需要保留的内容，不弹舍弃确认。
     const hasContent =
       !!draft.text.trim() ||
-      (draft.media.type === "images" &&
-        draft.media.items.some((item) => item.description.trim() || item.image || item.prompt)) ||
-      (draft.media.type === "video" && !!draft.media.description.trim());
+      draft.media.some(
+        (item) => item.description.trim() || (item.type === "image" && (item.image || item.prompt)),
+      );
     if (hasContent) {
-      setConfirmation({ type: "discard" });
+      setDiscard(true);
     } else {
       navigation.pop();
     }
   }
-  function selectMedia(type: MomentMedia["type"]) {
-    if (draft.media.type === type) {
-      return;
-    }
-    const media: MomentMedia =
-      type === "images"
-        ? { type, items: [{ description: "" }] }
-        : type === "video"
-          ? { type, description: "" }
-          : { type };
-    const hasDescription =
-      draft.media.type === "images"
-        ? draft.media.items.some((item) => item.description.length || item.image || item.prompt)
-        : draft.media.type === "video" && !!draft.media.description;
-    if (hasDescription) {
-      setConfirmation({ type: "media", media });
-    } else {
-      setDraft({ ...draft, media });
-      setEditingImage(type === "images" ? 0 : null);
-    }
+  function discardDraft() {
+    images.cancel();
+    navigation.pop();
+    setDiscard(false);
   }
-  function confirm() {
-    if (confirmation?.type === "discard") {
-      images.cancel();
-      navigation.pop();
-    } else if (confirmation?.type === "media") {
-      setDraft({ ...draft, media: confirmation.media });
-      setEditingImage(confirmation.media.type === "images" ? 0 : null);
+  function openMedia(index: number) {
+    setEditingMedia(index);
+  }
+  function closeMedia() {
+    setEditingMedia(null);
+  }
+  function addMedia(type: MomentMedia[number]["type"]) {
+    if (draft.media.length >= 9) {
+      throw new Error("图片和视频合计最多 9 个");
     }
-    setConfirmation(null);
+    setEditingMedia(draft.media.length);
+    setDraft({ ...draft, media: [...draft.media, { type, description: "" }] });
   }
-  function openImage(index: number) {
-    setEditingImage(index);
-  }
-  function closeImage() {
-    setEditingImage(null);
-  }
-  function addImage() {
-    if (draft.media.type !== "images" || draft.media.items.length >= 9) {
-      return;
-    }
-    setEditingImage(draft.media.items.length);
+  function updateMedia(index: number, item: MomentMedia[number]) {
     setDraft({
       ...draft,
-      media: { type: "images", items: [...draft.media.items, { description: "" }] },
+      media: draft.media.map((current, position) => (position === index ? item : current)),
     });
   }
-  function updateImage(index: number, item: MomentImage) {
-    if (draft.media.type !== "images") {
-      return;
-    }
-    setDraft({
-      ...draft,
-      media: {
-        type: "images",
-        items: draft.media.items.map((current, position) => (position === index ? item : current)),
-      },
-    });
+  function removeMedia(index: number) {
+    setDraft({ ...draft, media: draft.media.filter((_, position) => position !== index) });
+    setEditingMedia(null);
   }
-  function removeImage(index: number) {
-    if (draft.media.type !== "images") {
-      return;
-    }
-    setDraft({
-      ...draft,
-      media: {
-        type: "images",
-        items: draft.media.items.filter((_, position) => position !== index),
-      },
-    });
-    setEditingImage(null);
-  }
-  function moveImage(index: number, direction: number) {
-    if (draft.media.type !== "images") {
-      return;
-    }
+  function moveMedia(index: number, direction: number) {
     const target = index + direction;
-    if (target < 0 || target >= draft.media.items.length) {
-      return;
+    if (target < 0 || target >= draft.media.length) {
+      throw new Error("朋友圈媒体位置无效");
     }
-    const items = [...draft.media.items];
-    [items[index], items[target]] = [items[target]!, items[index]!];
-    setDraft({ ...draft, media: { type: "images", items } });
-    setEditingImage(target);
+    const media = [...draft.media];
+    [media[index], media[target]] = [media[target]!, media[index]!];
+    setDraft({ ...draft, media });
+    setEditingMedia(target);
   }
 
   return {
@@ -173,21 +124,20 @@ export function useMomentCompose({
     imageBusy: images.imageBusy,
     chooseImage: images.chooseImage,
     imageTask: images.imageTask,
-    editingImage,
-    openImage,
-    closeImage,
-    addImage,
-    updateImage,
-    removeImage,
-    moveImage,
+    editingMedia,
+    openMedia,
+    closeMedia,
+    addMedia,
+    updateMedia,
+    removeMedia,
+    moveMedia,
     status,
     error,
     imageError: images.imageError,
-    confirmation,
-    setConfirmation,
+    discard,
+    setDiscard,
     publish,
     back,
-    selectMedia,
-    confirm,
+    discardDraft,
   };
 }

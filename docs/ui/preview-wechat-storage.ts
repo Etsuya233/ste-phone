@@ -30,9 +30,8 @@ export function createPreviewWechatStorage(
       if (
         momentsMode === "image-save-error" &&
         Object.values(data.moments ?? {}).some((moments) =>
-          moments.some(
-            (moment) =>
-              moment.media.type === "images" && moment.media.items.some((item) => item.image),
+          moments.some((moment) =>
+            moment.media.some((item) => item.type === "image" && item.image),
           ),
         )
       ) {

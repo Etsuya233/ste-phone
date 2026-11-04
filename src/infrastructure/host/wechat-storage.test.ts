@@ -121,7 +121,16 @@ test("moments round-trip alongside existing metadata and invalid moments fail be
             id: "post",
             author: { id: "a", name: "甲", scopeId: "stable" },
             text: "分享",
-            media: { type: "video", description: "落日" },
+            media: [
+              { type: "video", description: "落日" },
+              {
+                type: "image",
+                description: "晚霞",
+                prompt: "天空",
+                image: { id: "hub", imagePath: "/sky.png" },
+              },
+              { type: "video", description: "海浪" },
+            ],
             createdAt: "2026-11-03T00:00:00.000Z",
             comments: [],
           },
@@ -231,30 +240,65 @@ test("an older acknowledgement cannot replay its metadata over a later write", a
   assert.deepEqual(f.storage.read("a"), newer);
 });
 
-test("legacy moments migrate on read without changing host metadata until an explicit save", () => {
-  const { storage, context } = fixture(async () => new Response(null, { status: 200 }));
-  const oldMedia = { type: "images", descriptions: ["旧图片"] };
-  const legacy = {
-    ...emptyWechat(),
-    moments: {
-      stable: [
-        {
-          id: "old",
+test("legacy moments migrate on read and persist on explicit save for single and group chats", async () => {
+  for (const groupId of [null, "group-a"]) {
+    const { storage, context } = fixture(async () => new Response(null, { status: 200 }));
+    context.groupId = groupId;
+    const legacy = {
+      ...emptyWechat(),
+      moments: {
+        stable: [
+          { type: "none" },
+          { type: "images", descriptions: ["旧图片", "第二张"] },
+          {
+            type: "images",
+            items: [
+              {
+                description: "新图片",
+                prompt: "细节",
+                image: { id: "hub", imagePath: "/image.png" },
+              },
+            ],
+          },
+          { type: "video", description: "旧视频" },
+        ].map((media, index) => ({
+          id: `old-${index}`,
           author: { id: "a", name: "甲", scopeId: "stable" },
           text: "旧动态",
-          media: oldMedia,
+          media,
           createdAt: "2026-11-04T00:00:00Z",
           comments: [],
-        },
+        })),
+      },
+    };
+    context.chatMetadata.ste_phone = { diary: { version: 1, entries: ["kept"] }, wechat: legacy };
+    const original = structuredClone(context.chatMetadata);
+    const loaded = storage.read("a")!;
+    assert.deepEqual(
+      loaded.moments!.stable!.map((moment) => moment.media),
+      [
+        [],
+        [
+          { type: "image", description: "旧图片" },
+          { type: "image", description: "第二张" },
+        ],
+        [
+          {
+            type: "image",
+            description: "新图片",
+            prompt: "细节",
+            image: { id: "hub", imagePath: "/image.png" },
+          },
+        ],
+        [{ type: "video", description: "旧视频" }],
       ],
-    },
-  };
-  context.chatMetadata.ste_phone = { diary: { version: 1, entries: ["kept"] }, wechat: legacy };
-  const loaded = storage.read("a")!;
-  assert.deepEqual(loaded.moments!.stable![0]!.media, {
-    type: "images",
-    items: [{ description: "旧图片" }],
-  });
-  assert.deepEqual(legacy.moments.stable[0]!.media, oldMedia);
-  assert.ok("descriptions" in oldMedia);
+    );
+    assert.deepEqual(context.chatMetadata, original);
+    await storage.write("a", loaded);
+    assert.deepEqual(storage.read("a"), loaded);
+    assert.deepEqual((context.chatMetadata.ste_phone as Record<string, unknown>).diary, {
+      version: 1,
+      entries: ["kept"],
+    });
+  }
 });

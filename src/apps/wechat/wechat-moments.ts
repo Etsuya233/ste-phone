@@ -1,15 +1,16 @@
 import type { WechatData, WechatPerson } from "./wechat.ts";
 
 export interface MomentImage {
+  readonly type: "image";
   readonly description: string;
   readonly prompt?: string;
   readonly image?: { readonly id: string; readonly imagePath: string };
 }
 
-export type MomentMedia =
-  | { readonly type: "none" }
-  | { readonly type: "images"; readonly items: readonly MomentImage[] }
-  | { readonly type: "video"; readonly description: string };
+/** 附件按展示顺序保存，图片和视频共享九个名额。 */
+export type MomentMedia = readonly (
+  MomentImage | { readonly type: "video"; readonly description: string }
+)[];
 
 export interface MomentContent {
   readonly text: string;
@@ -53,71 +54,45 @@ export function createMomentRecord(author: WechatPerson, createdAt = new Date().
 /** 媒体描述与正文均为纯文本；只去首尾空白，内部段落保持原样。 */
 export function normalizeMomentContent(content: MomentContent): MomentContent {
   const text = content.text.trim();
-  let media: MomentMedia;
-  switch (content.media.type) {
-    case "none":
-      if (
-        "description" in content.media ||
-        "items" in content.media ||
-        "descriptions" in content.media
-      ) {
-        throw new Error("纯文字动态不能包含媒体描述");
-      }
-      media = { type: "none" };
-      break;
-    case "images": {
-      if ("description" in content.media) {
-        throw new Error("图片和视频不能出现在同一条动态中");
-      }
-      if (!Array.isArray(content.media.items) || "descriptions" in content.media) {
-        throw new Error("朋友圈图片数据无效");
-      }
-      const items = content.media.items.map((item) => {
-        if (!item || typeof item.description !== "string" || !item.description.trim()) {
-          throw new Error("图片需要非空描述");
-        }
-        if (item.prompt !== undefined && (typeof item.prompt !== "string" || !item.prompt.trim())) {
-          throw new Error("绘图 Prompt 不能为空");
-        }
-        if (
-          item.image !== undefined &&
-          (!item.image ||
-            typeof item.image.id !== "string" ||
-            !item.image.id.trim() ||
-            typeof item.image.imagePath !== "string" ||
-            !item.image.imagePath.trim())
-        ) {
-          throw new Error("朋友圈图片引用无效");
-        }
-        return {
-          description: item.description.trim(),
-          ...(item.prompt === undefined ? {} : { prompt: item.prompt.trim() }),
-          ...(item.image === undefined
-            ? {}
-            : { image: { id: item.image.id, imagePath: item.image.imagePath } }),
-        };
-      });
-      if (items.length < 1 || items.length > 9) {
-        throw new Error("图片需要 1—9 条非空描述");
-      }
-      media = { type: "images", items };
-      break;
-    }
-    case "video": {
-      if ("items" in content.media || "descriptions" in content.media) {
-        throw new Error("图片和视频不能出现在同一条动态中");
-      }
-      const description = content.media.description.trim();
-      if (!description) {
-        throw new Error("请填写视频描述");
-      }
-      media = { type: "video", description };
-      break;
-    }
-    default:
-      throw new Error("朋友圈媒体类型无效");
+  if (!Array.isArray(content.media) || content.media.length > 9) {
+    throw new Error("朋友圈媒体需要为数组，最多 9 个");
   }
-  if (!text && media.type === "none") {
+  const media: MomentMedia = content.media.map((item) => {
+    if (!item || (item.type !== "image" && item.type !== "video")) {
+      throw new Error("朋友圈媒体类型无效");
+    }
+    if (typeof item.description !== "string" || !item.description.trim()) {
+      throw new Error(item.type === "image" ? "图片需要非空描述" : "请填写视频描述");
+    }
+    if (item.type === "video") {
+      if ("prompt" in item || "image" in item) {
+        throw new Error("视频不能包含图片引用或绘图 Prompt");
+      }
+      return { type: "video", description: item.description.trim() };
+    }
+    if (item.prompt !== undefined && (typeof item.prompt !== "string" || !item.prompt.trim())) {
+      throw new Error("绘图 Prompt 不能为空");
+    }
+    if (
+      item.image !== undefined &&
+      (!item.image ||
+        typeof item.image.id !== "string" ||
+        !item.image.id.trim() ||
+        typeof item.image.imagePath !== "string" ||
+        !item.image.imagePath.trim())
+    ) {
+      throw new Error("朋友圈图片引用无效");
+    }
+    return {
+      type: "image",
+      description: item.description.trim(),
+      ...(item.prompt === undefined ? {} : { prompt: item.prompt.trim() }),
+      ...(item.image === undefined
+        ? {}
+        : { image: { id: item.image.id, imagePath: item.image.imagePath } }),
+    };
+  });
+  if (!text && !media.length) {
     throw new Error("请填写正文或媒体描述");
   }
   return { text, media };
@@ -125,26 +100,25 @@ export function normalizeMomentContent(content: MomentContent): MomentContent {
 
 /** 发布页用它提前标出不能提交的位置，保存阶段仍由 normalizeMomentContent 做最终校验。 */
 export type MomentDraftIssue =
-  | { readonly kind: "empty" | "video"; readonly message: string }
-  | { readonly kind: "image"; readonly index: number; readonly message: string };
+  | { readonly kind: "empty" | "limit"; readonly message: string }
+  | { readonly kind: "image" | "video"; readonly index: number; readonly message: string };
 
 export function momentDraftIssue(content: MomentContent): MomentDraftIssue | null {
-  if (content.media.type === "images") {
-    if (!content.media.items.length) {
-      return { kind: "empty", message: "添加至少一张图片。" };
-    }
-    const index = content.media.items.findIndex((item) => !item.description.trim());
-    if (index >= 0) {
-      return { kind: "image", index, message: `第 ${index + 1} 张图片需要填写描述。` };
-    }
-    return null;
+  if (content.media.length > 9) {
+    return { kind: "limit", message: "图片和视频合计最多 9 个。" };
   }
-  if (content.media.type === "video") {
-    return content.media.description.trim()
-      ? null
-      : { kind: "video", message: "填写视频描述后可以发布。" };
+  const index = content.media.findIndex((item) => !item.description.trim());
+  if (index >= 0) {
+    const kind = content.media[index]!.type;
+    return {
+      kind,
+      index,
+      message: `第 ${index + 1} 个媒体（${kind === "image" ? "图片" : "视频"}）需要填写描述。`,
+    };
   }
-  return content.text.trim() ? null : { kind: "empty", message: "写点什么，或添加图片、视频。" };
+  return content.text.trim() || content.media.length
+    ? null
+    : { kind: "empty", message: "写点什么，或添加图片、视频。" };
 }
 
 export function addMoment(data: WechatData, moment: WechatMoment): WechatData {
@@ -202,13 +176,9 @@ export function assertMomentOwner(author: WechatPerson, account: WechatPerson): 
 
 /** 图片槽位按当前草稿/动态顺序寻址，拒绝非图片媒体和失效索引。 */
 export function momentImageAt(moment: MomentContent, index: number): MomentImage {
-  if (
-    moment.media.type !== "images" ||
-    !Number.isSafeInteger(index) ||
-    index < 0 ||
-    !moment.media.items[index]
-  ) {
+  const item = moment.media[index];
+  if (!Number.isSafeInteger(index) || index < 0 || item?.type !== "image") {
     throw new Error("朋友圈图片位置无效");
   }
-  return moment.media.items[index]!;
+  return item;
 }

@@ -272,17 +272,9 @@ export class WechatMomentsService {
   ): WechatData {
     const moment = this.#moment(data, scopeId, momentId);
     const current = momentImageAt(moment, index);
-    if (moment.media.type !== "images") {
-      throw new Error("朋友圈媒体类型已变化");
-    }
     const content = normalizeMomentContent({
       text: moment.text,
-      media: {
-        type: "images",
-        items: moment.media.items.map((item, position) =>
-          position === index ? update(current) : item,
-        ),
-      },
+      media: moment.media.map((item, position) => (position === index ? update(current) : item)),
     });
     return this.#replace(data, scopeId, { ...moment, ...content });
   }

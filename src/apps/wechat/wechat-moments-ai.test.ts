@@ -19,7 +19,7 @@ const moment: WechatMoment = {
   id: "post",
   author,
   text: "完整动态",
-  media: { type: "video", description: "视频描述" },
+  media: [{ type: "video", description: "视频描述" }],
   createdAt: "2026-11-03T00:00:00.000Z",
   comments: Array.from({ length: 55 }, (_, index) => ({
     id: `c${index}`,
@@ -33,31 +33,32 @@ const moment: WechatMoment = {
         : {}),
   })),
 };
-
-test("AI动态严格校验身份/字段/内容，空动态、混合媒体与非法JSON整次失败", () => {
+test("AI动态严格校验身份/字段/内容，空动态、损坏媒体与非法JSON整次失败", () => {
   assert.deepEqual(
     parseGeneratedMoment(
       JSON.stringify({
         authorId: "a",
         text: " ",
-        media: {
-          type: "images",
-          items: [" 图 "].map((description) => ({ description, prompt: description.trim() })),
-        },
+        media: [" 图 "].map((description) => ({
+          type: "image" as const,
+          description,
+          prompt: description.trim(),
+        })),
       }),
       "a",
     ),
     {
       text: "",
-      media: {
-        type: "images",
-        items: ["图"].map((description) => ({ description, prompt: description.trim() })),
-      },
+      media: ["图"].map((description) => ({
+        type: "image" as const,
+        description,
+        prompt: description.trim(),
+      })),
     },
   );
   for (const value of [
-    { authorId: "other", text: "分享", media: { type: "none" } },
-    { authorId: "a", text: "", media: { type: "none" } },
+    { authorId: "other", text: "分享", media: [] },
+    { authorId: "a", text: "", media: [] },
     {
       authorId: "a",
       text: "分享",
@@ -67,13 +68,40 @@ test("AI动态严格校验身份/字段/内容，空动态、混合媒体与非�
         description: "视频",
       },
     },
-    { authorId: "a", text: "分享", media: { type: "video", description: "" } },
+    { authorId: "a", text: "分享", media: [{ type: "video", description: "" }] },
     { authorId: "a", text: "分享", media: { type: "audio" } },
-    { authorId: "a", text: "分享", media: { type: "none" }, extra: "额外" },
+    { authorId: "a", text: "分享", media: [], extra: "额外" },
   ]) {
     assert.throws(() => parseGeneratedMoment(JSON.stringify(value), "a"));
   }
   assert.throws(() => parseGeneratedMoment("```json\n{}\n```", "a"));
+});
+test("AI动态接受混排媒体且共享九个上限，拒绝旧动态类型协议", () => {
+  const media = Array.from({ length: 9 }, (_, index) =>
+    index % 2 === 0
+      ? { type: "video", description: `视频${index}` }
+      : { type: "image", description: `图片${index}`, prompt: `画面${index}` },
+  );
+  assert.deepEqual(parseGeneratedMoment(JSON.stringify({ authorId: "a", text: "", media }), "a"), {
+    text: "",
+    media,
+  });
+  assert.throws(
+    () =>
+      parseGeneratedMoment(
+        JSON.stringify({ authorId: "a", text: "", media: [...media, media[0]] }),
+        "a",
+      ),
+    /最多 9 个/,
+  );
+  assert.throws(
+    () =>
+      parseGeneratedMoment(
+        JSON.stringify({ authorId: "a", text: "旧协议", media: { type: "none" } }),
+        "a",
+      ),
+    /数组/,
+  );
 });
 
 test("AI互动允许空批和已有/批前序引用，拒绝未来项、被排除帐号和非法引用", () => {
@@ -170,7 +198,7 @@ test("朋友圈分别取单人关联与多人公开资料，固定历史窗口�
   assert.deepEqual(reads.sort(), ["recent", "summary", "world"]);
   assert.equal(interaction.comments.length, 50);
   assert.equal(interaction.directTargets.length, 1);
-  assert.equal(interaction.moment.media.description, "视频描述");
+  assert.equal(interaction.moment.media[0].description, "视频描述");
   assert.equal(interaction.account.profileText, "完整甲资料");
   assert.equal(interaction.candidates[0].profileText, "完整乙资料");
   assert.match(momentSystemPrompt(input), /甲的公开表达/);
@@ -309,16 +337,14 @@ test("朋友圈拒绝意外工具调用且不发起后续模型调用", async ()
 test("朋友圈提示词只包含媒体文字，过滤图库路径与data URL", async () => {
   const privateImage = {
     ...moment,
-    media: {
-      type: "images" as const,
-      items: [
-        {
-          description: "甲在窗边",
-          prompt: "甲的侧面近景",
-          image: { id: "secret", imagePath: "data:image/png;base64,PRIVATE" },
-        },
-      ],
-    },
+    media: [
+      {
+        type: "image" as const,
+        description: "甲在窗边",
+        prompt: "甲的侧面近景",
+        image: { id: "secret", imagePath: "data:image/png;base64,PRIVATE" },
+      },
+    ],
   };
   const data = {
     readSummary: async () => "",
@@ -343,11 +369,15 @@ test("朋友圈提示词只包含媒体文字，过滤图库路径与data URL", 
 
 test("旧动态完善Prompt只提供作者及明确点名人物，AI新图必须返回完整Prompt字段", () => {
   const input = JSON.parse(
-    momentImagePromptInput(moment, { description: "我和乙站在窗边", prompt: "第三人称近景" }, [
-      { id: "a", name: "甲", profileText: "短发" },
-      { id: "b", name: "乙", profileText: "蓝色外套" },
-      { id: "c", name: "丙", profileText: "不相关的秘密" },
-    ]),
+    momentImagePromptInput(
+      moment,
+      { type: "image", description: "我和乙站在窗边", prompt: "第三人称近景" },
+      [
+        { id: "a", name: "甲", profileText: "短发" },
+        { id: "b", name: "乙", profileText: "蓝色外套" },
+        { id: "c", name: "丙", profileText: "不相关的秘密" },
+      ],
+    ),
   );
   assert.deepEqual(
     input.characters.map((person: { id: string }) => person.id),
@@ -361,7 +391,11 @@ test("旧动态完善Prompt只提供作者及明确点名人物，AI新图必须
   ]) {
     assert.throws(() =>
       parseGeneratedMoment(
-        JSON.stringify({ authorId: "a", text: "", media: { type: "images", items } }),
+        JSON.stringify({
+          authorId: "a",
+          text: "",
+          media: items.map((item) => ({ type: "image", ...item })),
+        }),
         "a",
       ),
     );
