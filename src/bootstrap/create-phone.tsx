@@ -62,6 +62,7 @@ export function createPhone(dependencies: {
   const database = new DatabaseWorkspace(data);
   const testModelConnection = createModelConnectionTest(dependencies.aiTransport);
   const diary = new DiaryService({
+    imageHub: dependencies.imageHub,
     storage: dependencies.diaryStorage,
     data,
     chat: dependencies.chat,
@@ -102,7 +103,9 @@ export function createPhone(dependencies: {
       onQuit: () => wechat.cancel(),
     },
     diary: {
-      render: ({ active, onHome }) => <DiaryApp active={active} diary={diary} onHome={onHome} />,
+      render: ({ active, onHome }) => (
+        <DiaryApp active={active} diary={diary} hub={dependencies.imageHub} onHome={onHome} />
+      ),
       onQuit: () => diary.quit(),
     },
     "app-store": {

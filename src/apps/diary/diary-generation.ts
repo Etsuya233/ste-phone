@@ -13,22 +13,23 @@ export async function generateDiaryText(input: {
   prompt: string;
   signal: AbortSignal;
   onThinking(): void;
-  onText(text: string): void;
+  imagePromptOnly?: boolean;
 }): Promise<string> {
   const stream = input.transport.createStream(input.connection, {
-    operation: "日记生成",
+    operation: input.imagePromptOnly ? "日记配图描述" : "日记生成",
     app: "diary",
   });
   const agent = new Agent({
     initialState: {
       model: createCompletionModel(input.connection.model),
       tools: [],
-      systemPrompt: diarySystemPrompt,
+      systemPrompt: input.imagePromptOnly
+        ? '根据已保存的日记正文与作者，提炼一幅配图的画面描述。只输出JSON对象 {"imagePrompt":"非空画面描述"}，不改写日记，不添加重大事实。人物使用正文与作者中的明确姓名，避免仅写“我”“他”“她”，以便匹配参考图；不臆造外貌。'
+        : diarySystemPrompt,
     },
     streamFn: (model, context, options) =>
       stream(model, context, { signal: options?.signal, maxTokens: input.settings.maxTokens }),
   });
-  let text = "";
   let toolFailure: Error | undefined;
   const { reply, timedOut } = await runAgent(agent, input.prompt, {
     signal: input.signal,
@@ -47,9 +48,6 @@ export async function generateDiaryText(input: {
       if (event.type === "message_update" && event.message.role === "assistant") {
         if (event.assistantMessageEvent.type === "thinking_delta") {
           input.onThinking();
-        } else if (event.assistantMessageEvent.type === "text_delta") {
-          text += event.assistantMessageEvent.delta;
-          input.onText(text);
         }
       }
     },
@@ -81,4 +79,19 @@ export async function generateDiaryText(input: {
     throw new Error("模型返回了空日记", { cause: reply });
   }
   return body;
+}
+
+export function parseDiaryReply(text: string): { body: string; imagePrompt: string } {
+  const value = JSON.parse(text) as Record<string, unknown>;
+  if (typeof value.body !== "string" || !value.body.trim()) {
+    throw new Error("日记回复缺少有效正文 body");
+  }
+  return { body: value.body.trim(), imagePrompt: parseImagePrompt(value) };
+}
+
+export function parseImagePrompt(value: Record<string, unknown>): string {
+  if (typeof value.imagePrompt !== "string" || !value.imagePrompt.trim()) {
+    throw new Error("日记回复缺少有效配图描述 imagePrompt");
+  }
+  return value.imagePrompt.trim();
 }

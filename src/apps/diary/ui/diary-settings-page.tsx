@@ -1,3 +1,4 @@
+import { Switch } from "../../../frontend/foundation/switch.tsx";
 import { useState } from "react";
 import type { DiarySettings } from "../diary.ts";
 import type { DiaryService } from "../diary-service.ts";
@@ -29,6 +30,7 @@ function GenerationSettings({
   onBack: () => void;
 }) {
   const [timeout, setTimeout] = useState(String(settings.timeoutSeconds));
+  const [autoGenerateImage, setAutoGenerateImage] = useState(settings.autoGenerateImage ?? false);
   const [tokens, setTokens] = useState(String(settings.maxTokens));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -38,7 +40,11 @@ function GenerationSettings({
     setSaving(true);
     setError(null);
     try {
-      await diary.saveSettings({ timeoutSeconds: Number(timeout), maxTokens: Number(tokens) });
+      await diary.saveSettings({
+        timeoutSeconds: Number(timeout),
+        maxTokens: Number(tokens),
+        autoGenerateImage,
+      });
       onBack();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -72,6 +78,14 @@ function GenerationSettings({
           required
           value={tokens}
           onChange={(event) => setTokens(event.target.value)}
+        />
+      </GroupedList>
+      <GroupedList title="日记配图" description="正文保存后，自动用这一页的描述生成配图。">
+        <Switch
+          label="自动生成配图"
+          checked={autoGenerateImage}
+          onCheckedChange={setAutoGenerateImage}
+          disabled={saving}
         />
       </GroupedList>
       {error ? (

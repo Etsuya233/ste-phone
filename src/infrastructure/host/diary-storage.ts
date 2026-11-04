@@ -1,4 +1,4 @@
-import type { DiaryData } from "../../apps/diary/diary.ts";
+import { readDiaryData, type DiaryData } from "../../apps/diary/diary.ts";
 import type { DiaryStorage } from "../../apps/diary/ports/diary-storage.ts";
 import type { ChatContext } from "../../core/chat/public.ts";
 import type { StChatContext } from "./chat-context.ts";
@@ -29,17 +29,16 @@ export function createStDiaryStorage(
       if (phone?.diary === undefined) {
         return null;
       }
-      if (phone.diary.version !== 1) {
-        throw new Error("日记数据版本不受支持");
-      }
-      return structuredClone(phone.diary);
+      return readDiaryData(structuredClone(phone.diary));
     },
     async write(chatId, data) {
       const context = current(chatId);
-      const phone = context.chatMetadata.ste_phone as Record<string, unknown> | undefined;
-      context.chatMetadata.ste_phone = { ...phone, diary: structuredClone(data) };
+      const targetMetadata = context.chatMetadata;
+      const phone = targetMetadata.ste_phone as Record<string, unknown> | undefined;
+      const savedDiary = readDiaryData(structuredClone(data));
+      const metadata = { ...targetMetadata, ste_phone: { ...phone, diary: savedDiary } };
       const header = {
-        chat_metadata: context.chatMetadata,
+        chat_metadata: metadata,
         user_name: "unused",
         character_name: "unused",
       };
@@ -66,6 +65,10 @@ export function createStDiaryStorage(
       if (!response.ok) {
         throw new Error(`日记保存失败（${response.status}）`);
       }
+      targetMetadata.ste_phone = {
+        ...(targetMetadata.ste_phone as Record<string, unknown> | undefined),
+        diary: savedDiary,
+      };
     },
   };
 }

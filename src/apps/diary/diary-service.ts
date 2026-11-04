@@ -1,3 +1,5 @@
+import { DiaryImages, type DiaryImageAction } from "./diary-images.ts";
+import type { ImageHub, ImageRecord } from "../../core/image-hub/public.ts";
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { ChatContext } from "../../core/chat/public.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
@@ -11,7 +13,7 @@ import {
   type DiarySnapshot,
 } from "./diary.ts";
 import type { DiaryStorage } from "./ports/diary-storage.ts";
-import { generateDiaryText } from "./diary-generation.ts";
+import { generateDiaryText, parseDiaryReply } from "./diary-generation.ts";
 import {
   currentDiaryScope,
   type DiaryContext,
@@ -23,6 +25,7 @@ import { buildDiaryPrompt } from "./diary-prompt.ts";
 
 interface DiaryDependencies {
   storage: DiaryStorage;
+  imageHub: ImageHub;
   data: DataAppPublic;
   chat: ChatContext;
   connections: ModelConnectionsReader;
@@ -37,10 +40,12 @@ interface DiaryTask {
 /** 持有当前聊天的日记和写作进度；取材、提示词和 Agent 运行各自独立。 */
 export class DiaryService {
   readonly #dependencies: DiaryDependencies;
+  readonly #images: DiaryImages;
   readonly #listeners = new Set<() => void>();
   readonly #unsubscribe: (() => void)[];
   #snapshot: DiarySnapshot;
   #task: DiaryTask | null = null;
+  #writing = false;
   // 会话身份用于隔离迟到的保存结果；刷新序号只用于资料刷新。
   #session = {};
   #preparationVersion = 0;
@@ -49,6 +54,7 @@ export class DiaryService {
 
   constructor(dependencies: DiaryDependencies) {
     this.#dependencies = dependencies;
+    this.#images = new DiaryImages(dependencies);
     const chatId = dependencies.chat.getSnapshot()?.id ?? null;
     this.#snapshot = {
       chatId,
@@ -58,6 +64,7 @@ export class DiaryService {
       preparing: false,
       preparationError: null,
       generation: { status: "idle" },
+      imageTask: { status: "idle" },
     };
     this.#sourceScopeKey = this.#currentSourceScopeKey();
     this.#sourceId = dependencies.data.getSnapshot().sourceId;
@@ -74,7 +81,7 @@ export class DiaryService {
   };
 
   async prepare(): Promise<void> {
-    if (this.#task) {
+    if (this.#task || this.#writing) {
       return;
     }
     const version = ++this.#preparationVersion;
@@ -105,7 +112,7 @@ export class DiaryService {
   }
 
   async selectAuthor(id: string): Promise<void> {
-    if (this.#task) {
+    if (this.#task || this.#writing) {
       throw new Error("请先等待日记生成完成或取消，再修改作者");
     }
     const author = this.#snapshot.authors.find((candidate) => candidate.id === id);
@@ -116,7 +123,7 @@ export class DiaryService {
   }
 
   async saveSettings(settings: DiarySettings): Promise<void> {
-    if (this.#task) {
+    if (this.#task || this.#writing) {
       throw new Error("请先等待日记生成完成或取消，再修改生成设置");
     }
     if (
@@ -129,11 +136,17 @@ export class DiaryService {
     if (!Number.isSafeInteger(settings.maxTokens) || settings.maxTokens <= 0) {
       throw new Error("输出 token 上限须为正整数");
     }
+    if (
+      settings.autoGenerateImage !== undefined &&
+      typeof settings.autoGenerateImage !== "boolean"
+    ) {
+      throw new Error("自动配图设置须为布尔值");
+    }
     await this.#saveData({ ...this.#snapshot.data, settings: { ...settings } });
   }
 
   async deleteEntry(id: string): Promise<void> {
-    if (this.#task) {
+    if (this.#task || this.#writing) {
       throw new Error("请先等待日记生成完成或取消，再删除日记");
     }
     await this.#saveData({
@@ -147,7 +160,7 @@ export class DiaryService {
   }
 
   async generate(): Promise<void> {
-    if (this.#task) {
+    if (this.#task || this.#writing) {
       throw new Error("日记正在生成，请等待完成或取消");
     }
     const { chatId, data } = this.#snapshot;
@@ -182,9 +195,9 @@ export class DiaryService {
       }
       this.#publish({
         worldTime: context.world.worldTime,
-        generation: { status: "generating", text: "", thinking: false },
+        generation: { status: "generating", thinking: false },
       });
-      const body = await generateDiaryText({
+      const text = await generateDiaryText({
         transport,
         connection,
         settings,
@@ -195,7 +208,8 @@ export class DiaryService {
       if (!this.#ownsTask(task)) {
         return;
       }
-      await this.#saveGeneratedDiary(context, body, task);
+      const result = parseDiaryReply(text);
+      await this.#saveGeneratedDiary(context, result, task);
     } catch (error) {
       if (this.#ownsTask(task)) {
         this.#publish({ generation: { status: "error", error: error as Error } });
@@ -208,7 +222,7 @@ export class DiaryService {
   }
 
   async retrySave(): Promise<void> {
-    if (this.#task) {
+    if (this.#task || this.#writing) {
       throw new Error("日记正在保存，请等待完成");
     }
     const { generation, chatId } = this.#snapshot;
@@ -228,12 +242,91 @@ export class DiaryService {
     }
   }
 
+  async saveImagePrompt(entryId: string, prompt: string): Promise<void> {
+    await this.#runImageTask(entryId, { type: "prompt", prompt });
+  }
+
+  async selectImage(entryId: string, image: ImageRecord): Promise<void> {
+    await this.#runImageTask(entryId, { type: "select", image });
+  }
+
+  async generateImage(entryId: string): Promise<void> {
+    await this.#runImageTask(entryId, { type: "generate" });
+  }
+
+  async createImagePrompt(entryId: string): Promise<void> {
+    await this.#runImageTask(entryId, { type: "create-prompt" });
+  }
+
+  async #runImageTask(entryId: string, action: DiaryImageAction): Promise<void> {
+    if (this.#task || this.#writing) {
+      throw new Error("请等待当前日记任务完成");
+    }
+    const entry = this.#snapshot.data.entries.find((item) => item.id === entryId);
+    if (!entry) {
+      throw new Error("日记已不存在");
+    }
+    const chatId = this.#snapshot.chatId;
+    if (!chatId) {
+      throw new Error("请先打开一个 ST 聊天");
+    }
+    const task: DiaryTask = { chatId, controller: new AbortController() };
+    this.#task = task;
+    try {
+      await this.#images.applyImageAction(
+        entry,
+        action,
+        this.#snapshot.data.settings,
+        task.controller.signal,
+        {
+          ownsTask: () => this.#ownsTask(task),
+          phase: (status) => this.#publish({ imageTask: { status, entryId } }),
+          save: (updated) => this.#saveImageEntry(updated, task),
+        },
+      );
+      if (this.#ownsTask(task)) {
+        this.#publish({ imageTask: { status: "idle" } });
+      }
+    } catch (error) {
+      if (this.#ownsTask(task)) {
+        this.#publish({ imageTask: { status: "error", entryId, error: error as Error } });
+        throw error;
+      }
+    } finally {
+      if (this.#task === task) {
+        this.#task = null;
+      }
+    }
+  }
+
+  async #saveImageEntry(entry: DiaryEntry, task: DiaryTask): Promise<void> {
+    if (!this.#ownsTask(task)) {
+      return;
+    }
+    this.#publish({ imageTask: { status: "saving", entryId: entry.id } });
+    await this.#saveData({
+      ...this.#snapshot.data,
+      entries: this.#snapshot.data.entries.map((item) => (item.id === entry.id ? entry : item)),
+    });
+    if (
+      this.#ownsTask(task) &&
+      this.#snapshot.generation.status === "complete" &&
+      this.#snapshot.generation.entry.id === entry.id
+    ) {
+      this.#publish({ generation: { status: "complete", entry } });
+    }
+  }
+
   cancel(): void {
     ++this.#preparationVersion;
     this.#session = {};
     this.#task?.controller.abort();
     this.#task = null;
-    this.#publish({ generation: { status: "idle" }, preparing: false });
+    this.#publish({
+      generation: { status: "idle" },
+      imageTask: { status: "idle" },
+      preparing: false,
+    });
   }
 
   quit(): void {
@@ -259,30 +352,23 @@ export class DiaryService {
 
   #generationProgress(task: DiaryTask): {
     onThinking(): void;
-    onText(text: string): void;
   } {
     return {
-      // 思考提示只占据正文为空的首段，正文到达后由正文接管。
+      // 回复包含 JSON 协议，完整校验前只展示思考状态。
       onThinking: () => {
         const generation = this.#snapshot.generation;
-        if (
-          this.#ownsTask(task) &&
-          generation.status === "generating" &&
-          !generation.text &&
-          !generation.thinking
-        ) {
+        if (this.#ownsTask(task) && generation.status === "generating" && !generation.thinking) {
           this.#publish({ generation: { ...generation, thinking: true } });
-        }
-      },
-      onText: (text) => {
-        if (this.#ownsTask(task)) {
-          this.#publish({ generation: { status: "generating", text, thinking: false } });
         }
       },
     };
   }
 
-  async #saveGeneratedDiary(context: DiaryContext, body: string, task: DiaryTask): Promise<void> {
+  async #saveGeneratedDiary(
+    context: DiaryContext,
+    result: { body: string; imagePrompt: string },
+    task: DiaryTask,
+  ): Promise<void> {
     // 普通资料更新保留已取材料；同实例重建成其他稳定空间时禁止保存旧作者结果。
     const schema = await this.#dependencies.data.describe(
       currentDiaryScope(this.#dependencies.data),
@@ -296,7 +382,10 @@ export class DiaryService {
     ) {
       throw new Error("生成期间稳定资料空间已变化，未保存日记");
     }
-    const entry = createDiaryEntry(context.author, context.world.worldTime, body);
+    const entry = {
+      ...createDiaryEntry(context.author, context.world.worldTime, result.body),
+      imagePrompt: result.imagePrompt,
+    };
     await this.#saveEntry(entry, task);
   }
 
@@ -308,12 +397,41 @@ export class DiaryService {
         ...this.#snapshot.data,
         entries: [entry, ...this.#snapshot.data.entries.filter((item) => item.id !== entry.id)],
       });
-      if (this.#ownsTask(task)) {
-        this.#publish({ generation: { status: "complete", entry } });
-      }
     } catch (error) {
       if (this.#ownsTask(task)) {
         this.#publish({ generation: { status: "save-error", entry, error: error as Error } });
+      }
+      return;
+    }
+    if (!this.#ownsTask(task)) {
+      return;
+    }
+    this.#publish({ generation: { status: "complete", entry } });
+    if (this.#snapshot.data.settings.autoGenerateImage) {
+      await this.#generateAutomaticImage(entry, task);
+    }
+  }
+
+  async #generateAutomaticImage(entry: DiaryEntry, task: DiaryTask): Promise<void> {
+    try {
+      await this.#images.applyImageAction(
+        entry,
+        { type: "generate" },
+        this.#snapshot.data.settings,
+        task.controller.signal,
+        {
+          ownsTask: () => this.#ownsTask(task),
+          phase: (status) => this.#publish({ imageTask: { status, entryId: entry.id } }),
+          save: (updated) => this.#saveImageEntry(updated, task),
+        },
+      );
+      if (this.#ownsTask(task)) {
+        this.#publish({ imageTask: { status: "idle" } });
+      }
+    } catch (error) {
+      // 正文已保存，自动配图错误只影响图片任务，不能降为正文保存失败。
+      if (this.#ownsTask(task)) {
+        this.#publish({ imageTask: { status: "error", entryId: entry.id, error: error as Error } });
       }
     }
   }
@@ -324,7 +442,15 @@ export class DiaryService {
     if (!chatId || this.#dependencies.chat.getSnapshot()?.id !== chatId) {
       throw new Error("当前聊天已变化，未保存日记");
     }
-    await this.#dependencies.storage.write(chatId, data);
+    if (this.#writing) {
+      throw new Error("请等待当前日记保存完成");
+    }
+    this.#writing = true;
+    try {
+      await this.#dependencies.storage.write(chatId, data);
+    } finally {
+      this.#writing = false;
+    }
     if (session === this.#session && this.#snapshot.chatId === chatId) {
       this.#publish({ data });
     }

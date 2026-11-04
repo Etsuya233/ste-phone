@@ -71,3 +71,22 @@ test("group save uses the group endpoint and HTTP errors remain observable", asy
   assert.equal(calls[0]!.body.id, "story-a");
   assert.equal(calls[0]!.body.force, false);
 });
+
+test("failed diary writes leave the in-memory metadata unchanged", async () => {
+  const { storage, context } = fixture(async () => new Response(null, { status: 500 }));
+  const original = structuredClone(context.chatMetadata);
+  await assert.rejects(storage.write("a", createEmptyDiary()), /500/);
+  assert.deepEqual(context.chatMetadata, original);
+  assert.equal(storage.read("a"), null);
+});
+
+test("legacy settings disable automatic images and invalid references fail explicitly", () => {
+  const { storage, context } = fixture(async () => new Response(null, { status: 200 }));
+  const data = createEmptyDiary();
+  context.chatMetadata.ste_phone = {
+    diary: { ...data, settings: { timeoutSeconds: 300, maxTokens: 10240 } },
+  };
+  assert.equal(storage.read("a")!.settings.autoGenerateImage, false);
+  context.chatMetadata.ste_phone = { diary: { ...data, entries: [{ image: { id: "bad" } }] } };
+  assert.throws(() => storage.read("a"), /配图引用无效/);
+});

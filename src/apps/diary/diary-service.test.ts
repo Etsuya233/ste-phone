@@ -1,3 +1,4 @@
+import type { ImageHub, ImageRecord } from "../../core/image-hub/public.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
@@ -20,9 +21,16 @@ const event = (text: string) =>
   `data: ${JSON.stringify({ choices: [{ delta: { content: text }, finish_reason: null }] })}\n\n`;
 const end = (reason = "stop") =>
   `data: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: reason }] })}\n\ndata: [DONE]\n\n`;
-const reply = (reason = "stop") => new Response(event("今天的风让人安心。") + end(reason));
+const reply = (reason = "stop") =>
+  new Response(
+    event(JSON.stringify({ body: "今天的风让人安心。", imagePrompt: "海边的人物与晚风" })) +
+      end(reason),
+  );
 
-function fixture(fetchImpl: typeof fetch = async () => reply()) {
+function fixture(
+  fetchImpl: typeof fetch = async () => reply(),
+  imageHub: ImageHub = { listImages: async () => [], generate: async () => [] },
+) {
   const db = new DatabaseSync(":memory:");
   db.exec(`CREATE TABLE phone_characters(record_id TEXT,stable_record_id TEXT,name TEXT,profile_text TEXT);
     INSERT INTO phone_characters VALUES ('author','author','林','沉静，喜欢散步');
@@ -124,6 +132,7 @@ function fixture(fetchImpl: typeof fetch = async () => reply()) {
   let failSave = false;
   const service = new DiaryService({
     data,
+    imageHub,
     chat,
     storage: {
       read: (id) => saved.get(id) ?? null,
@@ -226,7 +235,7 @@ test("diary reports a reasoning phase and saves only the final answer", async ()
     async () =>
       new Response(
         'data: {"choices":[{"delta":{"reasoning_content":"private-thought"}}]}\n\n' +
-          event("今天的海风让人安心。") +
+          event(JSON.stringify({ body: "今天的海风让人安心。", imagePrompt: "海边的人物与晚风" })) +
           end(),
       ),
   );
@@ -365,7 +374,6 @@ test("diary timeout aborts the Pi request with the configured total deadline", a
       prompt: "日记",
       signal: new AbortController().signal,
       onThinking: () => {},
-      onText: () => {},
     }),
     /超时/,
   );
@@ -598,6 +606,148 @@ test("rebuilding a stable space during generation rejects its old author even wi
     assert.equal(generation.status, "error");
     assert.match(generation.error.message, /稳定资料空间已变化/);
     assert.equal(app.saved.get("phone-A")!.entries.length, 0);
+  } finally {
+    app.close();
+  }
+});
+
+const image: ImageRecord = {
+  id: "image-1",
+  imagePath: "/images/1.png",
+  prompt: "海边",
+  startedAt: "2026-01-01T00:00:00Z",
+  savedAt: "2026-01-01T00:00:01Z",
+};
+
+test("automatic images start after text persistence, associate only the first image, and retry after a text save failure", async () => {
+  let calls = 0;
+  const app = fixture(undefined, {
+    listImages: async () => [],
+    generate: async ({ prompt }) => {
+      calls++;
+      const saved = app.saved.get("phone-A")!.entries[0]!;
+      assert.equal(saved.body, "今天的风让人安心。");
+      assert.equal(saved.imagePrompt, prompt);
+      return [image, { ...image, id: "image-2" }];
+    },
+  });
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    await app.service.saveSettings({
+      timeoutSeconds: 300,
+      maxTokens: 10240,
+      autoGenerateImage: true,
+    });
+    app.failSave();
+    await app.service.generate();
+    assert.equal(calls, 0);
+    assert.equal(app.service.getSnapshot().generation.status, "save-error");
+    app.restoreSave();
+    await app.service.retrySave();
+    assert.equal(calls, 1);
+    assert.deepEqual(app.saved.get("phone-A")!.entries[0]!.image, {
+      id: image.id,
+      imagePath: image.imagePath,
+    });
+  } finally {
+    app.close();
+  }
+});
+
+test("image failures preserve saved text and prompts, and association failure directs the user to the gallery", async () => {
+  let failHub = true;
+  const app = fixture(undefined, {
+    listImages: async () => [],
+    generate: async () => {
+      if (failHub) {
+        throw new Error("生图失败");
+      }
+      return [image];
+    },
+  });
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    await app.service.generate();
+    const entry = app.saved.get("phone-A")!.entries[0]!;
+    await assert.rejects(app.service.generateImage(entry.id), /生图失败/);
+    assert.equal(app.saved.get("phone-A")!.entries[0]!.imagePrompt, entry.imagePrompt);
+    failHub = false;
+    app.failSave();
+    await assert.rejects(app.service.generateImage(entry.id), /已存入图库/);
+    assert.equal(app.saved.get("phone-A")!.entries[0]!.image, undefined);
+    app.restoreSave();
+    await app.service.selectImage(entry.id, image);
+    assert.equal(app.saved.get("phone-A")!.entries[0]!.image!.id, image.id);
+  } finally {
+    app.close();
+  }
+});
+
+test("quitting ignores late Hub association while the Hub request continues", async () => {
+  let finish!: (images: readonly ImageRecord[]) => void;
+  const app = fixture(undefined, {
+    listImages: async () => [],
+    generate: () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  });
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    await app.service.generate();
+    const entry = app.saved.get("phone-A")!.entries[0]!;
+    const running = app.service.generateImage(entry.id);
+    await assert.rejects(app.service.deleteEntry(entry.id), /等待/);
+    app.service.quit();
+    finish([image]);
+    await running;
+    assert.equal(app.saved.get("phone-A")!.entries[0]!.image, undefined);
+    assert.equal(app.service.getSnapshot().imageTask.status, "idle");
+  } finally {
+    app.close();
+  }
+});
+
+test("invalid image prompt fails the whole text result before saving", async () => {
+  const app = fixture(
+    async () => new Response(event(JSON.stringify({ body: "已生成正文" })) + end()),
+  );
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    await app.service.generate();
+    assert.equal(app.service.getSnapshot().generation.status, "error");
+    assert.equal(app.saved.get("phone-A")!.entries.length, 0);
+  } finally {
+    app.close();
+  }
+});
+
+test("image prompt extraction uses only saved author and text without reading live background", async () => {
+  let extract = false;
+  let request = "";
+  const app = fixture(async (_, init) => {
+    request = init!.body as string;
+    return extract
+      ? new Response(event(JSON.stringify({ imagePrompt: "从旧日记提炼的海边晚风" })) + end())
+      : reply();
+  });
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    await app.service.generate();
+    const entry = app.saved.get("phone-A")!.entries[0]!;
+    extract = true;
+    app.data.query = async () => {
+      throw new Error("不能读取当前背景");
+    };
+    await app.service.createImagePrompt(entry.id);
+    assert.match(request, /今天的风让人安心/);
+    assert.doesNotMatch(request, /远处有人等车/);
+    assert.equal(app.saved.get("phone-A")!.entries[0]!.imagePrompt, "从旧日记提炼的海边晚风");
   } finally {
     app.close();
   }

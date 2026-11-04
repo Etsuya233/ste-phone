@@ -1,3 +1,6 @@
+import type { ImageHub } from "../../../core/image-hub/public.ts";
+import { DiaryImagePicker, DiaryImageView } from "./diary-image-pages.tsx";
+import { DiaryImagePromptPage } from "./diary-image-prompt-page.tsx";
 import { useEffect, useSyncExternalStore } from "react";
 import type { DiaryService } from "../diary-service.ts";
 import { NavigationStack } from "../../../frontend/foundation/navigation-stack.tsx";
@@ -11,10 +14,12 @@ import { DiaryDetailPage } from "./diary-entry-page.tsx";
 
 export function DiaryApp({
   diary,
+  hub,
   active,
   onHome,
 }: {
   diary: DiaryService;
+  hub: ImageHub;
   active: boolean;
   onHome: () => void;
 }) {
@@ -46,6 +51,15 @@ export function DiaryApp({
             break;
           case "write":
             page = <DiaryWritePage {...props} />;
+            break;
+          case "image-prompt":
+            page = <DiaryImagePromptPage {...props} id={route.id} />;
+            break;
+          case "image-picker":
+            page = <DiaryImagePicker {...props} imageHub={hub} id={route.id} />;
+            break;
+          case "image-view":
+            page = <DiaryImageView {...props} id={route.id} />;
             break;
           case "detail":
             page = <DiaryDetailPage {...props} id={route.id} fromBookKey={route.fromBookKey} />;

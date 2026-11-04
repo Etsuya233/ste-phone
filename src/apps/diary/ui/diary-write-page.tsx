@@ -34,7 +34,7 @@ export function DiaryWritePage({ diary, state, navigation }: DiaryPageProps) {
         diary={diary}
         state={state}
         navigation={navigation}
-        entry={generation.entry}
+        entry={state.data.entries.find((entry) => entry.id === generation.entry.id)!}
         onWrite={() => void diary.generate()}
       />
     );
@@ -120,14 +120,6 @@ function WritingContent({ state, author }: { state: DiarySnapshot; author: Diary
     return <WritingStatus>正在翻开今天的记忆</WritingStatus>;
   }
   if (generation.status === "generating") {
-    if (generation.text) {
-      return (
-        <div className="diary-body diary-body--live">
-          {generation.text}
-          <span className="diary-caret" aria-hidden="true" />
-        </div>
-      );
-    }
     return (
       <WritingStatus>
         {generation.thinking && author ? `${author.name}思考中` : "正在落笔"}

@@ -1,6 +1,7 @@
 export interface DiarySettings {
   readonly timeoutSeconds: number;
   readonly maxTokens: number;
+  readonly autoGenerateImage?: boolean;
 }
 
 /** 持久作者：scopeId/id 保存稳定空间与人物身份；字段形状与历史日记一致。 */
@@ -17,6 +18,8 @@ export interface DiaryEntry {
   readonly author: Omit<DiaryAuthor, "profileText">;
   readonly worldTime: string;
   readonly body: string;
+  readonly imagePrompt?: string;
+  readonly image?: { readonly id: string; readonly imagePath: string };
   readonly createdAt: string;
 }
 
@@ -31,7 +34,7 @@ export function createEmptyDiary(): DiaryData {
   return {
     version: 1,
     author: null,
-    settings: { timeoutSeconds: 300, maxTokens: 10240 },
+    settings: { timeoutSeconds: 300, maxTokens: 10240, autoGenerateImage: false },
     entries: [],
   };
 }
@@ -40,11 +43,16 @@ export function createEmptyDiary(): DiaryData {
 export type DiaryGeneration =
   | { readonly status: "idle" }
   | { readonly status: "reading" }
-  | { readonly status: "generating"; readonly text: string; readonly thinking: boolean }
+  | { readonly status: "generating"; readonly thinking: boolean }
   | { readonly status: "saving"; readonly entry: DiaryEntry }
   | { readonly status: "complete"; readonly entry: DiaryEntry }
   | { readonly status: "error"; readonly error: Error }
   | { readonly status: "save-error"; readonly entry: DiaryEntry; readonly error: Error };
+
+export type DiaryImageTask =
+  | { readonly status: "idle" }
+  | { readonly status: "generating" | "prompting" | "saving"; readonly entryId: string }
+  | { readonly status: "error"; readonly entryId: string; readonly error: Error };
 
 export interface DiarySnapshot {
   readonly chatId: string | null;
@@ -54,6 +62,7 @@ export interface DiarySnapshot {
   readonly preparing: boolean;
   readonly preparationError: Error | null;
   readonly generation: DiaryGeneration;
+  readonly imageTask: DiaryImageTask;
 }
 
 export function isDiaryRunning(generation: DiaryGeneration): boolean {
@@ -79,5 +88,40 @@ export function createDiaryEntry(author: DiaryAuthor, worldTime: string, body: s
     worldTime,
     body,
     createdAt: new Date().toISOString(),
+  };
+}
+
+/** v1 旧条目允许没有配图字段；已出现的新字段须完整有效。 */
+export function readDiaryData(data: DiaryData): DiaryData {
+  if (data.version !== 1) {
+    throw new Error("日记数据版本不受支持");
+  }
+  if (
+    data.settings.autoGenerateImage !== undefined &&
+    typeof data.settings.autoGenerateImage !== "boolean"
+  ) {
+    throw new Error("日记自动配图设置无效");
+  }
+  for (const entry of data.entries) {
+    if (
+      entry.imagePrompt !== undefined &&
+      (typeof entry.imagePrompt !== "string" || !entry.imagePrompt.trim())
+    ) {
+      throw new Error("日记配图描述无效");
+    }
+    if (
+      entry.image !== undefined &&
+      (!entry.image ||
+        typeof entry.image.id !== "string" ||
+        !entry.image.id.trim() ||
+        typeof entry.image.imagePath !== "string" ||
+        !entry.image.imagePath.trim())
+    ) {
+      throw new Error("日记配图引用无效");
+    }
+  }
+  return {
+    ...data,
+    settings: { ...data.settings, autoGenerateImage: data.settings.autoGenerateImage ?? false },
   };
 }

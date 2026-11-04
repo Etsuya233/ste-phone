@@ -1,3 +1,4 @@
+import { readDiaryData } from "../../src/apps/diary/diary.ts";
 import type { DiaryAuthor, DiaryData, DiaryEntry } from "../../src/apps/diary/diary.ts";
 import type { DiaryStorage } from "../../src/apps/diary/ports/diary-storage.ts";
 
@@ -62,13 +63,13 @@ export function createPreviewDiaryStorage(mode: string | null): DiaryStorage {
         return mode === "demo" ? demoDiary : null;
       }
       const data = JSON.parse(saved) as DiaryData;
-      if (data.version !== 1) {
-        throw new Error("日记数据版本不受支持");
-      }
-      return data;
+      return readDiaryData(data);
     },
     async write(chatId, data) {
-      if (mode === "save-error") {
+      if (
+        mode === "save-error" ||
+        (mode === "image-save-error" && data.entries.some((entry) => entry.image))
+      ) {
         throw new Error("预览：日记保存失败");
       }
       localStorage.setItem(key(chatId), JSON.stringify(data));

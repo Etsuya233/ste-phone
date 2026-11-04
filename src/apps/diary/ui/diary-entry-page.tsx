@@ -1,3 +1,4 @@
+import { DiaryEntryImage } from "./diary-entry-image.tsx";
 import { useState } from "react";
 import type { DiaryEntry } from "../diary.ts";
 import { isDiaryRunning } from "../diary.ts";
@@ -71,7 +72,10 @@ export function DiaryEntryPage({ diary, state, navigation, entry, onWrite }: Dia
   const [actionsOpen, setActionsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { message: copyMessage, copy } = useDiaryCopy(entry.body);
-  const busy = state.preparing || isDiaryRunning(state.generation);
+  const busy =
+    state.preparing ||
+    isDiaryRunning(state.generation) ||
+    (state.imageTask.status !== "idle" && state.imageTask.status !== "error");
 
   async function writeAnother() {
     setError(null);
@@ -129,6 +133,7 @@ export function DiaryEntryPage({ diary, state, navigation, entry, onWrite }: Dia
               {entry.author.name}
             </p>
           </DiarySheet>
+          <DiaryEntryImage entry={entry} state={state} navigation={navigation} />
           <p className="diary-written-at">{formatWrittenAt(entry.createdAt)}</p>
           {copyMessage ? (
             <p className="diary-copy-status" role="status">
@@ -144,7 +149,7 @@ export function DiaryEntryPage({ diary, state, navigation, entry, onWrite }: Dia
             { label: "复制这一页", onClick: () => void copy() },
             {
               label: "再写一篇",
-              disabled: state.preparing,
+              disabled: busy,
               onClick: () => void writeAnother(),
             },
             { label: "删除", destructive: true, disabled: busy, onClick: () => setDeleting(true) },

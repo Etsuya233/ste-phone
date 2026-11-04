@@ -119,18 +119,6 @@
   user-select: text;
   color: var(--diary-ink);
 }
-:host .diary-body--live {
-  min-height: 4em;
-}
-:host .diary-caret {
-  display: inline-block;
-  width: 2px;
-  height: 1.05em;
-  margin-left: 3px;
-  vertical-align: -0.12em;
-  background: var(--diary-tone-ink);
-  animation: diary-blink 1.1s steps(2, start) infinite;
-}
 :host .diary-signature {
   display: flex;
   justify-content: flex-end;
@@ -253,7 +241,6 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  :host .diary-caret,
   :host .diary-ellipsis {
     animation: none;
   }

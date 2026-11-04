@@ -11,6 +11,9 @@ export type DiaryRoute =
   | { page: "authors" }
   | { page: "settings" }
   | { page: "write" }
+  | { page: "image-prompt"; id: string }
+  | { page: "image-picker"; id: string }
+  | { page: "image-view"; id: string }
   | { page: "detail"; id: string; fromBookKey: string };
 
 export interface DiaryPageProps {
