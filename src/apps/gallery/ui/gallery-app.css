@@ -1,0 +1,193 @@
+/* 图库页面样式；共享图片网格仍由 frontend/images/images.css 维护。 */
+
+:host .gallery-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+:host .gallery-skeleton {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ios-space-tiny);
+  margin: var(--ios-space-large) 0;
+}
+
+:host .gallery-skeleton span {
+  aspect-ratio: 1;
+  background: var(--ios-muted-fill);
+  animation: gallery-skeleton-pulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes gallery-skeleton-pulse {
+  from {
+    background: var(--ios-muted-fill);
+  }
+  to {
+    background: var(--ios-row-active);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host .gallery-skeleton span {
+    animation: none;
+  }
+}
+
+:host .gallery-error {
+  display: grid;
+  justify-items: start;
+  gap: var(--ios-space-medium);
+  margin: var(--ios-space-large);
+  padding: var(--ios-space-large);
+  border-radius: var(--ios-control-radius);
+  background: var(--ios-row-surface);
+  color: var(--ios-red);
+  line-height: var(--ios-copy-line-height);
+  overflow-wrap: anywhere;
+}
+
+:host .gallery-error p,
+:host .gallery-notice p {
+  margin: 0;
+}
+
+:host .gallery-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ios-space-small);
+  margin: var(--ios-space-medium) var(--ios-space-large) 0;
+  color: var(--ios-red);
+  line-height: var(--ios-copy-line-height);
+  overflow-wrap: anywhere;
+}
+
+:host .gallery-notice .ios-button {
+  padding-inline: 0;
+}
+
+:host .gallery-refreshing {
+  margin: var(--ios-space-medium) var(--ios-space-large) 0;
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+}
+
+:host .gallery-empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--ios-space-medium);
+  margin: 80px var(--ios-space-large) 0;
+  text-align: center;
+}
+
+:host .gallery-empty .image-message {
+  margin: 0;
+}
+
+:host .gallery-group-title {
+  margin: var(--ios-space-large) var(--ios-space-large) 0;
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+  font-weight: 400;
+}
+
+:host .gallery-viewer-count {
+  padding-inline: var(--ios-space-small);
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+:host .gallery-viewer-track {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+:host .gallery-viewer-track::-webkit-scrollbar {
+  display: none;
+}
+
+:host .gallery-viewer-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  margin: 0;
+  padding: var(--ios-space-large) var(--ios-space-large) var(--ios-space-medium);
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+:host .gallery-viewer-media {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: 420px;
+  background: var(--ios-muted-fill);
+  overflow: hidden;
+}
+
+:host .gallery-viewer-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+:host .gallery-viewer-caption {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ios-space-small);
+  margin-top: var(--ios-space-medium);
+}
+
+:host .gallery-viewer-prompt {
+  margin: 0;
+  font-size: var(--ios-body-size);
+  line-height: var(--ios-copy-line-height);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+:host .gallery-viewer-time {
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+}
+
+:host .gallery-viewer-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ios-space-medium);
+}
+
+:host .gallery-viewer-copy .ios-button {
+  padding-inline: 0;
+}
+
+:host .gallery-viewer-copied {
+  color: var(--ios-secondary-ink);
+  font-size: var(--ios-caption-size);
+}
+
+:host .gallery-viewer-copy-error {
+  color: var(--ios-red);
+  font-size: var(--ios-caption-size);
+  line-height: var(--ios-copy-line-height);
+  overflow-wrap: anywhere;
+}
+
+/* 320px 响应式预览下导航左栏只有 80px，收紧返回按钮以保留「主屏幕」全文。 */
+@media (max-width: 340px) {
+  :host .gallery-page .ios-nav .ios-button {
+    gap: 3px;
+    padding-inline: 4px;
+  }
+}

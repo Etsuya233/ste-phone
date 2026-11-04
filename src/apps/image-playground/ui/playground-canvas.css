@@ -1,0 +1,201 @@
+/* 画布、相纸、生成中与失败的纸面样式；主题变量由 playground-app.css 提供。 */
+:host .playground-canvas-heading {
+  margin: 0 0 12px;
+  font-family: var(--playground-serif);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--playground-ink);
+}
+:host .playground-canvas-note {
+  margin: 0;
+  font-family: var(--playground-hand);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--playground-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+:host .playground-polaroid-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 12px;
+  align-items: start;
+}
+:host .playground-polaroid {
+  margin: 0;
+  padding: 7px 7px 8px;
+  background: var(--playground-paper);
+  border: 1px solid #e8e1d4;
+  box-shadow:
+    0 4px 10px #3b2b5412,
+    0 1px 2px #3b2b540d;
+  transform: rotate(var(--polaroid-tilt, 0deg));
+}
+:host .playground-polaroid-grid > .playground-polaroid:nth-child(odd) {
+  --polaroid-tilt: -0.6deg;
+}
+:host .playground-polaroid-grid > .playground-polaroid:nth-child(even) {
+  --polaroid-tilt: 0.6deg;
+}
+:host .playground-latest .playground-polaroid {
+  --polaroid-tilt: -0.6deg;
+}
+:host .playground-polaroid-button {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  background: var(--ios-muted-fill);
+  overflow: hidden;
+}
+:host .playground-polaroid-button img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+:host .playground-polaroid figcaption {
+  display: -webkit-box;
+  min-height: 2.9em;
+  margin: 7px 2px 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-family: var(--playground-hand);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--playground-ink-soft);
+  overflow-wrap: anywhere;
+}
+:host .playground-polaroid-missing {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 6px;
+  font-family: var(--playground-hand);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--playground-ink-soft);
+  text-align: center;
+}
+:host .playground-latest-card {
+  width: min(58%, 200px);
+  margin: 0 auto;
+}
+
+:host .playground-developing-prompt {
+  margin: 0 0 10px;
+  font-family: var(--playground-hand);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--playground-ink-soft);
+  overflow-wrap: anywhere;
+}
+:host .playground-developing-sheet {
+  width: min(62%, 210px);
+  aspect-ratio: 1;
+  margin: 0 auto 12px;
+  border: 1px solid #e4dcec;
+  background: linear-gradient(115deg, #ece6f6, #fbf9fd 38%, #ddcff0 52%, #fbf9fd 66%, #ece6f6);
+  background-size: 220% 100%;
+  box-shadow:
+    0 4px 12px #3b2b5412,
+    inset 0 0 28px #7156b41a;
+  animation: playground-develop 3.4s ease-in-out infinite;
+}
+:host .playground-developing-note {
+  margin: 0;
+  font-family: var(--playground-hand);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--playground-ink-soft);
+  text-align: center;
+}
+@keyframes playground-develop {
+  from {
+    background-position: 140% 0;
+  }
+  to {
+    background-position: -40% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :host .playground-developing-sheet {
+    animation: none;
+    background-position: 50% 0;
+  }
+}
+
+:host .playground-failure {
+  padding: 14px 16px;
+  background: var(--playground-paper);
+  border: 1px solid var(--playground-line);
+  border-left: 3px solid var(--playground-accent);
+  box-shadow: 0 4px 12px #3b2b5410;
+}
+:host .playground-failure .playground-canvas-heading {
+  margin-bottom: 8px;
+}
+:host .playground-failure-prompt {
+  margin: 0 0 8px;
+  font-family: var(--playground-hand);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--playground-ink-soft);
+  overflow-wrap: anywhere;
+}
+:host .playground-failure-message {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #9c3b4a;
+  overflow-wrap: anywhere;
+}
+
+:host .playground-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 214px;
+  padding: 26px 22px;
+  background: #fffdf880;
+  border: 1px dashed #cbbfdd;
+  text-align: center;
+}
+:host .playground-empty-tag {
+  margin: 0 0 6px;
+  font-family: var(--playground-hand);
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--playground-accent);
+}
+:host .playground-empty h2 {
+  margin: 0 0 8px;
+  font-family: var(--playground-serif);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+:host .playground-empty-copy,
+:host .playground-empty-note {
+  max-width: 30ch;
+  margin: 0;
+  font-family: var(--playground-hand);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--playground-ink-soft);
+  overflow-wrap: anywhere;
+}
+:host .playground-empty-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #8b819b;
+}
+@media (max-width: 340px) {
+  :host .playground-polaroid-grid {
+    gap: 12px 10px;
+  }
+}

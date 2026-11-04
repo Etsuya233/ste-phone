@@ -1,0 +1,204 @@
+@import "./playground-canvas.css";
+
+/* 图乐园主题只覆盖 .image-playground 内的 Foundation 变量，图库与其他应用不受影响。 */
+:host .image-playground {
+  --playground-canvas: #f4f1f8;
+  --playground-paper: #fffdf8;
+  --playground-ink: #2b2438;
+  --playground-ink-soft: #6f6680;
+  --playground-accent: #7156b4;
+  --playground-accent-deep: #563d94;
+  --playground-line: #d8d0e6;
+  --playground-serif: "Noto Serif SC", Georgia, "Songti SC", "STSong", "Source Han Serif SC", serif;
+  --playground-hand: "LXGW WenKai", "Kaiti SC", "STKaiti", "KaiTi", "Noto Serif SC", Georgia, serif;
+  --ios-font: var(--playground-serif);
+  --ios-surface: var(--playground-canvas);
+  --ios-bar: #f7f4faeb;
+  --ios-footer-surface: #fbf9fdf2;
+  --ios-ink: var(--playground-ink);
+  --ios-secondary-ink: var(--playground-ink-soft);
+  --ios-line: var(--playground-line);
+  --ios-row-surface: var(--playground-paper);
+  --ios-row-active: #ece6f5;
+  --ios-muted-fill: #eee9f4;
+  --ios-muted-ink: var(--playground-ink-soft);
+  --ios-blue: var(--playground-accent);
+  --ios-accessory-ink: #b3a8c6;
+  --ios-alert-surface: #fbf8fded;
+  --ios-navigation-shadow: -8px 0 20px #3c2a5c26;
+  font-family: var(--playground-serif);
+  position: relative;
+  height: 100%;
+}
+
+/* 画布背景是一张冷白桌布：轻微紫色晕染加细点阵，保持扁平，不做玻璃拟态。 */
+:host .playground-page .ios-page-content {
+  background:
+    radial-gradient(92% 56% at 86% 2%, #7156b41c 0%, transparent 62%),
+    radial-gradient(70% 44% at 4% 98%, #9c86c714 0%, transparent 60%),
+    radial-gradient(circle at 1px 1px, #b6a8c926 1px, transparent 0) 0 0 / 18px 18px,
+    var(--playground-canvas);
+}
+:host .playground-page .ios-nav {
+  border-bottom-color: var(--playground-line);
+  box-shadow: 0 1px 0 #ffffffa6;
+}
+:host .playground-page .ios-nav h1 {
+  letter-spacing: 0.14em;
+}
+:host .playground-page .ios-nav .ios-button {
+  color: var(--playground-accent-deep);
+}
+:host .playground-page .ios-footer {
+  border-top: var(--ios-hairline) solid #e4ddefcc;
+}
+
+:host .playground-stage {
+  min-height: 250px;
+  padding: 18px 18px 6px;
+}
+
+:host .playground-recents {
+  padding: 10px 18px 18px;
+}
+:host .playground-recents-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: var(--ios-hairline) solid var(--playground-line);
+}
+:host .playground-recents-head h2 {
+  margin: 0;
+  font-family: var(--playground-serif);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+:host .playground-recents-head .ios-button {
+  padding: 0 2px;
+  font-size: 13px;
+}
+:host .playground-recents-strip {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0 0;
+  padding: 0 0 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  list-style: none;
+}
+:host .playground-recents-strip li {
+  flex: 0 0 82px;
+  scroll-snap-align: start;
+}
+:host .playground-recents-button {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 3px;
+  border: 1px solid #e6dfee;
+  background: var(--playground-paper);
+  box-shadow: 0 2px 5px #3b2b5410;
+}
+:host .playground-recents-button img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+:host .playground-recents-missing {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 6px;
+  font-family: var(--playground-hand);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--playground-ink-soft);
+  text-align: center;
+}
+:host .playground-recents-message,
+:host .playground-recents-error,
+:host .playground-recents-empty {
+  margin: 10px 0 0;
+  font-family: var(--playground-hand);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--playground-ink-soft);
+  overflow-wrap: anywhere;
+}
+:host .playground-recents-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+:host .playground-recents-error .ios-button {
+  flex: 0 0 auto;
+}
+
+:host .playground-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+  padding: 8px 14px 10px;
+}
+:host .playground-composer-label {
+  font-family: var(--playground-hand);
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  color: var(--playground-ink-soft);
+}
+:host .playground-composer textarea {
+  display: block;
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--playground-line);
+  border-radius: 8px;
+  background: var(--playground-paper);
+  color: var(--playground-ink);
+  font-family: var(--playground-hand);
+  font-size: 15px;
+  line-height: 1.35;
+  resize: none;
+}
+:host .playground-composer textarea:focus-visible {
+  outline: 2px solid var(--playground-accent);
+  outline-offset: 1px;
+}
+:host .playground-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+:host .playground-composer-actions .ios-button {
+  font-size: 15px;
+}
+:host .playground-again {
+  color: var(--playground-accent-deep);
+}
+:host .playground-submit {
+  min-width: 112px;
+  margin-left: auto;
+}
+
+@media (max-width: 340px) {
+  :host .playground-stage,
+  :host .playground-recents {
+    padding-inline: 14px;
+  }
+  :host .playground-composer {
+    padding-inline: 12px;
+  }
+  :host .playground-page .ios-nav .ios-button {
+    gap: 3px;
+    padding-inline: 4px;
+  }
+}

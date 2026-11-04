@@ -81,13 +81,18 @@ export function createPhone(dependencies: {
   });
   const apps: Record<AppId, AppDefinition> = {
     gallery: {
-      render: ({ active, onHome }) => (
-        <GalleryApp active={active} hub={dependencies.imageHub} onHome={onHome} />
+      render: ({ active, onHome, onOpen }) => (
+        <GalleryApp active={active} hub={dependencies.imageHub} onHome={onHome} onOpen={onOpen} />
       ),
     },
     "image-playground": {
-      render: ({ active, onHome }) => (
-        <ImagePlaygroundApp active={active} hub={dependencies.imageHub} onHome={onHome} />
+      render: ({ active, onHome, onOpen }) => (
+        <ImagePlaygroundApp
+          active={active}
+          hub={dependencies.imageHub}
+          onHome={onHome}
+          onOpen={onOpen}
+        />
       ),
     },
     wechat: {
