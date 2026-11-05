@@ -58,6 +58,10 @@ test("version 1 migration discards host backgrounds and external URLs while pres
     });
     assert.deepEqual(service.getState(), {
       ...defaultSettings,
+      homeLayout: {
+        ...defaultSettings.homeLayout,
+        grid: defaultSettings.homeLayout.grid.filter((id) => id !== "map"),
+      },
       wallpaper: { kind: "gradient" },
       blur: true,
       modelConnections: [],
@@ -139,6 +143,10 @@ test("version 2 migration preserves wallpaper and starts without connections", (
   });
   assert.deepEqual(service.getState(), {
     ...defaultSettings,
+    homeLayout: {
+      ...defaultSettings.homeLayout,
+      grid: defaultSettings.homeLayout.grid.filter((id) => id !== "map"),
+    },
     wallpaper: { kind: "image", path: image.path },
     blur: true,
   });

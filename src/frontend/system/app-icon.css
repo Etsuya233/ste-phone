@@ -143,3 +143,21 @@
 :host .gallery-app-icon .image-icon-cutout {
   fill: var(--image-icon-cutout);
 }
+
+:host .map-app-icon {
+  background: #d6edf1;
+}
+:host .map-app-icon .map-icon-land {
+  fill: #a8d897;
+}
+:host .map-app-icon .map-icon-road {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 4;
+}
+:host .map-app-icon .map-icon-pin {
+  fill: #287cda;
+}
+:host .map-app-icon .map-icon-dot {
+  fill: #fff;
+}

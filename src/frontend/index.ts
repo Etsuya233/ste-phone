@@ -1,3 +1,4 @@
+import { createStMapStorage } from "../infrastructure/host/map-storage.ts";
 import { createStImageHub } from "../infrastructure/host/image-hub.ts";
 import { createStSettingsStorage } from "../infrastructure/host/st-settings.ts";
 import { createStAiTransport } from "../infrastructure/host/ai-transport.ts";
@@ -39,6 +40,7 @@ const phone = createPhone({
     },
   }),
   chat,
+  mapStorage: createStMapStorage(() => window.SillyTavern.getContext(), chat),
   diaryStorage: createStDiaryStorage(() => window.SillyTavern.getContext(), chat),
   wechatStorage: createStWechatStorage(() => window.SillyTavern.getContext(), chat),
   wechatStickerStorage: createStWechatStickerStorage(() => window.SillyTavern.getContext()),

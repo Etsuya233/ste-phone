@@ -1,3 +1,6 @@
+import { MapService } from "../apps/map/map-service.ts";
+import { MapApp } from "../apps/map/ui/map-app.tsx";
+import type { MapStorage } from "../apps/map/map.ts";
 import { GalleryApp } from "../apps/gallery/ui/gallery-app.tsx";
 import { ImagePlaygroundApp } from "../apps/image-playground/ui/image-playground-app.tsx";
 import type { ImageHub } from "../core/image-hub/public.ts";
@@ -45,6 +48,7 @@ export interface PhoneRuntime {
   readonly chat: ChatContext;
   readonly diary: DiaryService;
   readonly wechat: WechatService;
+  readonly map: MapService;
 }
 
 /** 生产和预览共享组装；页面、后台消费者始终使用同一数据所有者。 */
@@ -54,6 +58,7 @@ export function createPhone(dependencies: {
   aiTransport: AiTransport;
   chat: ChatContext;
   diaryStorage: DiaryStorage;
+  mapStorage: MapStorage;
   wechatStorage: WechatStorage;
   wechatStickerStorage: WechatStickerStorage;
   logs: PhoneLog;
@@ -82,7 +87,18 @@ export function createPhone(dependencies: {
     connections: settings.modelConnections,
     transport: dependencies.aiTransport,
   });
+  const map = new MapService({
+    storage: dependencies.mapStorage,
+    data,
+    chat: dependencies.chat,
+    connections: settings.modelConnections,
+    transport: dependencies.aiTransport,
+  });
   const apps: Record<AppId, AppDefinition> = {
+    map: {
+      render: ({ active, onHome }) => <MapApp map={map} active={active} onHome={onHome} />,
+      onQuit: () => map.cancel(),
+    },
     gallery: {
       render: ({ active, onHome, onOpen }) => (
         <GalleryApp active={active} hub={dependencies.imageHub} onHome={onHome} onOpen={onOpen} />
@@ -169,5 +185,6 @@ export function createPhone(dependencies: {
     chat: dependencies.chat,
     diary,
     wechat,
+    map,
   };
 }

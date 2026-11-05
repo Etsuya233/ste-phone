@@ -23,3 +23,5 @@
 
 @import "./images/images.css";
 @import "./ios26.css";
+
+@import "../apps/map/map.css";
