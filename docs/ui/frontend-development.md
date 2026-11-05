@@ -12,7 +12,7 @@ Shadow DOM 内部仍会继承宿主节点的可继承属性。ST 的全局文字
 
 ## Foundation
 
-基础组件位于 `src/frontend/foundation/`，每个组件的 TSX 与 CSS 分文件存放，`foundation.tsx` 仅显式导出，`foundation.css` 汇总样式。页面使用组件提供的视觉，自己的 CSS 只调整布局；颜色、字体、间距、控件尺寸统一读取 `tokens.css`。Agent 对话中的思考与工具调用折叠块位于 `src/frontend/agent/`，使用原生 `details` 默认收起，由 `agent-activity.css` 统一提供三行思考滚动区、工具参数与结果样式，后续 Agent 页面直接复用。
+基础组件位于 `src/frontend/foundation/`，每个组件的 TSX 与 CSS 分文件存放，`foundation.tsx` 仅显式导出，`foundation.css` 汇总样式。页面使用组件提供的视觉，自己的 CSS 只调整布局；颜色、字体、间距、控件尺寸统一读取 `tokens.css`。Agent 对话的过程组、思考与工具调用块位于 `src/frontend/agent/`：`AgentRun` 收起整轮过程，内层使用原生 `details` 收起每一步，`agent-activity.css` 统一提供三行思考滚动区及工具参数与结果样式，后续 Agent 页面直接复用。
 
 字体按界面分工：手机外壳使用 Inter 并优先使用 Apple 平台字体；日记界面使用 Noto Serif SC 衬线体，正文与署名使用 LXGW WenKai 手写体。字体由挂载入口通过 Google Fonts 与 jsDelivr 声明，不打包字体文件；字体网络请求不阻塞手机使用，加载失败时回退到 Georgia、楷体或本机衬线字体。资料搜索只展示 Placeholder，并保留 `aria-label`，聚焦时不显示 outline。来源信息使用展开的 `GroupedList` 与静态 `ListCell`，属性名居左、属性值居右。
 

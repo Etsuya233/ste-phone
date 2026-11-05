@@ -1,4 +1,29 @@
-import type { MapConversationStorage, MapConversationTurn } from "../../apps/map/map.ts";
+import type {
+  MapAgentStep,
+  MapConversationStorage,
+  MapConversationTurn,
+  MapToolStep,
+} from "../../apps/map/map.ts";
+
+type StoredTurn = Omit<MapConversationTurn, "steps"> & {
+  steps?: MapAgentStep[];
+  thinking?: string;
+  tools?: Omit<MapToolStep, "kind">[];
+};
+
+/** 旧版对话把思考和工具分开保存，读取时合并为同一条时间线。 */
+function readTurn(turn: StoredTurn): MapConversationTurn {
+  const { thinking, tools, steps, ...rest } = turn;
+  return {
+    ...rest,
+    steps: steps ?? [
+      ...(thinking
+        ? [{ kind: "thinking" as const, id: `${turn.id}-thinking`, text: thinking }]
+        : []),
+      ...(tools ?? []).map((tool) => ({ ...tool, kind: "tool" as const })),
+    ],
+  };
+}
 
 export function createMapConversationStorage(
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">,
@@ -11,11 +36,14 @@ export function createMapConversationStorage(
       if (raw === null) {
         return [];
       }
-      const turns = JSON.parse(raw) as MapConversationTurn[];
+      const turns = JSON.parse(raw) as StoredTurn[];
       // 刷新时原来的任务已不存在，保留提交的用户指令并结束其运行状态。
-      return turns.map((turn) =>
-        turn.status === "running" ? { ...turn, status: "cancelled" } : turn,
-      );
+      return turns.map((turn) => {
+        const normalized = readTurn(turn);
+        return normalized.status === "running"
+          ? { ...normalized, status: "cancelled" }
+          : normalized;
+      });
     },
     write(chatId, scopeKey, turns) {
       const storageKey = key(chatId, scopeKey);

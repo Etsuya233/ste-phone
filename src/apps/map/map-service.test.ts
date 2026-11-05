@@ -484,14 +484,24 @@ test("conversation records the instruction, thinking, tool calls and final answe
   await f.service.request({ instruction: "新增地点一" });
   const turn = f.service.getSnapshot().conversation.at(-1)!;
   assert.equal(turn.instruction, "新增地点一");
-  assert.match(turn.thinking, /检查当前地图/);
+  assert.match(
+    turn.steps
+      .filter((step) => step.kind === "thinking")
+      .map((step) => step.text)
+      .join("\n"),
+    /检查当前地图/,
+  );
   assert.deepEqual(
-    turn.tools.map((tool) => [tool.name, tool.status]),
+    turn.steps.filter((step) => step.kind === "tool").map((step) => [step.name, step.status]),
     [
       ["map_read", "completed"],
       ["map_apply", "completed"],
       ["map_check", "completed"],
     ],
+  );
+  assert.deepEqual(
+    turn.steps.map((step) => step.kind),
+    ["thinking", "tool", "thinking", "tool", "thinking", "tool", "thinking"],
   );
   assert.equal(turn.answer, "新增one");
   assert.equal(turn.status, "done");
@@ -553,7 +563,7 @@ test("wire history survives reload as an exact prefix and new conversation clear
   assert.equal(restored.instruction, "新增一");
   assert.equal(restored.answer, "新增one");
   assert.deepEqual(
-    restored.tools.map((tool) => tool.name),
+    restored.steps.filter((step) => step.kind === "tool").map((step) => step.name),
     ["map_read", "map_apply", "map_check"],
   );
   reopened.reply(proposal("two"));
@@ -598,4 +608,50 @@ test("after truncation, continue keeps the original instruction and complete too
   assert.deepEqual(followUp.messages.slice(0, -1), previousRequest);
   assert.equal(f.service.getSnapshot().conversation.at(-1)!.status, "done");
   f.service.dispose();
+});
+
+test("legacy persisted conversations become an ordered step timeline", () => {
+  const disk = new Map<string, string>();
+  const storage = createMapConversationStorage(
+    {
+      getItem: (key) => disk.get(key) ?? null,
+      setItem: (key, value) => {
+        disk.set(key, value);
+      },
+      removeItem: (key) => {
+        disk.delete(key);
+      },
+    },
+    "legacy:",
+  );
+  disk.set(
+    "legacy:" + JSON.stringify(["a", "scope"]),
+    JSON.stringify([
+      {
+        id: "turn-1",
+        messages: [],
+        instruction: "旧对话",
+        thinking: "先检查地图",
+        tools: [
+          {
+            id: "call-1",
+            name: "map_read",
+            label: "读取地图",
+            status: "completed",
+            input: {},
+            output: "{}",
+          },
+        ],
+        answer: "完成",
+        error: null,
+        status: "running",
+      },
+    ]),
+  );
+  const turn = storage.read("a", "scope")[0]!;
+  assert.deepEqual(
+    turn.steps.map((step) => step.kind),
+    ["thinking", "tool"],
+  );
+  assert.equal(turn.status, "cancelled");
 });

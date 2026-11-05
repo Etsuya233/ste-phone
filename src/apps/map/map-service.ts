@@ -9,6 +9,7 @@ import type {
 } from "../settings/public.ts";
 import {
   emptyMap,
+  type MapAgentStep,
   type MapConversationStorage,
   type MapConversationTurn,
   type MapData,
@@ -56,6 +57,7 @@ export class MapService {
   #binding: string;
   #snapshot: MapSnapshot;
   #conversationScope: string | null = null;
+  #stepId = 0;
   constructor(deps: Dependencies) {
     this.#deps = deps;
     this.#chatId = deps.chat.getSnapshot()?.id ?? null;
@@ -225,6 +227,7 @@ export class MapService {
           }
           if (event.type === "assistant") {
             this.#appendThinking(turnId, event.thinking);
+            this.#appendText(turnId, event.text);
           } else if (event.type === "tool_call") {
             this.#startTool(turnId, event);
           } else if (event.type === "tool_result") {
@@ -417,8 +420,7 @@ export class MapService {
       id: `turn-${this.#snapshot.conversation.length + 1}`,
       messages: [prompt],
       instruction,
-      thinking: "",
-      tools: [],
+      steps: [],
       answer: null,
       error: null,
       status: "running",
@@ -437,22 +439,28 @@ export class MapService {
       ),
     });
   }
+  #appendStep(id: string, step: MapAgentStep): void {
+    const turn = this.#snapshot.conversation.find((entry) => entry.id === id);
+    if (!turn) {
+      return;
+    }
+    this.#updateTurn(id, { steps: [...turn.steps, step] });
+  }
   #appendThinking(id: string, text: string): void {
     if (!text.trim()) {
       return;
     }
-    const turn = this.#snapshot.conversation.find((entry) => entry.id === id);
-    if (!turn) {
+    this.#appendStep(id, { kind: "thinking", id: `step-${++this.#stepId}`, text });
+  }
+  #appendText(id: string, text: string): void {
+    if (!text.trim()) {
       return;
     }
-    this.#updateTurn(id, { thinking: turn.thinking ? `${turn.thinking}\n\n${text}` : text });
+    this.#appendStep(id, { kind: "text", id: `step-${++this.#stepId}`, text });
   }
   #startTool(id: string, event: Extract<MapAgentTrace, { type: "tool_call" }>): void {
-    const turn = this.#snapshot.conversation.find((entry) => entry.id === id);
-    if (!turn) {
-      return;
-    }
     const step: MapToolStep = {
+      kind: "tool",
       id: event.id,
       name: event.name,
       label: event.label,
@@ -460,7 +468,7 @@ export class MapService {
       input: event.args,
       output: null,
     };
-    this.#updateTurn(id, { tools: [...turn.tools, step] });
+    this.#appendStep(id, step);
   }
   #finishTool(id: string, event: Extract<MapAgentTrace, { type: "tool_result" }>): void {
     const turn = this.#snapshot.conversation.find((entry) => entry.id === id);
@@ -468,14 +476,14 @@ export class MapService {
       return;
     }
     this.#updateTurn(id, {
-      tools: turn.tools.map((tool) =>
-        tool.id === event.id
+      steps: turn.steps.map((step) =>
+        step.kind === "tool" && step.id === event.id
           ? {
-              ...tool,
+              ...step,
               status: event.failed ? "failed" : "completed",
               output: event.output,
             }
-          : tool,
+          : step,
       ),
     });
   }

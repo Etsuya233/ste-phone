@@ -119,19 +119,19 @@
 }
 
 :host .map-turn {
-  margin-bottom: 13px;
+  margin-bottom: 16px;
 }
 
 :host .map-turn-user {
   width: fit-content;
   max-width: 88%;
-  margin: 0 0 7px auto;
-  padding: 7px 10px;
-  border-radius: 12px 12px 4px 12px;
-  background: var(--ios-blue);
-  color: var(--ios-on-accent);
+  margin: 0 0 8px auto;
+  padding: 8px 12px;
+  border-radius: 18px 18px 4px 18px;
+  background: var(--ios-muted-fill);
+  color: var(--ios-ink);
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -140,6 +140,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  gap: 6px;
 }
 
 :host .map-turn-state {
@@ -162,10 +163,10 @@
 }
 
 :host .map-turn-answer {
-  margin: 4px 0 0;
+  margin: 0;
   color: var(--ios-ink);
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

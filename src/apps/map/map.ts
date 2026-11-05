@@ -73,6 +73,7 @@ export interface MapProposal {
 }
 export type MapToolStatus = "running" | "completed" | "failed";
 export interface MapToolStep {
+  kind: "tool";
   id: string;
   name: string;
   label: string;
@@ -80,12 +81,15 @@ export interface MapToolStep {
   input: unknown;
   output: string | null;
 }
+export type MapAgentStep =
+  | { kind: "thinking"; id: string; text: string }
+  | { kind: "text"; id: string; text: string }
+  | MapToolStep;
 export interface MapConversationTurn {
   messages: AgentMessage[];
   id: string;
   instruction: string;
-  thinking: string;
-  tools: MapToolStep[];
+  steps: MapAgentStep[];
   answer: string | null;
   error: string | null;
   status: "running" | "done" | "failed" | "cancelled";

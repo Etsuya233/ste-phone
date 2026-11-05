@@ -1,4 +1,9 @@
-import { AgentThinking, AgentToolCall } from "../../../frontend/agent/agent-activity.tsx";
+import {
+  AgentRun,
+  AgentStepText,
+  AgentThinking,
+  AgentToolCall,
+} from "../../../frontend/agent/agent-activity.tsx";
 import type { MapConversationTurn, MapSnapshot } from "../map.ts";
 import type { MapService } from "../map-service.ts";
 
@@ -17,11 +22,7 @@ export function MapAgentConversation({
         </p>
       ) : null}
       {state.conversation.map((turn) => (
-        <MapConversationTurnView
-          key={turn.id}
-          turn={turn}
-          progress={turn.status === "running" ? (state.progress ?? null) : null}
-        />
+        <MapConversationTurnView key={turn.id} turn={turn} />
       ))}
       {state.proposal ? <MapProposalCard service={service} state={state} /> : null}
       {state.error ? (
@@ -33,26 +34,38 @@ export function MapAgentConversation({
   );
 }
 
-function MapConversationTurnView({
-  turn,
-  progress,
-}: {
-  turn: MapConversationTurn;
-  progress: string | null;
-}) {
+function MapConversationTurnView({ turn }: { turn: MapConversationTurn }) {
+  const stepCount = turn.steps.filter((step) => step.kind !== "text").length;
   return (
     <article className="map-turn">
       <p className="map-turn-user">{turn.instruction}</p>
       <div className="map-turn-agent">
-        {turn.thinking ? (
-          <AgentThinking text={turn.thinking} running={turn.status === "running"} />
-        ) : null}
-        {turn.tools.map((tool) => (
-          <AgentToolCall key={tool.id} tool={tool} />
-        ))}
-        {turn.status === "running" ? (
+        {turn.steps.length ? (
+          <AgentRun
+            running={turn.status === "running"}
+            failed={turn.status === "failed"}
+            stepCount={stepCount}
+            label={runLabel(turn)}
+          >
+            {turn.steps.map((step, index) => {
+              if (step.kind === "thinking") {
+                return (
+                  <AgentThinking
+                    key={step.id}
+                    text={step.text}
+                    running={turn.status === "running" && index === turn.steps.length - 1}
+                  />
+                );
+              }
+              if (step.kind === "text") {
+                return <AgentStepText key={step.id} text={step.text} />;
+              }
+              return <AgentToolCall key={step.id} tool={step} />;
+            })}
+          </AgentRun>
+        ) : turn.status === "running" ? (
           <p className="map-turn-state" aria-live="polite">
-            {progress ?? (turn.thinking ? "正在处理…" : "正在思考…")}
+            正在准备…
           </p>
         ) : null}
         {turn.answer ? <p className="map-turn-answer">{turn.answer}</p> : null}
@@ -65,6 +78,24 @@ function MapConversationTurnView({
       </div>
     </article>
   );
+}
+
+/** 过程组收起时，用最后一个动作给出运行摘要。 */
+function runLabel(turn: MapConversationTurn): string | undefined {
+  if (turn.status !== "running") {
+    return undefined;
+  }
+  const last = [...turn.steps].reverse().find((step) => step.kind !== "text");
+  if (!last) {
+    return "正在准备…";
+  }
+  if (last.kind === "thinking") {
+    return "正在思考…";
+  }
+  if (last.kind === "tool" && last.status === "running") {
+    return `正在${last.label}`;
+  }
+  return "正在整理回答…";
 }
 
 function MapProposalCard({ service, state }: { service: MapService; state: MapSnapshot }) {

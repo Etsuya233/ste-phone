@@ -31,6 +31,7 @@ export type MapAgentTrace =
       round: number;
       content: unknown;
       thinking: string;
+      text: string;
       stopReason: string | null;
     }
   | {
@@ -131,12 +132,20 @@ export async function generateMapTurn(input: Input): Promise<Turn> {
             .map((block) => block.thinking)
             .join("");
           const visible = event.message.content.filter((block) => block.type !== "thinking");
+          const text = visible
+            .filter((block) => block.type === "text")
+            .map((block) => block.text)
+            .join("")
+            .trim();
+          const hasToolCalls = visible.some((block) => block.type === "toolCall");
           counters.calls += visible.filter((block) => block.type === "toolCall").length;
           trace({
             type: "assistant",
             round: counters.rounds,
             content: visible,
             thinking,
+            // 最终回答由应用格式化为摘要，过程区只保留工具轮之间的旁白。
+            text: hasToolCalls ? text : "",
             stopReason: event.message.stopReason,
           });
         }
