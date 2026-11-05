@@ -6,6 +6,7 @@
 @import "./wechat-moment-images.css";
 
 :host .wechat-app {
+  --ios-footer-surface: var(--ios-surface);
   --wechat-link-ink: #576b95;
   --wechat-feed-line: #e5e5e5;
   --wechat-comment-surface: #f7f7f7;

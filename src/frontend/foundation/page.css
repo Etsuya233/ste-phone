@@ -22,14 +22,21 @@
   scroll-padding-top: var(--page-top);
   scroll-padding-bottom: var(--page-bottom);
 }
+/* footerHeight measures the controls; only their shared surface extends into the safe area. */
 :host .ios-footer {
   position: absolute;
   z-index: 2;
-  bottom: var(--safe-bottom);
+  bottom: 0;
   inset-inline: 0;
-  height: var(--page-footer-height);
+  height: calc(var(--page-footer-height) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
   background: var(--ios-footer-surface);
   backdrop-filter: blur(var(--ios-footer-blur));
+}
+:host .ios-footer--floating {
+  bottom: var(--safe-bottom);
+  height: var(--page-footer-height);
+  padding-bottom: 0;
 }
 :host .ios-page--wallpaper {
   color: var(--ios-wallpaper-ink);

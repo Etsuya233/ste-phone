@@ -22,6 +22,7 @@ import type {
 import { deviceModels } from "./device-models.ts";
 import { LockScreen, SleepingScreen } from "./lock-screen.tsx";
 import { useScreenLock } from "./use-screen-lock.ts";
+import { useHomeControl } from "./use-home-control.ts";
 import { Expose } from "./expose.tsx";
 import type { ExposeDrag } from "./expose.tsx";
 
@@ -89,20 +90,8 @@ export function PhoneDevice({
     height: deviceModels[deviceModel].screenHeight,
     bottom: 0,
   }));
-  const homeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selectedSettings = useSyncExternalStore(wallpaper.subscribe, wallpaper.getSnapshot);
   const lastApp = useRef<AppId | null>(initialApp === "home" ? null : initialApp);
-  useEffect(() => {
-    if (homeTimer.current !== null) {
-      clearTimeout(homeTimer.current);
-      homeTimer.current = null;
-    }
-    return () => {
-      if (homeTimer.current !== null) {
-        clearTimeout(homeTimer.current);
-      }
-    };
-  }, [visible, page, lock.state]);
   useLayoutEffect(() => {
     if (!visible) {
       return;
@@ -282,28 +271,35 @@ export function PhoneDevice({
     (screenSize.height - screenSize.bottom - previewHeight - 118) / 2,
   );
   const stride = previewWidth + 28;
-  const homePress = () => {
-    if (lock.state !== "unlocked") {
-      if (lock.state === "asleep") {
-        lock.wake();
-      }
-      return;
-    }
-    if (editingHome) {
-      setEditingHome(false);
-      return;
-    }
-    if (homeTimer.current !== null) {
-      clearTimeout(homeTimer.current);
-      homeTimer.current = null;
-      expose();
-    } else {
-      homeTimer.current = setTimeout(() => {
-        homeTimer.current = null;
+  const homeControl = useHomeControl({
+    deviceModel,
+    visible,
+    sessionKey: page,
+    lockState: lock.state,
+    editingHome,
+    onFinishEditing: () => setEditingHome(false),
+    wake: lock.wake,
+    unlock: lock.unlock,
+    onHome: () => {
+      if (editingHome) {
+        setEditingHome(false);
+      } else {
         home();
-      }, 280);
-    }
-  };
+      }
+    },
+    onExpose: () => {
+      setEditingHome(false);
+      expose();
+    },
+  });
+  const homeLabel =
+    lock.state === "unlocked"
+      ? deviceModel === "iphone-17"
+        ? "Home，上滑返回主屏幕，上滑停留查看后台；也可单击返回、双击查看后台"
+        : "Home，单击返回主屏幕，双击查看后台"
+      : deviceModel === "iphone-6s"
+        ? "Home，短按唤醒，长按解锁"
+        : "Home，向上滑动解锁";
   return (
     <div className="phone-device">
       <span className="device-mute" aria-hidden="true" />
@@ -458,44 +454,43 @@ export function PhoneDevice({
         {visible && lock.state === "asleep" ? <SleepingScreen onWake={lock.wake} /> : null}
         {visible && (lock.state === "locked" || lock.state === "unlocking") ? (
           <LockScreen
+            deviceModel={deviceModel}
             wallpaper={selectedSettings}
             onUnlock={lock.unlock}
             unlocking={lock.state === "unlocking"}
             onUnlockEnd={lock.finishUnlock}
           />
         ) : null}
-        <div className="software-home" inert={lock.state === "asleep"}>
+        <div
+          className="software-home"
+          inert={deviceModel === "iphone-17" && lock.state === "asleep"}
+        >
+          {deviceModel === "iphone-6s" ? (
+            <button
+              type="button"
+              className="software-lock"
+              aria-label="锁屏"
+              onPointerDown={(event) => event.preventDefault()}
+              onClick={lock.power}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="5" y="10" width="14" height="11" rx="2" />
+                <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+              </svg>
+            </button>
+          ) : null}
           <button
             type="button"
-            className="software-lock"
-            aria-label="锁屏"
-            onPointerDown={(event) => event.preventDefault()}
-            onClick={lock.power}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="5" y="10" width="14" height="11" rx="2" />
-              <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-            </svg>
-          </button>
-          <button
             className="software-home-button"
-            aria-label={
-              lock.state === "unlocked" ? "Home，单击返回主屏幕，双击查看后台" : "Home，唤醒到锁屏"
-            }
-            onClick={homePress}
+            aria-label={homeLabel}
+            {...homeControl}
           >
             <span />
           </button>
         </div>
       </div>
       <div className="device-bottom">
-        <button
-          className="device-home"
-          aria-label={
-            lock.state === "unlocked" ? "Home，单击返回主屏幕，双击查看后台" : "Home，唤醒到锁屏"
-          }
-          onClick={homePress}
-        />
+        <button type="button" className="device-home" aria-label={homeLabel} {...homeControl} />
       </div>
     </div>
   );

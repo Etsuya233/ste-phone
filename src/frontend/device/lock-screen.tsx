@@ -1,16 +1,18 @@
 import { useLayoutEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { useUnlockSwipe } from "./use-unlock-swipe.ts";
-import type { WallpaperSnapshot } from "../../apps/settings/public.ts";
+import type { DeviceModel, WallpaperSnapshot } from "../../apps/settings/public.ts";
 import { StatusBar } from "../system/status-bar.tsx";
 import { useLocalTime } from "../system/use-local-time.ts";
 
 export function LockScreen({
+  deviceModel,
   wallpaper,
   onUnlock,
   unlocking,
   onUnlockEnd,
 }: {
+  deviceModel: DeviceModel;
   wallpaper: WallpaperSnapshot;
   onUnlock: () => void;
   unlocking: boolean;
@@ -18,15 +20,27 @@ export function LockScreen({
 }) {
   const now = useLocalTime(true);
   const surface = useRef<HTMLDivElement>(null);
-  const swipe = useUnlockSwipe(surface, onUnlock);
-  useLayoutEffect(() => surface.current!.focus({ preventScroll: true }), []);
+  const modern = deviceModel === "iphone-17";
+  const swipe = useUnlockSwipe(surface, modern, onUnlock);
+  useLayoutEffect(() => {
+    if (modern) {
+      surface.current!.focus({ preventScroll: true });
+      return;
+    }
+    // Keep a held Home focused while waking; a new lock starts at the visible Home.
+    const root = surface.current!.getRootNode() as ShadowRoot;
+    const home = [
+      ...root.querySelectorAll<HTMLButtonElement>(".software-home-button, .device-home"),
+    ].find((button) => button.getClientRects().length > 0);
+    home!.focus({ preventScroll: true });
+  }, [modern]);
   return (
     <div
       ref={surface}
       className={`lock-screen ${swipe.dragging ? "lock-screen--dragging" : ""}`}
-      role="button"
-      tabIndex={0}
-      aria-label="锁屏，向右滑动或按 Enter 解锁"
+      role={modern ? "button" : "region"}
+      tabIndex={modern ? 0 : -1}
+      aria-label={modern ? "锁屏，向上滑动或按 Enter 解锁" : "锁屏，长按 Home 解锁"}
       style={{ "--unlock-offset": `${swipe.offset}px` } as CSSProperties}
       inert={unlocking}
       onTransitionEnd={(event) => {
@@ -35,7 +49,7 @@ export function LockScreen({
         }
       }}
       onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
+        if (modern && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
           onUnlock();
         }
@@ -64,7 +78,8 @@ export function LockScreen({
         </div>
         <div className="lock-screen-hint" aria-hidden="true">
           <span className="lock-screen-shimmer">
-            <span className="lock-screen-arrow">›</span>滑动来解锁
+            {modern ? <span className="lock-screen-arrow">⌃</span> : null}
+            {modern ? "向上滑动解锁" : "长按 Home 解锁"}
           </span>
         </div>
       </div>

@@ -6,6 +6,7 @@ export function Page({
   largeTitle,
   footer,
   footerHeight,
+  footerLayout = "attached",
   className = "",
   appearance = "surface",
   inert = false,
@@ -16,7 +17,10 @@ export function Page({
   className?: string;
   appearance?: "surface" | "wallpaper";
   inert?: boolean;
-} & ({ footer: ReactNode; footerHeight: number } | { footer?: never; footerHeight?: never })) {
+} & (
+  | { footer: ReactNode; footerHeight: number; footerLayout?: "attached" | "floating" }
+  | { footer?: never; footerHeight?: never; footerLayout?: never }
+)) {
   return (
     <section
       inert={inert}
@@ -28,8 +32,11 @@ export function Page({
         {largeTitle ? <h1 className="ios-page-large-title">{largeTitle}</h1> : null}
         {children}
       </div>
-      {footer ? <footer className="ios-footer">{footer}</footer> : null}
-      <SafeArea />
+      {footer ? (
+        <footer className={`ios-footer ios-footer--${footerLayout}`}>{footer}</footer>
+      ) : null}
+      {/* Attached footers paint through the safe area while their controls stay above it. */}
+      {!footer || footerLayout === "floating" ? <SafeArea /> : null}
     </section>
   );
 }

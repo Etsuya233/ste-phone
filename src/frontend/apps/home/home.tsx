@@ -306,6 +306,7 @@ export function Home({
         appearance="wallpaper"
         inert={deleting !== null || error !== null}
         footerHeight={112}
+        footerLayout="floating"
         footer={
           <div className="home-dock" data-home-area="dock" aria-label="Dock">
             {icons("dock")}

@@ -33,7 +33,7 @@
   pointer-events: none;
 }
 :host .phone-screen--unlocking .lock-screen-content {
-  transform: translateX(100%);
+  transform: translateY(-100%);
   opacity: 0;
 }
 :host .lock-screen-shade {
@@ -44,7 +44,7 @@
 :host .lock-screen-content {
   position: absolute;
   inset: 0;
-  transform: translateX(var(--unlock-offset));
+  transform: translateY(calc(-1 * var(--unlock-offset)));
   transition:
     transform 300ms ease,
     opacity 300ms ease;
@@ -123,7 +123,16 @@
   border-color: transparent;
   backdrop-filter: none;
 }
-:host .phone-screen--asleep .software-home {
+:host [data-device="iphone-17"] .phone-screen--asleep .software-home {
+  visibility: hidden;
+}
+:host [data-device="iphone-6s"] .phone-screen--asleep .software-home {
+  z-index: 16;
+  background: transparent;
+  border-color: transparent;
+  backdrop-filter: none;
+}
+:host [data-device="iphone-6s"] .phone-screen--asleep .software-home .software-lock {
   visibility: hidden;
 }
 :host :is(.phone-screen--locked, .phone-screen--unlocking) .software-home span {

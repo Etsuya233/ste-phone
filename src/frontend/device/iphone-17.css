@@ -15,10 +15,14 @@
 :host [data-device="iphone-17"] .phone-screen {
   border-radius: 52px;
   box-shadow: 0 0 0 3px #030405;
+  /* Limit nested backdrop sampling to the display, excluding the black metal bezel. */
+  backdrop-filter: blur(0px);
 }
-/* On a full-screen device the home indicator sits directly over the wallpaper. */
-:host [data-device="iphone-17"] .home-screen .ios-safe-area {
+/* Footer surfaces belong to their pages, including the space beneath the Home indicator. */
+:host [data-device="iphone-17"] .ios-safe-area {
   background: transparent;
+  backdrop-filter: none;
+  mask-image: none;
 }
 :host [data-device="iphone-17"] .device-camera,
 :host [data-device="iphone-17"] .device-speaker,
@@ -48,14 +52,22 @@
   cursor: grabbing;
 }
 :host [data-device="iphone-17"] .phone-close {
-  top: auto;
-  bottom: 8px;
-  right: 24px;
+  top: 0;
+  bottom: auto;
+  right: 30px;
+  width: max(44px, calc(44px / var(--device-scale)));
+  height: max(44px, calc(44px / var(--device-scale)));
   background: transparent;
   color: var(--ios-ink);
 }
+:host [data-device="iphone-17"] .phone-close svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2;
+}
 :host [data-device="iphone-17"] .software-home {
   display: grid;
+  isolation: isolate;
   position: absolute;
   z-index: 5;
   bottom: 0;
@@ -66,11 +78,13 @@
   border: 0;
   backdrop-filter: none;
 }
-:host [data-device="iphone-17"] .software-home-button {
+:host .phone-panel[data-device="iphone-17"] .software-home-button {
+  touch-action: none;
   display: grid;
   place-items: center;
-  width: 164px;
-  height: 34px;
+  /* Override responsive circular-Home dimensions; the whole safe area starts the gesture. */
+  width: 100%;
+  height: 100%;
   padding: 0;
   border: 0;
   background: transparent;
@@ -95,17 +109,6 @@
 :host [data-device="iphone-17"] .phone-screen:has(.expose) .software-home-button span {
   background: #fff;
 }
-:host [data-device="iphone-17"] .software-home .software-lock {
-  top: -5px;
-  left: 16px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-:host
-  [data-device="iphone-17"]
-  .phone-screen:has(.home-layer:not(.home-layer--covered), .expose)
-  .software-lock,
 :host
   [data-device="iphone-17"]:has(
     .home-layer:not(.home-layer--covered),
@@ -126,9 +129,18 @@
   box-shadow: none;
 }
 :host [data-device="iphone-17"].phone-panel--responsive .phone-close {
-  top: auto;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 3px);
-  right: 6px;
-  background: transparent;
-  color: var(--ios-ink);
+  top: -4px;
+  bottom: auto;
+  right: 0;
+}
+/* Responsive mode retains the real power control as a slim edge target. */
+:host [data-device="iphone-17"].phone-panel--responsive .device-power {
+  display: block;
+  z-index: 19;
+  right: 0;
+  width: 44px;
+}
+:host [data-device="iphone-17"].phone-panel--responsive .device-power::before {
+  right: 0;
+  width: 3px;
 }

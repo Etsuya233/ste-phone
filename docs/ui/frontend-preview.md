@@ -1,5 +1,49 @@
 # 前端开发与验收
 
+## 松手速度区分 Home 与 Expose（2026-11-05）
+
+底部上滑增加松手意图判定：快速上甩松手进入 Home，上滑减速到近乎静止后松手进入 Expose，不必等待完整的 240ms 按住停留；按住停留仍保持原行为。速度以最近 80ms 的逻辑像素位移估算，低于或等于 0.2px/ms 作为静止松手；正常抬手事件间隔保留末段动量，持续静止超过取样窗口则清零。锁屏解锁与取消规则保持。
+
+`release-stop` 触摸回放在修改前复现了短暂停住松手仍回 Home，修改后进入 Expose；`flick` 与 `continuous` 回放保持快速或持续滑动回 Home，`jitter` 与 `threshold` 保持按住进入后台且松手不额外导航。4 项末段运动测试覆盖短暂停住、起点长按后快速上甩、减速及小抖动、抬手事件间隔不稀释速度；相关测试、typecheck、lint、生产 build、修改文件格式及 `git diff --check` 通过，未在移动真机复验。
+
+取样窗口与动量估算归 `device/home-swipe-motion.ts`，速度门槛与 Home / Expose 分流归 `device/use-home-swipe.ts`。新增运动类低于 60 行，手势 hook 沿用既有集中输入生命周期，未引入页面滚动监听或全局手势状态。
+
+## 移动端 Expose 停留手势（2026-11-05）
+
+触摸回放复现了原实现的停留失败：手指上移后每隔 40ms 抖动几像素，持续移动事件不断清除 350ms 定时器，松手最终返回 Home。另测得响应式圆形 Home 规则覆盖现代按钮尺寸，按钮实际仅 64px 宽，134px 指示条溢出并向右偏移。
+
+现代机型现在用更明确的选择器让整个底部安全区接收起始手势，指示条保持 134px 并正确居中。达到 70 个逻辑像素后，停留约 240ms 进入 Expose；12px 范围内的小幅移动不重置计时，已达到阈值后允许同一余量内的回移，继续明显移动则重新计时。持续上滑并松手仍回 Home，停留进入 Expose 后松手不会额外导航。没有增加背景模糊或分隔线。
+
+`node tmp/appearance-switch/expose-touch-repro.mjs jitter` 在修改前失败、修改后通过；`threshold` 同样先复现阈值附近抖动失败再验证修复。`edge` 验证从底部边缘起滑与白条居中，`continuous` 验证持续上滑不进入后台且松手回 Home，全部通过。原触摸回放也通过 17 的 Home / Expose / 解锁 / 取消、6s 长按与取消、减少动态效果及桌面编辑状态退出。脚本位于忽略目录 `tmp/appearance-switch/`。typecheck、lint、生产 build、修改文件格式和 `git diff --check` 通过，未在移动真机复验。
+
+业务阈值集中在 `device/use-home-swipe.ts` 顶部，按钮命中区归 `device/iphone-17.css`。手势 hook 保留此前集中管理输入、定时和取消的生命周期，新增暂停原点只表达当前计时的稳定范围。
+
+## 移除小白条模糊（2026-11-05）
+
+移除 iPhone 17 小白条操作区的独立 Backdrop，保留明确上边界、手势区域和 Page 底栏延伸机制。应用底栏、导航与 Dock 沿用各自材质。生产 build 与修改文件格式检查通过。
+
+## 底栏背景延伸与安全区（2026-11-05）
+
+iPhone 17 小白条区域恢复完整矩形取样范围与明确上边界，保留 20px Backdrop，去掉渐退遮罩和额外浅色覆盖。屏幕通过零模糊 Backdrop 建立内部取样边界，防止小白条的模糊采样到机身黑边。
+
+`Page` 底栏默认采用 `footerLayout="attached"`：表面与模糊延伸到屏幕底边，安全区通过 padding 留给 Home，`footerHeight` 仍只描述控件高度，内容与滚动避让继续预留控件加安全区的总高度。有贴底栏时不再单独叠加 `SafeArea`；主屏 Dock 显式使用 `floating`，保持原高度和安全区上方位置。微信统一用 `--ios-footer-surface` 绘制底栏，聊天沿用原有 #f7f7f7，避免安全区接出不同底色。
+
+Edge 独立预览完成 320×568、390×1000、1280×1000 下日记、微信、图乐园与经典 6s 日记共 12 项几何检查，贴底栏抵达屏幕底边，控件高度保持，安全区不重复计入，悬浮 Dock 仍为 112px。320px 微信另验多行输入和表情面板展开，动态高度、底栏背景和 Home 避让正确。截图已视检，脚本与报告在忽略目录 `tmp/appearance-switch/footers.mjs`、`tmp/appearance-switch/footer-composer.mjs`、`tmp/footer-safe-area/`。
+
+typecheck、lint、相关文件 Prettier、生产 build 与 `git diff --check` 通过。此次未重跑与布局无关的业务测试，未在真实 ST 或移动真机复验。Page 组件低于 120 行，新增声明式布局直接归公共组件，没有额外辅助层。
+
+## 系统材质与机型手势（2026-11-05）
+
+补验减少动态效果下两种机型解锁均正常；桌面图标编辑状态上滑停留进入 Expose 时结束编辑，再点 Home 可返回主屏。
+
+iOS 26 顶栏改用延展 28px 后逐渐淡出的颜色与模糊遮罩，Dock 移除描边和高亮阴影，保留半透明模糊。iPhone 17 底部操作条独立叠加渐退 Backdrop，覆盖应用、主屏、锁屏和 Expose；关闭按钮移至顶部右上角，底部锁屏按钮移除，响应式保留右侧电源键并使其位于后台预览之上。
+
+解锁方式由手机外形决定，与系统风格独立：17 向上滑 70 个逻辑像素解锁，6s 物理或软件 Home 长按 600ms 解锁；黑屏短按 Home 只唤醒，保持长按可继续解锁。17 从 Home 条上滑后松手返回主屏，达到 70px 后停留 350ms 进入 Expose；松手不再触发额外 Home 点击。6s 支持按住 Enter / Space，17 锁屏保留 Enter / Space 解锁。取消、失焦、隐藏、关闭、页面或机型变化会清除所属手势和计时器；唤醒中的 6s 长按保留同一次输入归属。
+
+Edge 独立预览在 320×568、390×1000、1280×1000 完成鼠标与键盘操作：短滑、横滑、取消不导航，上滑回主屏、停留进后台、侧键锁屏、错误方向及不足距离不解锁、上滑解锁、6s 短按与键盘长按、关闭途中取消并重开、长按释放后不退出原应用均通过，无页面异常。390×844 移动触摸事件补验 Home、Expose、上滑解锁、触摸取消及 6s 黑屏按住唤醒后继续解锁。Dock 计算样式确认为零边框、无阴影且有模糊，关闭按钮在顶部；截图已视检。脚本与报告位于忽略目录 `tmp/appearance-switch/gestures.mjs`、`tmp/appearance-switch/touch.mjs`、`tmp/phone-gestures/`，材质截图位于 `tmp/ios26-polish/`。
+
+243 项测试、typecheck、lint、format:check、生产 build 与 `git diff --check` 通过。未在真实 ST 或移动真机复验，未调用真实模型。`PhoneDevice` 继续保留原有会话编排，Home 单双击和长按迁至 `use-home-control.ts`，底部上滑归 `use-home-swipe.ts`，锁屏拖动归 `use-unlock-swipe.ts`。三个 hook 超过普通函数 60 行阈值，经审查保留各自输入归属、计时、释放和取消的连续生命周期；没有新增跨应用状态或拆出薄包装。
+
 ## 手机外形与系统风格（2026-11-05）
 
 「设置 → 外观」独立选择 iPhone 6s / iPhone 17 与经典 iOS / iOS 26，四种组合即时保存，旧配置经 v6 → v7 保留经典外观。机型配置统一驱动窗口尺寸与 CSS；全面屏使用灵动岛、底部 Home 条和独立安全区。iOS 26 参照用户提供的设置和日历截图，使用灰白底色、大圆角分组、玻璃导航、胶囊控件、悬浮 Dock 和日期置顶的粗体锁屏时钟。机身参照 [Apple 官方 iPhone 17 图片与规格](https://www.apple.com/iphone-17/specs/)，逻辑屏幕为 402×874；参考图片仅存于忽略目录 `tmp/iphone-reference/`。

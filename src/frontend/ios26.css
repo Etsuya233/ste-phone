@@ -34,9 +34,25 @@
   --nav-height: 56px;
   padding-inline: 12px;
   border: 0;
-  background: linear-gradient(var(--ios-surface) 25%, #f2f2f7b8);
-  backdrop-filter: blur(var(--ios-bar-blur));
+  isolation: isolate;
+  background: transparent;
+  backdrop-filter: none;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
+}
+/* Extend and fade the material past the navigation bounds to avoid a hard scroll edge. */
+:host [data-system-style="ios26"] .ios-nav::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 -28px;
+  pointer-events: none;
+  background: linear-gradient(
+    var(--ios-surface),
+    color-mix(in srgb, var(--ios-surface) 78%, transparent) 60%,
+    transparent
+  );
+  backdrop-filter: blur(var(--ios-bar-blur));
+  mask-image: linear-gradient(#000 45%, #0009 72%, transparent);
 }
 :host [data-system-style="ios26"] .ios-page {
   --nav-height: 56px;
@@ -191,12 +207,12 @@
 }
 /* Float the dock as a single glass surface; reserve its existing footer footprint. */
 :host [data-system-style="ios26"] .home-screen .ios-footer {
-  --ios-glass-edge: #ffffff73;
   inset-inline: 12px;
   bottom: calc(var(--safe-bottom) + 8px);
   border-radius: 34px;
   background: #ffffff40;
-  box-shadow: var(--ios-glass-shadow);
+  border: 0;
+  box-shadow: none;
   backdrop-filter: blur(28px) saturate(1.5);
 }
 :host [data-system-style="ios26"] .home-screen .ios-safe-area {

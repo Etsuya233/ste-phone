@@ -1,4 +1,5 @@
 :host .wechat-chat {
+  --ios-footer-surface: #f7f7f7;
   background: #ededed;
 }
 :host .wechat-messages {
@@ -39,7 +40,7 @@
   min-height: 62px;
   gap: 8px;
   padding: 8px 10px;
-  background: #f7f7f7;
+  background: var(--ios-footer-surface);
   border-top: 1px solid var(--ios-line);
 }
 :host .wechat-composer textarea {
