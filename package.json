@@ -1,7 +1,7 @@
 {
   "name": "ste-phone",
   "private": true,
-  "version": "0.0.7",
+  "version": "0.0.8",
   "stePhone": {
     "minimumMemoryVersion": "0.2.6"
   },
