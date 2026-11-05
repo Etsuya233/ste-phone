@@ -35,6 +35,12 @@ export type MapAgentTrace =
       stopReason: string | null;
     }
   | {
+      type: "thinking";
+      elapsedMs: number;
+      round: number;
+      text: string;
+    }
+  | {
       type: "tool_call";
       elapsedMs: number;
       name: string;
@@ -81,6 +87,17 @@ interface Input {
   progress?: (message: string) => void;
 }
 
+const THINKING_FLUSH_MS = 80;
+
+function thinkingText(message: AgentMessage): string {
+  return message.role === "assistant"
+    ? message.content
+        .filter((block) => block.type === "thinking")
+        .map((block) => block.thinking)
+        .join("")
+    : "";
+}
+
 export async function generateMapTurn(input: Input): Promise<Turn> {
   const start = Date.now();
   const { signal } = input;
@@ -91,6 +108,7 @@ export async function generateMapTurn(input: Input): Promise<Turn> {
   });
   const counters = { rounds: 0, calls: 0, failures: 0 };
   let currentToolLabel: string | undefined;
+  let lastThinkingAt = 0;
   const trace = (event: TraceEvent) =>
     input.trace?.({ ...event, elapsedMs: Date.now() - start } as MapAgentTrace);
   const agent = new Agent({
@@ -126,6 +144,23 @@ export async function generateMapTurn(input: Input): Promise<Turn> {
     const { reply } = await runAgent(agent, input.prompt, {
       signal,
       onEvent(event) {
+        if (event.type === "message_start" && event.message.role === "assistant") {
+          lastThinkingAt = 0;
+        }
+        if (event.type === "message_update") {
+          const update = event.assistantMessageEvent;
+          if (update.type === "thinking_delta" || update.type === "thinking_end") {
+            const text = thinkingText(event.message);
+            const now = Date.now();
+            if (
+              text &&
+              (update.type === "thinking_end" || now - lastThinkingAt >= THINKING_FLUSH_MS)
+            ) {
+              lastThinkingAt = now;
+              trace({ type: "thinking", round: counters.rounds, text });
+            }
+          }
+        }
         if (event.type === "message_end" && event.message.role === "assistant") {
           const thinking = event.message.content
             .filter((block) => block.type === "thinking")

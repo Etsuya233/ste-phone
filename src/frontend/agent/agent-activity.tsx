@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export type AgentToolStatus = "running" | "completed" | "failed";
 
@@ -108,11 +108,21 @@ export function AgentRun({
 
 export function AgentThinking({ text, running = false }: { text: string; running?: boolean }) {
   const [open, setOpen] = useState(false);
+  const body = useRef<HTMLDivElement>(null);
+  const follow = useRef(true);
+  useEffect(() => {
+    if (open && follow.current && body.current) {
+      body.current.scrollTop = body.current.scrollHeight;
+    }
+  }, [open, text]);
   return (
     <details
       className="agent-thinking"
       data-running={running}
-      onToggle={(event) => setOpen(event.currentTarget.open)}
+      onToggle={(event) => {
+        setOpen(event.currentTarget.open);
+        follow.current = event.currentTarget.open;
+      }}
     >
       <summary className="agent-disclosure">
         {running ? <StatusIcon status="running" /> : <StepIcon />}
@@ -120,7 +130,20 @@ export function AgentThinking({ text, running = false }: { text: string; running
         {running ? <span className="agent-step-status">执行中</span> : null}
         <Chevron open={open} />
       </summary>
-      {open ? <div className="agent-thinking-body">{text}</div> : null}
+      {open ? (
+        <div
+          className="agent-thinking-body"
+          ref={body}
+          onScroll={() => {
+            const element = body.current;
+            if (element) {
+              follow.current = element.scrollHeight - element.scrollTop - element.clientHeight < 16;
+            }
+          }}
+        >
+          {text}
+        </div>
+      ) : null}
     </details>
   );
 }

@@ -520,6 +520,73 @@ test("conversation records the instruction, thinking, tool calls and final answe
   f.service.dispose();
 });
 
+test("streaming thinking updates the current turn before the model round ends", async () => {
+  const f = fixture();
+  const encoder = new TextEncoder();
+  const event = (value: unknown) => encoder.encode(`data: ${JSON.stringify(value)}\n\n`);
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      controller.enqueue(
+        event({ choices: [{ delta: { reasoning_content: "先看" }, finish_reason: null }] }),
+      );
+      await gate;
+      controller.enqueue(
+        event({ choices: [{ delta: { reasoning_content: "地图" }, finish_reason: null }] }),
+      );
+      controller.enqueue(
+        event({
+          choices: [
+            {
+              delta: {
+                tool_calls: [
+                  {
+                    index: 0,
+                    id: "call-stream",
+                    type: "function",
+                    function: { name: "map_read", arguments: "{}" },
+                  },
+                ],
+              },
+              finish_reason: null,
+            },
+          ],
+        }),
+      );
+      controller.enqueue(event({ choices: [{ delta: {}, finish_reason: "tool_calls" }] }));
+      controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+      controller.close();
+    },
+  });
+  f.delayReply(Promise.resolve(new Response(body)));
+  const running = f.service.request({ instruction: "流式检查" });
+  let streamed = false;
+  try {
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const turn = f.service.getSnapshot().conversation.at(-1);
+      const thinking = turn?.steps.find((step) => step.kind === "thinking");
+      if (thinking?.text.includes("先看")) {
+        streamed = true;
+        break;
+      }
+      await flush();
+    }
+    assert.equal(streamed, true);
+  } finally {
+    release();
+    await running;
+  }
+  const thinking = f.service
+    .getSnapshot()
+    .conversation.at(-1)!
+    .steps.find((step) => step.kind === "thinking");
+  assert.equal(thinking?.text, "先看地图");
+  f.service.dispose();
+});
+
 test("new conversation clears previous turns and a pending proposal but keeps the saved map", async () => {
   const f = fixture();
   await f.service.request({ instruction: "新增地点一" });

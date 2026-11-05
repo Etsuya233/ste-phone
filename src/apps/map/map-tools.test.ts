@@ -78,6 +78,51 @@ function fixture(
 }
 const results = (trace: MapAgentTrace[]) => trace.filter((event) => event.type === "tool_result");
 
+test("thinking deltas reach the trace before the assistant round ends", async () => {
+  const controller = new AbortController();
+  const trace: MapAgentTrace[] = [];
+  const query = JSON.stringify({
+    type: "query",
+    summary: "已找到",
+    featureIds: [],
+    routeRoadIds: [],
+  });
+  const response = new Response(
+    [
+      { choices: [{ delta: { reasoning_content: "先看" }, finish_reason: null }] },
+      { choices: [{ delta: { reasoning_content: "地图" }, finish_reason: null }] },
+      { choices: [{ delta: { content: query }, finish_reason: null }] },
+      { choices: [{ delta: {}, finish_reason: "stop" }] },
+    ]
+      .map((value) => `data: ${JSON.stringify(value)}\n\n`)
+      .join("") + "data: [DONE]\n\n",
+  );
+  const turn = await generateMapTurn({
+    transport: createStAiTransport(() => ({}), {
+      log() {},
+      fetchImpl: async () => response,
+    }),
+    connection,
+    prompt: { role: "user", content: "查询", timestamp: Date.now() },
+    history: [],
+    recordMessages() {},
+    signal: controller.signal,
+    saved: emptyMap(),
+    candidate: emptyMap(),
+    trace: (event) => trace.push(event),
+  });
+  assert.equal(turn.type, "query");
+  const thinking = trace.filter((event) => event.type === "thinking");
+  assert.ok(thinking.length >= 1);
+  assert.match(thinking[0]!.text, /先看/);
+  const assistant = trace.find((event) => event.type === "assistant");
+  assert.equal(assistant?.type === "assistant" ? assistant.thinking : "", "先看地图");
+  assert.ok(
+    trace.findIndex((event) => event.type === "thinking") <
+      trace.findIndex((event) => event.type === "assistant"),
+  );
+});
+
 test("native sequential tools repair broken references and only expose a checked proposal", async () => {
   const base = { ...emptyMap(), features: [point("a")] };
   const road: MapFeature = {

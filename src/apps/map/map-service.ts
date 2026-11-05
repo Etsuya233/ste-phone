@@ -226,14 +226,16 @@ export class MapService {
             return;
           }
           if (event.type === "assistant") {
-            this.#appendThinking(turnId, event.thinking);
+            this.#streamThinking(turnId, event.round, event.thinking);
             this.#appendText(turnId, event.text);
+          } else if (event.type === "thinking") {
+            this.#streamThinking(turnId, event.round, event.text);
           } else if (event.type === "tool_call") {
             this.#startTool(turnId, event);
           } else if (event.type === "tool_result") {
             this.#finishTool(turnId, event);
           }
-          if (event.type !== "request" && event.type !== "assistant") {
+          if (event.type !== "request" && event.type !== "assistant" && event.type !== "thinking") {
             this.#deps.logs?.info("map", "地图助手", event.type, event);
           }
         },
@@ -446,11 +448,24 @@ export class MapService {
     }
     this.#updateTurn(id, { steps: [...turn.steps, step] });
   }
-  #appendThinking(id: string, text: string): void {
+  #streamThinking(id: string, round: number, text: string): void {
     if (!text.trim()) {
       return;
     }
-    this.#appendStep(id, { kind: "thinking", id: `step-${++this.#stepId}`, text });
+    const turn = this.#snapshot.conversation.find((entry) => entry.id === id);
+    if (!turn) {
+      return;
+    }
+    const stepId = `thinking-${round}`;
+    if (!turn.steps.some((step) => step.kind === "thinking" && step.id === stepId)) {
+      this.#appendStep(id, { kind: "thinking", id: stepId, text });
+      return;
+    }
+    this.#updateTurn(id, {
+      steps: turn.steps.map((step) =>
+        step.kind === "thinking" && step.id === stepId ? { ...step, text } : step,
+      ),
+    });
   }
   #appendText(id: string, text: string): void {
     if (!text.trim()) {
