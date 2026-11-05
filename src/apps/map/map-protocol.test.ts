@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { emptyMap, validateMap, type MapFeature, type MapReply } from "./map.ts";
 import { describeMapProposal, stageMapChanges, parseMapReply } from "./map-protocol.ts";
-import { validateMapQuery } from "./map-query.ts";
+import { findMapRoute, validateMapQuery } from "./map-query.ts";
 const place = (id: string, geometry: MapFeature["geometry"] = [[0, 0]]): MapFeature => ({
   id,
   kind: "place",
@@ -103,8 +103,8 @@ test("query cannot smuggle edits or traverse disconnected or unregistered roads"
   );
   const road = (id: string, from: string, to: string): MapFeature => ({
     ...place(id, [
-      [0, 0],
-      [1, 1],
+      [id === "cd" ? 3 : 0, 0],
+      [id === "cd" ? 4 : 1, 1],
     ]),
     kind: "road",
     connects: [from, to],
@@ -147,6 +147,53 @@ test("query cannot smuggle edits or traverse disconnected or unregistered roads"
       }),
     /无法通行/,
   );
+});
+
+test("route queries turn at planar junctions without connects and distinguish bridge crossings", () => {
+  const main: MapFeature = {
+    ...place("main", [
+      [10, 0],
+      [10, 20],
+    ]),
+    kind: "road",
+  };
+  const side: MapFeature = {
+    ...place("side", [
+      [0, 10],
+      [10, 10],
+    ]),
+    kind: "road",
+  };
+  const map = { ...emptyMap(), features: [main, side] };
+  const routeRoadIds = findMapRoute(map, "main", "side");
+  assert.deepEqual(routeRoadIds, ["main", "side"]);
+  const reply = {
+    type: "query",
+    summary: "路线",
+    featureIds: ["main", "side"],
+    routeRoadIds,
+  } as const;
+  validateMapQuery(map, { ...reply, featureIds: [...reply.featureIds] });
+
+  const overpass = { ...main, roadClass: "bridge" } as const;
+  const elevated = { ...map, features: [overpass, side] };
+  assert.deepEqual(findMapRoute(elevated, "main", "side"), []);
+  assert.throws(
+    () => validateMapQuery(elevated, { ...reply, featureIds: [...reply.featureIds] }),
+    /不连通/,
+  );
+
+  const bridgehead = {
+    ...overpass,
+    geometry: [
+      [10, 0],
+      [10, 10],
+    ] as MapFeature["geometry"],
+  };
+  assert.deepEqual(findMapRoute({ ...map, features: [bridgehead, side] }, "main", "side"), [
+    "main",
+    "side",
+  ]);
 });
 
 test("region parent types and ancestry cycles reject the entire map", () => {

@@ -1,4 +1,5 @@
 import type { Message, ToolCall, ToolResultMessage } from "@earendil-works/pi-ai";
+import { findMapRoute } from "../../src/apps/map/map-query.ts";
 import {
   readMapData,
   type MapDocument,
@@ -240,7 +241,7 @@ function previewMapQuery(map: MapDocument, instruction: string): string {
     featureIds: targets.map((item) => item.id),
     routeRoadIds:
       /路线|怎么走/.test(instruction) && targets.length === 2
-        ? previewRoute(map, targets[0]!.id, targets[1]!.id)
+        ? findMapRoute(map, targets[0]!.id, targets[1]!.id)
         : [],
   });
 }
@@ -276,25 +277,4 @@ function previewMapPatch(map: MapDocument, input: PreviewMapInstruction) {
     remove: [],
     events: [],
   };
-}
-
-/** 预览同样只查找已有道路，不会为连通端点修改地图。 */
-function previewRoute(map: MapDocument, from: string, to: string): string[] {
-  const queue = [{ id: from, roads: [] as string[] }];
-  const visited = new Set([from]);
-  for (const step of queue) {
-    if (step.id === to) {
-      return step.roads;
-    }
-    for (const road of map.features.filter(
-      (item) => item.kind === "road" && item.connects.includes(step.id),
-    )) {
-      const next = road.connects.find((id) => id !== step.id)!;
-      if (!visited.has(next)) {
-        visited.add(next);
-        queue.push({ id: next, roads: [...step.roads, road.id] });
-      }
-    }
-  }
-  return [];
 }

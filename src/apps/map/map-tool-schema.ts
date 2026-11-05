@@ -87,6 +87,7 @@ const event = Type.Object(
 export const mapToolSchemas = {
   empty: Type.Object({}, { additionalProperties: false }),
   read: Type.Object({ query: Type.Optional(id) }, { additionalProperties: false }),
+  route: Type.Object({ fromId: id, toId: id }, { additionalProperties: false }),
   records: Type.Object(
     {
       table: id,

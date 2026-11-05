@@ -4,6 +4,7 @@ import { Check, Errors } from "typebox/value";
 import type { MapDocument, MapFeature, MapReply } from "./map.ts";
 import { validateMap } from "./map.ts";
 import { describeMapProposal, stageMapChanges, validateMapSources } from "./map-protocol.ts";
+import { findMapRoute } from "./map-query.ts";
 import { mapToolSchemas } from "./map-tool-schema.ts";
 
 export interface MapStoryReader {
@@ -121,6 +122,14 @@ export function createMapTools(
             }
           : draft;
       },
+      signal,
+    ),
+    defineTool(
+      "map_route",
+      "查询路线",
+      "按两个已有地点或道路 ID 查询可连通的道路序列。识别平面路口与桥头，空序列表示没有已知路线。",
+      mapToolSchemas.route,
+      ({ fromId, toId }) => ({ routeRoadIds: findMapRoute(draft, fromId, toId) }),
       signal,
     ),
     defineTool(

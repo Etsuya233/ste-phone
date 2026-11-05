@@ -30,17 +30,20 @@ export class MapDrawing extends L.LayerGroup {
     this.#drawRegions("district");
     this.#decoration = drawMapDecoration(map, this, features);
     this.#drawRegions("building");
+    const { roadCasing, road, bridge, poi } = mapRenderers(map);
     for (const feature of features.filter((item) => item.kind === "road" && item.geometry)) {
+      // Ground surfaces cover each other's casings at junctions. Bridges retain their edges above them.
+      const isBridge = feature.roadClass === "bridge";
       if (feature.roadClass !== "path") {
         const casing = L.polyline(feature.geometry!.map(mapLatLng), {
           ...roadStyles(feature, map.getZoom()).casing,
-          renderer: mapRenderers(map).road,
+          renderer: isBridge ? bridge : roadCasing,
         }).addTo(this);
         this.#casings.set(feature.id, casing);
       }
       this.#paths.set(
         feature.id,
-        interactiveFeature(feature, false, false, map.getZoom(), mapRenderers(map).road).addTo(
+        interactiveFeature(feature, false, false, map.getZoom(), isBridge ? bridge : road).addTo(
           this,
         ),
       );
@@ -48,7 +51,7 @@ export class MapDrawing extends L.LayerGroup {
     for (const feature of features.filter((item) => item.kind === "place" && item.geometry)) {
       this.#paths.set(
         feature.id,
-        interactiveFeature(feature, false, false, map.getZoom(), mapRenderers(map).poi).addTo(this),
+        interactiveFeature(feature, false, false, map.getZoom(), poi).addTo(this),
       );
     }
     for (const [id, layer] of this.#paths) {
