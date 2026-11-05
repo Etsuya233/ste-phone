@@ -93,11 +93,20 @@ export function createPhone(dependencies: {
     data,
     chat: dependencies.chat,
     connections: settings.modelConnections,
+    modelPreference: settings.mapModelPreference,
     transport: dependencies.aiTransport,
   });
   const apps: Record<AppId, AppDefinition> = {
     map: {
-      render: ({ active, onHome }) => <MapApp map={map} active={active} onHome={onHome} />,
+      render: ({ active, onHome }) => (
+        <MapApp
+          map={map}
+          active={active}
+          onHome={onHome}
+          connections={settings.modelConnections}
+          modelPreference={settings.mapModelPreference}
+        />
+      ),
       onQuit: () => map.cancel(),
     },
     gallery: {

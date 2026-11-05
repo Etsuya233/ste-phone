@@ -39,7 +39,8 @@ test("v3 migration adds the store and preserves wallpaper and model credentials"
   const service = new PhoneSettingsService(storage);
   assert.deepEqual(service.getState(), {
     ...legacy,
-    version: 7,
+    version: 8,
+    mapModelConnectionId: null,
     appearance: { deviceModel: "iphone-6s", systemStyle: "classic" },
     wechatHistoryMessageLimit: 100,
     wechatSendMode: "delayed",

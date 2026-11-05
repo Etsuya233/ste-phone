@@ -49,7 +49,7 @@ const settingsStorage = await createPreviewSettingsStorage();
 // 地图入口提供模拟连接，全部请求仍由 preview-ai-transport 截获。
 if (options.get("map") === "1") {
   const settings = new PhoneSettingsService(settingsStorage);
-  if (!settings.modelConnections.getSnapshot().defaultModelConnectionId) {
+  if (settings.modelConnections.getSnapshot().connections.length === 0) {
     settings.saveModelConnection({
       id: "preview-map",
       name: "地图模拟",
@@ -58,7 +58,6 @@ if (options.get("map") === "1") {
       apiKey: "",
       customHeaders: {},
     });
-    settings.selectDefaultModelConnection("preview-map");
   }
 }
 const phone = createPhone({

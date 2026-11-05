@@ -4,11 +4,13 @@ import type { MapService } from "../map-service.ts";
 export function MapStoryActions({
   service,
   state,
+  canRequest,
   selectedId,
   selectedPoint,
 }: {
   service: MapService;
   state: MapSnapshot;
+  canRequest: boolean;
   selectedId: string | null;
   selectedPoint: MapPoint | null;
 }) {
@@ -16,7 +18,7 @@ export function MapStoryActions({
   return (
     <div className="map-agent-shortcuts">
       <button
-        disabled={busy}
+        disabled={busy || !canRequest}
         onClick={() =>
           void service.request({
             instruction:

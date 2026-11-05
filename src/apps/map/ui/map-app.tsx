@@ -4,18 +4,32 @@ import type { MapPoint, MapSnapshot } from "../map.ts";
 import { MapCanvas } from "./map-canvas.tsx";
 import { MapSearch, MapFeatureDetails } from "./map-browser.tsx";
 import { MapAgentPanel } from "./map-agent-panel.tsx";
+import type { MapModelPreference, ModelConnectionsReader } from "../../settings/public.ts";
+import type { MapModelOptions } from "./map-model-selector.tsx";
 const EMPTY_IDS: string[] = [];
 
 export function MapApp({
   map,
+  connections,
+  modelPreference,
   active,
   onHome,
 }: {
   map: MapService;
+  connections: ModelConnectionsReader;
+  modelPreference: MapModelPreference;
   active: boolean;
   onHome: () => void;
 }) {
   const state = useSyncExternalStore(map.subscribe, map.getSnapshot);
+  const { connections: available } = useSyncExternalStore(
+    connections.subscribe,
+    connections.getSnapshot,
+  );
+  const preferredId = useSyncExternalStore(modelPreference.subscribe, modelPreference.getSnapshot);
+  const selectedId = available.some((connection) => connection.id === preferredId)
+    ? preferredId
+    : null;
   useEffect(() => {
     void map.prepare();
   }, [map, state.scopeKey]);
@@ -24,6 +38,7 @@ export function MapApp({
       key={JSON.stringify([state.chatId, state.scopeKey])}
       service={map}
       state={state}
+      model={{ connections: available, preferredId, selectedId }}
       active={active}
       onHome={onHome}
     />
@@ -33,11 +48,13 @@ export function MapApp({
 function MapWorkspace({
   service,
   state,
+  model,
   active,
   onHome,
 }: {
   service: MapService;
   state: MapSnapshot;
+  model: MapModelOptions;
   active: boolean;
   onHome: () => void;
 }) {
@@ -118,6 +135,7 @@ function MapWorkspace({
       <MapAgentPanel
         service={service}
         state={state}
+        model={model}
         selectedId={selected?.id ?? null}
         selectedPoint={selectedPoint}
         onClearPoint={() => setSelectedPoint(null)}

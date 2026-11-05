@@ -4,6 +4,7 @@ import type {
   WallpaperReader,
   WallpaperSnapshot,
   ModelConnectionsReader,
+  MapModelPreference,
   ModelConnectionsSnapshot,
   HomeScreenSettings,
   WechatPreferences,
@@ -28,13 +29,14 @@ export type {
   PhoneSettingsV4,
   PhoneSettingsV5,
   PhoneSettingsV6,
+  PhoneSettingsV7,
   LegacyPhoneSettings,
   SettingsStorage,
   Wallpaper,
   WallpaperImage,
 } from "./ports/settings-storage.ts";
 export const defaultSettings: PhoneSettings = {
-  version: 7,
+  version: 8,
   appearance: { deviceModel: "iphone-6s", systemStyle: "classic" },
   wechatSendMode: "delayed",
   wechatHistoryMessageLimit: 100,
@@ -42,6 +44,7 @@ export const defaultSettings: PhoneSettings = {
   blur: false,
   modelConnections: [],
   defaultModelConnectionId: null,
+  mapModelConnectionId: null,
   homeLayout: defaultHomeLayout,
 };
 export const wallpaperFormats = {
@@ -140,6 +143,16 @@ export class PhoneSettingsService {
   readonly wallpaper: WallpaperReader = {
     getSnapshot: () => this.wallpaperSnapshot,
     subscribe: (listener) => this.subscribe(listener),
+  };
+  readonly mapModelPreference: MapModelPreference = {
+    getSnapshot: () => this.state.mapModelConnectionId,
+    subscribe: (listener) => this.subscribe(listener),
+    select: (id) => {
+      if (!this.state.modelConnections.some((connection) => connection.id === id)) {
+        throw new Error("地图模型连接不存在");
+      }
+      this.save({ ...this.state, mapModelConnectionId: id });
+    },
   };
   readonly modelConnections: ModelConnectionsReader = {
     getSnapshot: () => this.connectionsSnapshot,

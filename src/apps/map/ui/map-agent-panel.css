@@ -46,6 +46,32 @@
   color: var(--ios-blue);
   margin-bottom: 6px;
 }
+:host .map-model-selector {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 8px;
+  margin-bottom: 7px;
+  color: var(--ios-secondary-ink);
+  font-size: 11px;
+}
+:host .map-model-selector select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--ios-line);
+  border-radius: 7px;
+  padding: 4px 5px;
+  background: var(--ios-row-surface);
+  color: var(--ios-ink);
+  font: inherit;
+}
+:host .map-model-selector .map-error {
+  grid-column: 1 / -1;
+}
+:host .map-model-selector select:focus-visible {
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 1px;
+}
 :host .map-agent textarea {
   display: block;
   width: 100%;

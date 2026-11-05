@@ -18,7 +18,8 @@ const connections = [
 const wallpaper = { kind: "image", path: "/saved.png" };
 const homeLayout = { grid: ["wechat", "diary"], dock: ["settings"] };
 const legacyDefaults = {
-  version: 7,
+  version: 8,
+  mapModelConnectionId: null,
   appearance: { deviceModel: "iphone-6s", systemStyle: "classic" },
   wechatHistoryMessageLimit: 100,
   wechatSendMode: "delayed",
@@ -84,6 +85,7 @@ test("settings versions 1–5 retain their released upgrade results before addin
     assert.deepEqual(migrated.executed, [
       { from: raw.version, to: 6, name: `settings-v${raw.version}-to-v6` },
       { from: 6, to: 7, name: "settings-v6-to-v7" },
+      { from: 7, to: 8, name: "settings-v7-to-v8" },
     ]);
     assert.deepEqual(raw, original);
   }
@@ -129,7 +131,8 @@ test("damaged historical or current settings and unsupported versions fail befor
   const samples = [
     null,
     missingVersion,
-    { ...defaultSettings, version: 8 },
+    { ...defaultSettings, version: 9 },
+    { ...defaultSettings, mapModelConnectionId: 42 },
     { version: 1, blur: true, wallpaper: { kind: "host" }, savedUrls: [42] },
     { version: 2, wallpaper },
     { ...defaultSettings, blur: "yes" },

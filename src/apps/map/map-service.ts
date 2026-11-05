@@ -1,7 +1,11 @@
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { ChatContext } from "../../core/chat/public.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
-import type { ModelConnectionsReader } from "../settings/public.ts";
+import type {
+  MapModelPreference,
+  ModelConnectionsReader,
+  ModelConnectionSnapshot,
+} from "../settings/public.ts";
 import {
   emptyMap,
   type MapData,
@@ -20,6 +24,7 @@ interface Dependencies {
   data: DataAppPublic;
   chat: ChatContext;
   connections: ModelConnectionsReader;
+  modelPreference: MapModelPreference;
   transport: AiTransport;
   logs?: PhoneLog;
 }
@@ -131,6 +136,13 @@ export class MapService {
     });
   }
 
+  selectModel(id: string): void {
+    if (this.#task || this.#reservation || this.#saving) {
+      throw new Error("请等待当前地图任务完成后再切换模型");
+    }
+    this.#deps.modelPreference.select(id);
+  }
+
   async request(input: {
     instruction: string;
     selectedId?: string;
@@ -143,6 +155,17 @@ export class MapService {
     if (!input.instruction.trim()) {
       throw new Error("请输入地图指令");
     }
+    const connectionId = this.#deps.modelPreference.getSnapshot();
+    if (!connectionId) {
+      this.#publish({ error: new Error("请先在地图助手中选择模型连接") });
+      return;
+    }
+    if (!this.#deps.connections.getSnapshot().connections.some(({ id }) => id === connectionId)) {
+      this.#publish({ error: new Error("地图选择的模型连接已删除，请重新选择") });
+      return;
+    }
+    // 在异步取材前固定配置副本。此后设置中的编辑和删除仅影响后续任务。
+    const connection: ModelConnectionSnapshot = this.#deps.connections.getConnection(connectionId);
     const reservation = {};
     // 空间查询前即占用入口并固定会话，双击或切换聊天都不能把旧指令带入新目标。
     const session = this.#session;
@@ -178,11 +201,6 @@ export class MapService {
     this.#task = task;
     this.#publish({ status: "reading", error: null, answer: null });
     try {
-      const defaultId = this.#deps.connections.getSnapshot().defaultModelConnectionId;
-      if (!defaultId) {
-        throw new Error("请先在设置中选择默认模型连接");
-      }
-      const connection = this.#deps.connections.getConnection(defaultId);
       const tables = this.#snapshot.storyTables
         .filter((table) => table.selected)
         .map((table) => table.name);

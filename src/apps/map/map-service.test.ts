@@ -73,6 +73,9 @@ function deferred<T>() {
 const flush = () => new Promise<void>((accept) => setImmediate(accept));
 
 function fixture(initial: MapDocument = emptyMap()) {
+  let selectedModel: string | null = connection.id;
+  let configured = [{ ...connection }, { ...connection, id: "global", model: "global-test" }];
+  const requestedModels: { model: string; custom_url: string }[] = [];
   let chatId = "a";
   let available = true;
   let stableScopeId = "scope";
@@ -148,17 +151,26 @@ function fixture(initial: MapDocument = emptyMap()) {
       },
     },
     connections: {
-      getSnapshot: () => ({ connections: [connection], defaultModelConnectionId: "model" }),
-      getConnection: () => connection,
+      getSnapshot: () => ({ connections: configured, defaultModelConnectionId: "global" }),
+      getConnection: (id) => structuredClone(configured.find((entry) => entry.id === id)!),
       subscribe: () => () => {},
+    },
+    modelPreference: {
+      getSnapshot: () => selectedModel,
+      subscribe: () => () => {},
+      select: (id) => {
+        selectedModel = id;
+      },
     },
     transport: createStAiTransport(() => ({}), {
       log() {},
       fetchImpl: (async (_url, init) => {
         const body = JSON.parse(init!.body as string) as {
           messages: { role: string; content: string }[];
-          json_schema?: unknown;
+          model: string;
+          custom_url: string;
         };
+        requestedModels.push({ model: body.model, custom_url: body.custom_url });
         const last = body.messages.at(-1)!;
         if (last.role === "user") {
           prompts.push(JSON.parse(last.content));
@@ -197,6 +209,20 @@ function fixture(initial: MapDocument = emptyMap()) {
     service,
     saved,
     prompts,
+    requestedModels,
+    unsetModel: () => {
+      selectedModel = null;
+    },
+    removeMapModel: () => {
+      configured = configured.filter((entry) => entry.id !== connection.id);
+    },
+    updateMapModel: () => {
+      configured = configured.map((entry) =>
+        entry.id === connection.id
+          ? { ...entry, model: "edited", baseUrl: "https://edited.invalid/v1" }
+          : entry,
+      );
+    },
     get writes() {
       return writes;
     },
@@ -379,5 +405,40 @@ test("a generation finishing after same-instance stable scope replacement is dis
   assert.equal(f.service.getSnapshot().proposal, null);
   assert.match(f.service.getSnapshot().error!.message, /稳定资料空间已变化/);
   assert.equal(f.writes, 0);
+  f.service.dispose();
+});
+
+test("map refuses to request an unselected or deleted connection even with a global default", async () => {
+  const f = fixture();
+  f.unsetModel();
+  await f.service.request({ instruction: "新增地点" });
+  assert.match(f.service.getSnapshot().error!.message, /选择模型连接/);
+  f.service.selectModel(connection.id);
+  f.removeMapModel();
+  await f.service.request({ instruction: "新增地点" });
+  assert.match(f.service.getSnapshot().error!.message, /已删除/);
+  assert.deepEqual(f.requestedModels, []);
+  f.service.dispose();
+});
+
+test("map holds the chosen connection before async preparation and through every tool round", async () => {
+  const f = fixture();
+  const gate = deferred<void>();
+  f.delayDescribe(gate.promise);
+  const running = f.service.request({ instruction: "新增地点" });
+  assert.throws(() => f.service.selectModel("global"), /当前地图任务/);
+  f.updateMapModel();
+  gate.resolve();
+  await running;
+  assert.equal(f.requestedModels.length, 4);
+  assert.deepEqual(
+    f.requestedModels,
+    Array.from({ length: 4 }, () => ({ model: connection.model, custom_url: connection.baseUrl })),
+  );
+  await f.service.request({ instruction: "继续调整" });
+  assert.deepEqual(
+    f.requestedModels.slice(4),
+    Array.from({ length: 4 }, () => ({ model: "edited", custom_url: "https://edited.invalid/v1" })),
+  );
   f.service.dispose();
 });

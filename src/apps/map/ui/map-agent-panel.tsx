@@ -3,16 +3,19 @@ import type { MapPoint, MapSnapshot } from "../map.ts";
 import type { MapService } from "../map-service.ts";
 import { MapStoryTables } from "./map-story-tables.tsx";
 import { MapStoryActions } from "./map-story-actions.tsx";
+import { MapModelSelector, type MapModelOptions } from "./map-model-selector.tsx";
 
 export function MapAgentPanel({
   service,
   state,
+  model,
   selectedId,
   selectedPoint,
   onClearPoint,
 }: {
   service: MapService;
   state: MapSnapshot;
+  model: MapModelOptions;
   selectedId: string | null;
   selectedPoint: MapPoint | null;
   onClearPoint: () => void;
@@ -21,11 +24,12 @@ export function MapAgentPanel({
   const [instruction, setInstruction] = useState("");
   const [includeStory, setIncludeStory] = useState(false);
   const busy = state.status !== "idle";
+  const canRequest = model.selectedId !== null;
   const selected = (state.proposal?.map ?? state.map).features.find(
     (feature) => feature.id === selectedId,
   );
   const submit = () => {
-    if (!instruction.trim() || busy) {
+    if (!instruction.trim() || busy || !canRequest) {
       return;
     }
     void service.request({
@@ -37,28 +41,7 @@ export function MapAgentPanel({
   };
   return (
     <section className="map-agent" aria-label="地图助手">
-      <button
-        className="map-agent-toggle"
-        onClick={() => setExpanded(!expanded)}
-        aria-expanded={expanded}
-      >
-        <span className="map-agent-grip" />
-        <span>地图助手</span>
-        <span className="map-agent-state">
-          {busy
-            ? {
-                reading: "读取资料中…",
-                generating: state.progress ?? "正在构思…",
-                saving: "保存中…",
-                idle: "",
-              }[state.status]
-            : state.proposal
-              ? "有待确认的修改"
-              : expanded
-                ? "收起⌄"
-                : "展开⌃"}
-        </span>
-      </button>
+      <MapAgentToggle state={state} expanded={expanded} onToggle={() => setExpanded(!expanded)} />
       {expanded ? (
         <div className="map-agent-content">
           {selected ? <div className="map-context">针对「{selected.name}」</div> : null}
@@ -74,6 +57,7 @@ export function MapAgentPanel({
               {state.error.message}
             </p>
           ) : null}
+          <MapModelSelector model={model} service={service} disabled={busy} />
           <textarea
             aria-label="地图指令"
             value={instruction}
@@ -104,7 +88,7 @@ export function MapAgentPanel({
             ) : (
               <button
                 className="map-primary"
-                disabled={busy || !instruction.trim()}
+                disabled={busy || !canRequest || !instruction.trim()}
                 onClick={submit}
               >
                 {state.proposal ? "继续调整" : "发送"}
@@ -115,12 +99,37 @@ export function MapAgentPanel({
           <MapStoryActions
             service={service}
             state={state}
+            canRequest={canRequest}
             selectedId={selectedId}
             selectedPoint={selectedPoint}
           />
         </div>
       ) : null}
     </section>
+  );
+}
+
+function MapAgentToggle({
+  state,
+  expanded,
+  onToggle,
+}: {
+  state: MapSnapshot;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const status = {
+    reading: "读取资料中…",
+    generating: state.progress ?? "正在构思…",
+    saving: "保存中…",
+    idle: state.proposal ? "有待确认的修改" : expanded ? "收起⌄" : "展开⌃",
+  }[state.status];
+  return (
+    <button className="map-agent-toggle" onClick={onToggle} aria-expanded={expanded}>
+      <span className="map-agent-grip" />
+      <span>地图助手</span>
+      <span className="map-agent-state">{status}</span>
+    </button>
   );
 }
 
