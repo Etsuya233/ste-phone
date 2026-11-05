@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readMapStory } from "./map-context.ts";
+import { createMapStoryReader } from "./map-tool-story.ts";
 import type { DataAppPublic, DatabaseSchema } from "../data-source/public.ts";
 
 test("explicit source selection reads a nonstandard setting table with its stable record identity", async () => {
@@ -30,14 +30,17 @@ test("explicit source selection reads a nonstandard setting table with its stabl
       };
     },
   } as unknown as DataAppPublic;
-  const story = (await readMapStory(data, new AbortController().signal, [
-    "src_setting_archive",
-  ])) as { records: { table: string; rows: unknown[] }[]; summary: string };
+  const reader = createMapStoryReader(data, ["src_setting_archive"], new AbortController().signal);
+  assert.deepEqual(
+    (await reader.directory()).tables.map((table) => table.name),
+    ["src_setting_archive"],
+  );
+  assert.deepEqual(queried, []);
+  await assert.rejects(reader.records("src_private", 1, 0), /未选择/);
+  assert.deepEqual(queried, []);
+  const page = await reader.records("src_setting_archive", 1, 0);
   assert.match(queried[0]!, /"src_setting_archive"/);
-  assert.deepEqual(story.records[0]!.rows, [
-    { _phone_stable_record_id: "stable-library", name: "图书馆" },
-  ]);
-  assert.equal(story.records[0]!.table, "src_setting_archive");
-  assert.equal(story.summary, "剧情回顾");
-  await assert.rejects(readMapStory(data, new AbortController().signal, ["missing"]), /不存在/);
+  assert.deepEqual(page.rows, [{ _phone_stable_record_id: "stable-library", name: "图书馆" }]);
+  assert.deepEqual([...reader.memoryIds], ["stable-library"]);
+  assert.equal((await reader.summary()).summary, "剧情回顾");
 });

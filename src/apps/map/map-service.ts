@@ -10,10 +10,10 @@ import {
   type MapStorage,
   type MapPoint,
 } from "./map.ts";
-import { mapScope, readMapStory, stableMapKey } from "./map-context.ts";
-import { generateMapText } from "./map-generation.ts";
-import { createMapProposal, parseMapReply, validateMapSources } from "./map-protocol.ts";
-import { validateMapQuery } from "./map-query.ts";
+import { mapScope, stableMapKey } from "./map-context.ts";
+import { generateMapTurn } from "./map-generation.ts";
+import { createMapStoryReader } from "./map-tool-story.ts";
+import type { PhoneLog } from "../logs/public.ts";
 
 interface Dependencies {
   storage: MapStorage;
@@ -21,6 +21,7 @@ interface Dependencies {
   chat: ChatContext;
   connections: ModelConnectionsReader;
   transport: AiTransport;
+  logs?: PhoneLog;
 }
 interface Task {
   controller: AbortController;
@@ -182,29 +183,41 @@ export class MapService {
         throw new Error("请先在设置中选择默认模型连接");
       }
       const connection = this.#deps.connections.getConnection(defaultId);
-      const story = input.includeStory
-        ? await readMapStory(
-            this.#deps.data,
-            task.controller.signal,
-            this.#snapshot.storyTables.filter((table) => table.selected).map((table) => table.name),
-          )
-        : null;
-      if (!this.#owns(task)) {
-        return;
-      }
-      this.#publish({ status: "generating" });
+      const tables = this.#snapshot.storyTables
+        .filter((table) => table.selected)
+        .map((table) => table.name);
+      this.#publish({ status: "generating", progress: null });
       const candidate = proposal?.map ?? map;
-      const text = await generateMapText({
+      const prompt = JSON.stringify({
+        instruction: input.instruction.trim(),
+        selectedId: input.selectedId ?? null,
+        selectedPoint: input.selectedPoint ?? null,
+        includeStory: !!input.includeStory,
+      });
+      this.#deps.logs?.info("map", "地图助手", "开始地图任务", {
+        prompt,
+        tables: input.includeStory ? tables : [],
+      });
+      const turn = await generateMapTurn({
         transport: this.#deps.transport,
         connection,
-        prompt: JSON.stringify({
-          map: candidate,
-          instruction: input.instruction.trim(),
-          selectedId: input.selectedId ?? null,
-          selectedPoint: input.selectedPoint ?? null,
-          story,
-        }),
+        prompt,
         signal: task.controller.signal,
+        saved: map,
+        candidate,
+        story: input.includeStory
+          ? (signal) => createMapStoryReader(this.#deps.data, tables, signal, task.scopeKey)
+          : undefined,
+        progress: (progress) => {
+          if (this.#owns(task)) {
+            this.#publish({ progress });
+          }
+        },
+        trace: (event) => {
+          if (event.type !== "request" && event.type !== "assistant") {
+            this.#deps.logs?.info("map", "地图助手", event.type, event);
+          }
+        },
       });
       if (!this.#owns(task)) {
         return;
@@ -216,17 +229,15 @@ export class MapService {
       if (stableMapKey(currentSchema) !== task.scopeKey) {
         throw new Error("生成期间稳定资料空间已变化，地图提案已丢弃");
       }
-      const reply = parseMapReply(text);
-      if (reply.type === "query") {
-        validateMapQuery(candidate, reply);
+      if (turn.type === "query") {
+        const { reply } = turn;
         this.#publish({
           answer: reply.summary,
           highlightIds: [...reply.featureIds, ...reply.routeRoadIds],
           status: "idle",
         });
       } else {
-        validateMapSources(reply, candidate, story);
-        const next = createMapProposal(map, candidate, reply);
+        const next = turn.proposal;
         this.#publish({ proposal: next, highlightIds: next.affectedIds, status: "idle" });
       }
     } catch (error) {

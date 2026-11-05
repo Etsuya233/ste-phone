@@ -1,20 +1,15 @@
-import { validateMap, type MapDocument, type MapProposal, type MapReply } from "./map.ts";
-import type { MapStory } from "./map-context.ts";
+import type { MapDocument, MapProposal, MapReply } from "./map.ts";
 
 /** 只有已读取的来源稳定身份或既有关联可进入新提案，显示名不参与身份推断。 */
 export function validateMapSources(
   reply: Extract<MapReply, { type: "proposal" }>,
   candidate: MapDocument,
-  story: MapStory | null,
+  readIds: ReadonlySet<string> = new Set(),
 ): void {
-  const known = new Set(candidate.features.map((feature) => feature.memoryId).filter(Boolean));
-  for (const record of story?.records ?? []) {
-    for (const row of record.rows) {
-      if (typeof row._phone_stable_record_id === "string") {
-        known.add(row._phone_stable_record_id);
-      }
-    }
-  }
+  const known = new Set([
+    ...readIds,
+    ...candidate.features.flatMap((feature) => (feature.memoryId ? [feature.memoryId] : [])),
+  ]);
   for (const feature of reply.upsert) {
     if (feature.memoryId && !known.has(feature.memoryId)) {
       throw new Error(`提案引用了未读取的稳定资料身份：${feature.name}`);
@@ -73,11 +68,11 @@ export function parseMapReply(text: string): MapReply {
   return value;
 }
 
-export function createMapProposal(
+export function stageMapChanges(
   saved: MapDocument,
   candidate: MapDocument,
   reply: Extract<MapReply, { type: "proposal" }>,
-): MapProposal {
+): MapDocument {
   const changes = new Map(reply.upsert.map((feature) => [feature.id, feature]));
   if (new Set(reply.events.map((event) => event.id)).size !== reply.events.length) {
     throw new Error("地图提案事件身份重复");
@@ -111,7 +106,14 @@ export function createMapProposal(
     ],
     events: [...events.values()],
   };
-  validateMap(map);
+  return map;
+}
+
+export function describeMapProposal(
+  saved: MapDocument,
+  map: MapDocument,
+  summary: string,
+): MapProposal {
   const affectedIds = [
     ...new Set(
       [...saved.features, ...map.features]
@@ -123,5 +125,5 @@ export function createMapProposal(
         .map((f) => f.id),
     ),
   ];
-  return { summary: reply.summary, baseRevision: saved.revision, map, affectedIds };
+  return { summary, baseRevision: saved.revision, map, affectedIds };
 }

@@ -1,5 +1,9 @@
 import { previewMapReply } from "./preview-map.ts";
-import { createAssistantMessageEventStream, type AssistantMessage } from "@earendil-works/pi-ai";
+import {
+  createAssistantMessageEventStream,
+  type AssistantMessage,
+  type ToolCall,
+} from "@earendil-works/pi-ai";
 import type { PhoneLog } from "../../src/apps/logs/public.ts";
 import type { AiTransport } from "../../src/core/ai/public.ts";
 import { previewMomentOutput } from "./preview-wechat-moments-ai.ts";
@@ -60,45 +64,75 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
             stream.push({ type: "error", reason: "error", error: output });
             return;
           }
+          let mapReply: string | ToolCall | undefined;
+          if (app === "map") {
+            try {
+              mapReply = previewMapReply(context.messages, mode);
+            } catch (error) {
+              output.stopReason = "error";
+              output.errorMessage = String(error);
+              stream.push({ type: "error", reason: "error", error: output });
+              return;
+            }
+          }
+          if (typeof mapReply === "object") {
+            output.content = [{ ...mapReply, arguments: {} }];
+            stream.push({ type: "toolcall_start", contentIndex: 0, partial: output });
+            output.content[0] = mapReply;
+            stream.push({
+              type: "toolcall_delta",
+              contentIndex: 0,
+              delta: JSON.stringify(mapReply.arguments),
+              partial: output,
+            });
+            stream.push({
+              type: "toolcall_end",
+              contentIndex: 0,
+              toolCall: mapReply,
+              partial: output,
+            });
+            output.stopReason = "toolUse";
+            stream.push({ type: "done", reason: "toolUse", message: output });
+            return;
+          }
           const text =
-            app === "map"
-              ? previewMapReply(context.messages, mode)
-              : operation === "朋友圈配图提示词"
-                ? mode === "invalid"
-                  ? "模拟非法 JSON"
-                  : previewMomentImagePrompt(context.messages)
-                : context.systemPrompt?.includes("微信朋友圈内容")
-                  ? previewMomentOutput(context.messages, mode)
-                  : context.systemPrompt?.includes("微信单聊")
+            mapReply ??
+            (operation === "朋友圈配图提示词"
+              ? mode === "invalid"
+                ? "模拟非法 JSON"
+                : previewMomentImagePrompt(context.messages)
+              : context.systemPrompt?.includes("微信朋友圈内容")
+                ? previewMomentOutput(context.messages, mode)
+                : context.systemPrompt?.includes("微信单聊")
+                  ? mode === "invalid"
+                    ? "模拟非法 JSON"
+                    : JSON.stringify({
+                        messages: [
+                          { type: "text", text: "【模拟回复】刚看到消息。" },
+                          {
+                            type: "text",
+                            text:
+                              previewWechatSticker(context.messages) ??
+                              "明天一起去图书馆吧，稿件我会带上。",
+                          },
+                        ],
+                      })
+                  : operation === "日记配图描述"
                     ? mode === "invalid"
                       ? "模拟非法 JSON"
                       : JSON.stringify({
-                          messages: [
-                            { type: "text", text: "【模拟回复】刚看到消息。" },
-                            {
-                              type: "text",
-                              text:
-                                previewWechatSticker(context.messages) ??
-                                "明天一起去图书馆吧，稿件我会带上。",
-                            },
-                          ],
+                          imagePrompt:
+                            "小红和小蓝坐在图书馆窗边，共同翻阅蓝色笔记本，暖色日光落在稿纸上，安静温柔的午后。",
                         })
-                    : operation === "日记配图描述"
+                    : context.systemPrompt?.includes("日记")
                       ? mode === "invalid"
                         ? "模拟非法 JSON"
                         : JSON.stringify({
+                            body: "【模拟日记，未请求真实模型】\n\n图书馆里很安静，窗边的光照在蓝色笔记本上。我把本子推给小蓝的时候，心里还在想着周五的朗读会。听见他说明天会带来校对好的稿件，我松了一口气。\n\n准备的事情似乎总也做不完，可有人一起认真对待，就没有那么慌张了。现在只想把这一点小小的安心记下来。",
                             imagePrompt:
-                              "小红和小蓝坐在图书馆窗边，共同翻阅蓝色笔记本，暖色日光落在稿纸上，安静温柔的午后。",
+                              "小红把蓝色笔记本推给图书馆窗边的小蓝，桌面散落朗读会稿纸，午后阳光柔和，人物神情安心。",
                           })
-                      : context.systemPrompt?.includes("日记")
-                        ? mode === "invalid"
-                          ? "模拟非法 JSON"
-                          : JSON.stringify({
-                              body: "【模拟日记，未请求真实模型】\n\n图书馆里很安静，窗边的光照在蓝色笔记本上。我把本子推给小蓝的时候，心里还在想着周五的朗读会。听见他说明天会带来校对好的稿件，我松了一口气。\n\n准备的事情似乎总也做不完，可有人一起认真对待，就没有那么慌张了。现在只想把这一点小小的安心记下来。",
-                              imagePrompt:
-                                "小红把蓝色笔记本推给图书馆窗边的小蓝，桌面散落朗读会稿纸，午后阳光柔和，人物神情安心。",
-                            })
-                        : `模拟回复：${model.id} 的预览测试完成，未请求真实服务。`;
+                      : `模拟回复：${model.id} 的预览测试完成，未请求真实服务。`);
           output.content = [{ type: "text", text: "" }];
           stream.push({ type: "text_start", contentIndex: 0, partial: output });
           output.content[0] = { type: "text", text };
@@ -113,7 +147,7 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
           });
           stream.push({ type: "done", reason: output.stopReason, message: output });
         },
-        mode === "slow" ? 15_000 : 600,
+        context.messages.at(-1)?.role === "toolResult" ? 0 : mode === "slow" ? 15_000 : 600,
       );
       options?.signal?.addEventListener("abort", abort, { once: true });
       if (options?.signal?.aborted) {

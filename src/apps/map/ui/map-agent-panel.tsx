@@ -46,9 +46,12 @@ export function MapAgentPanel({
         <span>地图助手</span>
         <span className="map-agent-state">
           {busy
-            ? { reading: "读取资料中…", generating: "正在构思…", saving: "保存中…", idle: "" }[
-                state.status
-              ]
+            ? {
+                reading: "读取资料中…",
+                generating: state.progress ?? "正在构思…",
+                saving: "保存中…",
+                idle: "",
+              }[state.status]
             : state.proposal
               ? "有待确认的修改"
               : expanded
@@ -94,7 +97,7 @@ export function MapAgentPanel({
                 onChange={(event) => setIncludeStory(event.target.checked)}
                 disabled={busy}
               />
-              附加剧情资料
+              允许读取剧情资料
             </label>
             {busy && state.status !== "saving" ? (
               <button onClick={() => service.cancel()}>停止</button>

@@ -89,6 +89,7 @@ export function createPhone(dependencies: {
   });
   const map = new MapService({
     storage: dependencies.mapStorage,
+    logs: dependencies.logs,
     data,
     chat: dependencies.chat,
     connections: settings.modelConnections,

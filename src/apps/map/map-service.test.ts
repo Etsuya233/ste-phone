@@ -34,10 +34,35 @@ const proposal = (id: string): MapReply => ({
   remove: [],
   events: [],
 });
-const response = (value: MapReply) =>
+const response = (value: unknown) =>
   new Response(
     `data: ${JSON.stringify({ choices: [{ delta: { content: JSON.stringify(value) }, finish_reason: null }] })}\n\ndata: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: "stop" }] })}\n\ndata: [DONE]\n\n`,
   );
+function tool(name: string, args: unknown) {
+  const encoded = JSON.stringify(args);
+  const fragments = [encoded.slice(0, 12), encoded.slice(12)];
+  const chunks = fragments.map((argumentsText, index) => ({
+    choices: [
+      {
+        delta: {
+          tool_calls: [
+            {
+              index: 0,
+              ...(index === 0 ? { id: name, type: "function" } : {}),
+              function: { ...(index === 0 ? { name } : {}), arguments: argumentsText },
+            },
+          ],
+        },
+        finish_reason: null,
+      },
+    ],
+  }));
+  return new Response(
+    [...chunks, { choices: [{ delta: {}, finish_reason: "tool_calls" }] }]
+      .map((chunk) => "data: " + JSON.stringify(chunk) + "\n\n")
+      .join("") + "data: [DONE]\n\n",
+  );
+}
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((accept) => {
@@ -56,7 +81,8 @@ function fixture(initial: MapDocument = emptyMap()) {
     ["a", { version: 1, maps: { [key]: structuredClone(initial) } }],
   ]);
   const prompts: { map: MapDocument; instruction: string }[] = [];
-  let fetchReply = async () => response(proposal("one"));
+  let replyValue = proposal("one");
+  let delayedReply: Promise<Response> | undefined;
   let describeGate: Promise<void> | null = null;
   let saveGate: Promise<void> | null = null;
   let failSave = false;
@@ -133,9 +159,24 @@ function fixture(initial: MapDocument = emptyMap()) {
           messages: { role: string; content: string }[];
           json_schema?: unknown;
         };
-        const user = body.messages.find((message) => message.role === "user")!;
-        prompts.push(JSON.parse(user.content));
-        return fetchReply();
+        const last = body.messages.at(-1)!;
+        if (last.role === "user") {
+          prompts.push(JSON.parse(last.content));
+          return delayedReply ?? tool("map_read", {});
+        }
+        const results = body.messages.filter((message) => message.role === "tool");
+        if (results.length === 1) {
+          prompts.at(-1)!.map = JSON.parse(last.content).value;
+          if (replyValue.type === "query") {
+            return response(replyValue);
+          }
+          const { title, upsert, remove, events } = replyValue;
+          return tool("map_apply", { title, upsert, remove, events });
+        }
+        if (results.length === 2) {
+          return tool("map_check", {});
+        }
+        return response({ type: "proposal", summary: replyValue.summary });
       }) as typeof fetch,
     }),
     storage: {
@@ -160,10 +201,10 @@ function fixture(initial: MapDocument = emptyMap()) {
       return writes;
     },
     reply: (value: MapReply) => {
-      fetchReply = async () => response(value);
+      replyValue = value;
     },
     delayReply: (promise: Promise<Response>) => {
-      fetchReply = () => promise;
+      delayedReply = promise;
     },
     delayDescribe: (promise: Promise<void> | null) => {
       describeGate = promise;
@@ -234,7 +275,7 @@ test("cancelled generation ignores a late model reply and never writes", async (
   await flush();
   assert.equal(f.prompts.length, 1);
   f.service.cancel();
-  late.resolve(response(proposal("late")));
+  late.resolve(tool("map_read", {}));
   await running;
   assert.equal(f.service.getSnapshot().proposal, null);
   assert.equal(f.service.getSnapshot().status, "idle");
@@ -333,7 +374,7 @@ test("a generation finishing after same-instance stable scope replacement is dis
   const running = f.service.request({ instruction: "新增" });
   await flush();
   f.replaceStableScope();
-  late.resolve(response(proposal("late")));
+  late.resolve(tool("map_read", {}));
   await running;
   assert.equal(f.service.getSnapshot().proposal, null);
   assert.match(f.service.getSnapshot().error!.message, /稳定资料空间已变化/);

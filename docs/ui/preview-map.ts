@@ -1,3 +1,4 @@
+import type { Message, ToolCall, ToolResultMessage } from "@earendil-works/pi-ai";
 import {
   readMapData,
   type MapDocument,
@@ -156,12 +157,31 @@ export function createPreviewMapStorage(mode: string | null): MapStorage {
   };
 }
 
-/** 模拟只返回局部操作，保持已保存几何与真实协议相同。 */
-export function previewMapReply(messages: readonly unknown[], mode: string | null): string {
-  if (mode === "invalid") {
-    return "模拟非法地图 JSON";
+interface PreviewMapInstruction {
+  instruction: string;
+  selectedId: string | null;
+  includeStory: boolean;
+}
+
+function toolValue(result: ToolResultMessage): unknown {
+  const text = result.content
+    .filter((part) => part.type === "text")
+    .map((part) => part.text)
+    .join("");
+  const reply = JSON.parse(text) as
+    { ok: true; value: unknown } | { ok: false; error: { message: string } };
+  if (!reply.ok) {
+    throw new Error(reply.error.message);
   }
-  const user = messages.at(-1) as { content: string | { type: string; text?: string }[] };
+  return reply.value;
+}
+
+/** The simulator advances only after Pi returns the real result of each tool call. */
+export function previewMapReply(
+  messages: readonly Message[],
+  mode: string | null,
+): string | ToolCall {
+  const user = messages.find((message) => message.role === "user")!;
   const text =
     typeof user.content === "string"
       ? user.content
@@ -169,40 +189,67 @@ export function previewMapReply(messages: readonly unknown[], mode: string | nul
           .filter((part) => part.type === "text")
           .map((part) => part.text)
           .join("");
-  const input = JSON.parse(text) as {
-    map: MapDocument;
-    instruction: string;
-    selectedId: string | null;
-  };
-  const map = input.map;
-  if (/查询|在哪|定位|路线|怎么走/.test(input.instruction)) {
-    const targets = map.features.filter(
-      (item) =>
-        item.kind === "place" &&
-        (input.instruction.includes(item.name) ||
-          item.aliases.some((alias) => input.instruction.includes(alias))),
-    );
-    return JSON.stringify({
-      type: "query",
-      summary: targets.length
-        ? "已在地图上标出查询地点；路线仅使用现有道路。"
-        : "当前地图中没有找到明确地点。",
-      featureIds: targets.map((item) => item.id),
-      routeRoadIds:
-        /路线|怎么走/.test(input.instruction) && targets.length === 2
-          ? previewRoute(map, targets[0]!.id, targets[1]!.id)
-          : [],
-    });
+  const input = JSON.parse(text) as PreviewMapInstruction;
+  const results = new Map(
+    messages
+      .filter((message) => message.role === "toolResult")
+      .map((result) => [result.toolName, toolValue(result)]),
+  );
+  const call = (name: string, args: ToolCall["arguments"] = {}): ToolCall => ({
+    type: "toolCall",
+    id: `preview-${name}-${messages.length}`,
+    name,
+    arguments: args,
+  });
+  if (input.includeStory && !results.has("map_story_summary")) {
+    return call("map_story_summary");
   }
+  if (!results.has("map_read")) {
+    return call("map_read");
+  }
+  const map = results.get("map_read") as MapDocument;
+  if (/查询|在哪|定位|路线|怎么走/.test(input.instruction)) {
+    return mode === "invalid" ? "模拟非法地图 JSON" : previewMapQuery(map, input.instruction);
+  }
+  const { summary, ...patch } = previewMapPatch(map, input);
+  if (!results.has("map_apply")) {
+    return call("map_apply", patch);
+  }
+  if (!results.has("map_check")) {
+    return call("map_check");
+  }
+  return mode === "invalid" ? "模拟非法地图 JSON" : JSON.stringify({ type: "proposal", summary });
+}
+
+function previewMapQuery(map: MapDocument, instruction: string): string {
+  const targets = map.features.filter(
+    (item) =>
+      item.kind === "place" &&
+      (instruction.includes(item.name) ||
+        item.aliases.some((alias) => instruction.includes(alias))),
+  );
+  return JSON.stringify({
+    type: "query",
+    summary: targets.length
+      ? "已在地图上标出查询地点；路线仅使用现有道路。"
+      : "当前地图中没有找到明确地点。",
+    featureIds: targets.map((item) => item.id),
+    routeRoadIds:
+      /路线|怎么走/.test(instruction) && targets.length === 2
+        ? previewRoute(map, targets[0]!.id, targets[1]!.id)
+        : [],
+  });
+}
+
+function previewMapPatch(map: MapDocument, input: PreviewMapInstruction) {
   if (!map.features.length) {
-    return JSON.stringify({
-      type: "proposal",
+    return {
       summary: "绘制椿城的河流、街区与主要地点，未确定的地点保留待定。",
       title: previewMap.title,
       upsert: previewMap.features,
       remove: [],
       events: previewMap.events,
-    });
+    };
   }
   const selected = map.features.find((item) => item.id === input.selectedId);
   const upsert = selected
@@ -216,8 +263,7 @@ export function previewMapReply(messages: readonly unknown[], mode: string | nul
           description: `【模拟新增】${input.instruction}`,
         }),
       ];
-  return JSON.stringify({
-    type: "proposal",
+  return {
     summary: selected
       ? `调整「${selected.name}」，其他要素保持原位。`
       : "在河畔新增一间书店，其他要素保持原位。",
@@ -225,7 +271,7 @@ export function previewMapReply(messages: readonly unknown[], mode: string | nul
     upsert,
     remove: [],
     events: [],
-  });
+  };
 }
 
 /** 预览同样只查找已有道路，不会为连通端点修改地图。 */

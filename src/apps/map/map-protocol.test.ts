@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { emptyMap, validateMap, type MapFeature, type MapReply } from "./map.ts";
-import { createMapProposal, parseMapReply } from "./map-protocol.ts";
+import { describeMapProposal, stageMapChanges, parseMapReply } from "./map-protocol.ts";
 import { validateMapQuery } from "./map-query.ts";
 const place = (id: string, geometry: MapFeature["geometry"] = [[0, 0]]): MapFeature => ({
   id,
@@ -40,7 +40,9 @@ test("partial geometry changes preserve unrelated features and historical events
       },
     ],
   };
-  const next = createMapProposal(map, map, change([{ ...b, name: "新名称" }]));
+  const draft = stageMapChanges(map, map, change([{ ...b, name: "新名称" }]));
+  validateMap(draft);
+  const next = describeMapProposal(map, draft, "新名称");
   assert.deepEqual(
     next.map.features.find((f) => f.id === "a"),
     a,
@@ -61,13 +63,10 @@ test("unknown locations remain searchable records without invented coordinates",
 test("duplicate identity, nonfinite geometry, dangling events and source identity replacement are rejected as a batch", () => {
   const a = { ...place("a"), memoryId: "memory-a" };
   const map = { ...emptyMap(), features: [a] };
-  assert.throws(
-    () => createMapProposal(map, map, change([{ ...a, memoryId: "other" }])),
-    /身份冲突/,
-  );
+  assert.throws(() => stageMapChanges(map, map, change([{ ...a, memoryId: "other" }])), /身份冲突/);
   assert.throws(() => validateMap({ ...map, features: [a, { ...a, id: "b" }] }), /身份重复/);
   assert.throws(
-    () => createMapProposal(map, map, change([place("b", [[Infinity, 2]])])),
+    () => validateMap(stageMapChanges(map, map, change([place("b", [[Infinity, 2]])]))),
     /几何无效/,
   );
   assert.throws(

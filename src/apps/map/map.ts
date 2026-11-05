@@ -70,6 +70,7 @@ export interface MapProposal {
   affectedIds: string[];
 }
 export interface MapSnapshot {
+  progress?: string | null;
   chatId: string | null;
   storyTables: { name: string; description: string; selected: boolean }[];
   map: MapDocument;

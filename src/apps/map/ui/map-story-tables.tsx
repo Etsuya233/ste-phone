@@ -8,7 +8,7 @@ export function MapStoryTables({ service, state }: { service: MapService; state:
       <summary>
         剧情资料范围 · {state.storyTables.filter((table) => table.selected).length} 张表
       </summary>
-      <p>读取所选资料表，另附剧情总结。</p>
+      <p>助手可按需读取所选资料表和剧情总结。</p>
       <div>
         {state.storyTables.map((table) => (
           <label key={table.name}>
