@@ -5,7 +5,6 @@ export function useUnlockSwipe(surface: RefObject<HTMLDivElement | null>, onUnlo
   const gesture = useRef<{ id: number; x: number; y: number; scale: number } | null>(null);
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [leaving, setLeaving] = useState(false);
   const finish = (event: PointerEvent<HTMLDivElement>, cancelled = false) => {
     const start = gesture.current;
     if (!start || start.id !== event.pointerId) {
@@ -17,23 +16,14 @@ export function useUnlockSwipe(surface: RefObject<HTMLDivElement | null>, onUnlo
     const vertical = Math.abs(event.clientY - start.y) / start.scale;
     // The threshold uses logical screen pixels, independent of the device's CSS scaling.
     if (!cancelled && distance >= surface.current!.clientWidth * 0.3 && distance > vertical) {
-      // A full-width drag has already reached the final transform, so no transition will fire.
-      if (
-        distance >= surface.current!.clientWidth ||
-        matchMedia("(prefers-reduced-motion: reduce)").matches
-      ) {
-        onUnlock();
-      } else {
-        setLeaving(true);
-        setOffset(surface.current!.clientWidth);
-      }
+      onUnlock();
     } else {
       setOffset(0);
     }
   };
   const events: HTMLAttributes<HTMLDivElement> = {
     onPointerDown: (event) => {
-      if (!event.isPrimary || event.button !== 0 || leaving) {
+      if (!event.isPrimary || event.button !== 0) {
         return;
       }
       gesture.current = {
@@ -59,17 +49,6 @@ export function useUnlockSwipe(surface: RefObject<HTMLDivElement | null>, onUnlo
     onPointerUp: (event) => finish(event),
     onPointerCancel: (event) => finish(event, true),
     onLostPointerCapture: (event) => finish(event, true),
-    onTransitionEnd: (event) => {
-      if (leaving && event.target === event.currentTarget && event.propertyName === "transform") {
-        onUnlock();
-      }
-    },
-    onTransitionCancel: (event) => {
-      // Changing reduced-motion while leaving cancels CSS interpolation; finish the unlock.
-      if (leaving && event.target === event.currentTarget && event.propertyName === "transform") {
-        onUnlock();
-      }
-    },
   };
   return { offset, dragging, events };
 }

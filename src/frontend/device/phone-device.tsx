@@ -331,7 +331,7 @@ export function PhoneDevice({
           />
           <div className="expose-shade" />
           <div
-            className={`home-layer ${page !== "home" && transition !== "expose-home" ? "home-layer--covered" : ""}`}
+            className={`home-layer ${(page !== "home" && transition !== "expose-home") || lock.state === "asleep" || lock.state === "locked" ? "home-layer--covered" : ""}`}
             inert={page !== "home" || !interactive}
           >
             <Home
@@ -440,8 +440,13 @@ export function PhoneDevice({
           <StatusBar light={page === "home"} active={visible} />
         ) : null}
         {visible && lock.state === "asleep" ? <SleepingScreen onWake={lock.wake} /> : null}
-        {visible && lock.state === "locked" ? (
-          <LockScreen wallpaper={selectedSettings} onUnlock={lock.unlock} />
+        {visible && (lock.state === "locked" || lock.state === "unlocking") ? (
+          <LockScreen
+            wallpaper={selectedSettings}
+            onUnlock={lock.unlock}
+            unlocking={lock.state === "unlocking"}
+            onUnlockEnd={lock.finishUnlock}
+          />
         ) : null}
         <div className="software-home" inert={lock.state === "asleep"}>
           <button

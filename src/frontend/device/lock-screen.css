@@ -19,17 +19,35 @@
   touch-action: none;
   user-select: none;
   cursor: grab;
-  transition: transform 260ms ease;
+  transition: opacity 300ms ease;
   container-type: inline-size;
 }
 :host .lock-screen--dragging {
   cursor: grabbing;
+}
+:host .lock-screen--dragging .lock-screen-content {
   transition: none;
+}
+:host .phone-screen--unlocking .lock-screen {
+  opacity: 0;
+  pointer-events: none;
+}
+:host .phone-screen--unlocking .lock-screen-content {
+  transform: translateX(100%);
+  opacity: 0;
 }
 :host .lock-screen-shade {
   position: absolute;
   inset: 0;
   background: linear-gradient(#0003, #0000 45%, #0005);
+}
+:host .lock-screen-content {
+  position: absolute;
+  inset: 0;
+  transform: translateX(var(--unlock-offset));
+  transition:
+    transform 300ms ease,
+    opacity 300ms ease;
 }
 :host .lock-screen-clock {
   position: absolute;
@@ -60,27 +78,46 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
   font-size: 6.5cqw;
   font-weight: 300;
 }
-:host .lock-screen-hint > span:first-child {
+:host .lock-screen-arrow {
   font-size: 1.7em;
   line-height: 1;
+  margin-right: 12px;
+  vertical-align: -0.08em;
 }
-:host .lock-screen-hint > span:last-child {
-  color: transparent;
-  background: linear-gradient(100deg, #ffffff65 25%, #fff 50%, #ffffff65 75%) 100% 0 / 250% 100%;
+:host .lock-screen-shimmer {
+  /* shadcn shimmer: one non-repeating highlight starts and ends outside the text. */
+  display: inline-block;
+  white-space: nowrap;
+  --unlock-shimmer-spread: 36px;
+  color: #ffffff80;
+  background-image: linear-gradient(
+    110deg,
+    currentColor calc(50% - var(--unlock-shimmer-spread)),
+    #ffffffc0 calc(50% - var(--unlock-shimmer-spread) * 0.5),
+    #fff 50%,
+    #ffffffc0 calc(50% + var(--unlock-shimmer-spread) * 0.5),
+    currentColor calc(50% + var(--unlock-shimmer-spread))
+  );
+  background-repeat: no-repeat;
+  /* Extra travel keeps the tilted band's edges clear of the glyphs at both loop endpoints. */
+  background-size: calc(200% + var(--unlock-shimmer-spread) * 3) 100%;
   background-clip: text;
-  animation: ste-phone-unlock-shimmer 3.5s linear infinite;
+  -webkit-text-fill-color: transparent;
+  animation: ste-phone-unlock-shimmer 2.5s linear infinite;
 }
 @keyframes ste-phone-unlock-shimmer {
+  from {
+    background-position: 100% 0;
+  }
   to {
-    background-position: -100% 0;
+    background-position: 0 0;
   }
 }
 /* The software controls stay usable above the lock page, and disappear on a black screen. */
-:host .phone-screen--locked .software-home {
+:host :is(.phone-screen--locked, .phone-screen--unlocking) .software-home {
   z-index: 16;
   background: transparent;
   border-color: transparent;
@@ -89,13 +126,19 @@
 :host .phone-screen--asleep .software-home {
   visibility: hidden;
 }
-:host .phone-screen--locked .software-home span {
+:host :is(.phone-screen--locked, .phone-screen--unlocking) .software-home span {
   border-color: #ffffff90;
 }
-:host .phone-screen--locked .software-home .software-lock {
+:host :is(.phone-screen--locked, .phone-screen--unlocking) .software-home .software-lock {
   color: white;
 }
-:host .phone-panel--responsive:has(.phone-screen--locked, .phone-screen--asleep) .phone-close {
+:host
+  .phone-panel--responsive:has(
+    .phone-screen--locked,
+    .phone-screen--asleep,
+    .phone-screen--unlocking
+  )
+  .phone-close {
   color: white;
 }
 :host .software-home .software-lock {
@@ -114,10 +157,13 @@
   stroke-width: 1.5;
 }
 @media (prefers-reduced-motion: reduce) {
-  :host .lock-screen {
+  :host .lock-screen,
+  :host .lock-screen-content {
     transition: none;
   }
-  :host .lock-screen-hint > span:last-child {
+  :host .lock-screen-shimmer {
     animation: none;
+    background-image: none;
+    -webkit-text-fill-color: currentColor;
   }
 }
