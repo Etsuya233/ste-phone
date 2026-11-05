@@ -1,9 +1,10 @@
-import type { WechatSendMode } from "../public.ts";
+import type { AppearanceSnapshot, WechatSendMode } from "../public.ts";
 import type { ModelConnection } from "../model-connections.ts";
 import type { HomeLayout } from "../../../core/launcher/catalog.ts";
 export type Wallpaper = { kind: "gradient" } | { kind: "image"; path: string };
 export interface PhoneSettings {
-  version: 6;
+  version: 7;
+  appearance: AppearanceSnapshot;
   wechatHistoryMessageLimit: number;
   wechatSendMode: WechatSendMode;
   wallpaper: Wallpaper;
@@ -12,8 +13,11 @@ export interface PhoneSettings {
   defaultModelConnectionId: string | null;
   homeLayout: HomeLayout;
 }
+export interface PhoneSettingsV6 extends Omit<PhoneSettings, "version" | "appearance"> {
+  version: 6;
+}
 export interface PhoneSettingsV5 extends Omit<
-  PhoneSettings,
+  PhoneSettingsV6,
   "version" | "wechatHistoryMessageLimit"
 > {
   version: 5;
@@ -42,6 +46,7 @@ export interface WallpaperImage {
 export interface SettingsStorage {
   read: () =>
     | PhoneSettings
+    | PhoneSettingsV6
     | PhoneSettingsV5
     | PhoneSettingsV4
     | PhoneSettingsV3

@@ -138,6 +138,57 @@
   height: 100%;
   background: currentColor;
 }
+/* The hardware cutout belongs to the model, even when the classic skin is selected. */
+:host [data-device="iphone-17"] .status-bar {
+  padding-inline: 30px;
+  font-size: 15px;
+}
+:host [data-device="iphone-17"] .status-bar time {
+  left: 30px;
+  transform: none;
+  top: 24px;
+}
+:host [data-device="iphone-17"] .status-network {
+  position: absolute;
+  right: 58px;
+  top: 25px;
+  gap: 6px;
+}
+:host [data-device="iphone-17"] .status-carrier {
+  display: none;
+}
+:host [data-device="iphone-17"] .status-signal {
+  height: 12px;
+  align-items: flex-end;
+  gap: 2px;
+}
+:host [data-device="iphone-17"] .status-signal i {
+  width: 3px;
+  border-radius: 1px;
+}
+:host [data-device="iphone-17"] .status-signal i:nth-child(1) {
+  height: 4px;
+}
+:host [data-device="iphone-17"] .status-signal i:nth-child(2) {
+  height: 7px;
+}
+:host [data-device="iphone-17"] .status-signal i:nth-child(3) {
+  height: 10px;
+}
+:host [data-device="iphone-17"] .status-signal i:nth-child(4) {
+  height: 13px;
+}
+:host [data-device="iphone-17"] .status-signal i:nth-child(5) {
+  display: none;
+}
+:host [data-device="iphone-17"] .status-battery {
+  position: absolute;
+  top: 27px;
+  right: 28px;
+  width: 23px;
+  height: 11px;
+  border-radius: 3px;
+}
 @media (prefers-reduced-motion: reduce) {
   :host .home-layer,
   :host .home-layer .ios-page-content,

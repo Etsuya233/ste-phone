@@ -1,0 +1,134 @@
+/* Model geometry and safe areas stay independent of the chosen system skin. */
+:host .phone-panel[data-device="iphone-17"] {
+  --status-height: 62px;
+  --safe-bottom: 34px;
+}
+:host [data-device="iphone-17"] .phone-device {
+  border-radius: 64px;
+  background: linear-gradient(115deg, #55575b, #17181b 36%, #383a3d 75%, #111215);
+  box-shadow:
+    0 24px 90px #0006,
+    inset 0 0 0 1px #929397,
+    inset 0 0 0 3px #252629,
+    inset 0 0 0 7px #08090a;
+}
+:host [data-device="iphone-17"] .phone-screen {
+  border-radius: 52px;
+  box-shadow: 0 0 0 3px #030405;
+}
+/* On a full-screen device the home indicator sits directly over the wallpaper. */
+:host [data-device="iphone-17"] .home-screen .ios-safe-area {
+  background: transparent;
+}
+:host [data-device="iphone-17"] .device-camera,
+:host [data-device="iphone-17"] .device-speaker,
+:host [data-device="iphone-17"] .device-home {
+  display: none;
+}
+:host [data-device="iphone-17"] .device-island {
+  display: block;
+  position: absolute;
+  z-index: 18;
+  top: 12px;
+  left: 50%;
+  /* Reserve room for signal and battery even in the 320px responsive viewport. */
+  width: clamp(100px, 31cqw, 126px);
+  height: 36px;
+  transform: translateX(-50%);
+  border-radius: 24px;
+  background: #000;
+  pointer-events: none;
+}
+:host [data-device="iphone-17"] .device-island--draggable {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+}
+:host [data-device="iphone-17"] .device-island--draggable:active {
+  cursor: grabbing;
+}
+:host [data-device="iphone-17"] .phone-close {
+  top: auto;
+  bottom: 8px;
+  right: 24px;
+  background: transparent;
+  color: var(--ios-ink);
+}
+:host [data-device="iphone-17"] .software-home {
+  display: grid;
+  position: absolute;
+  z-index: 5;
+  bottom: 0;
+  inset-inline: 0;
+  height: var(--safe-bottom);
+  place-items: center;
+  background: transparent;
+  border: 0;
+  backdrop-filter: none;
+}
+:host [data-device="iphone-17"] .software-home-button {
+  display: grid;
+  place-items: center;
+  width: 164px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+:host [data-device="iphone-17"] .software-home-button span {
+  width: 134px;
+  height: 5px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--ios-ink);
+}
+:host
+  [data-device="iphone-17"]
+  :is(.phone-screen--locked, .phone-screen--unlocking)
+  .software-home-button
+  span,
+:host
+  [data-device="iphone-17"]
+  .phone-screen:has(.home-layer:not(.home-layer--covered))
+  .software-home-button
+  span,
+:host [data-device="iphone-17"] .phone-screen:has(.expose) .software-home-button span {
+  background: #fff;
+}
+:host [data-device="iphone-17"] .software-home .software-lock {
+  top: -5px;
+  left: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+:host
+  [data-device="iphone-17"]
+  .phone-screen:has(.home-layer:not(.home-layer--covered), .expose)
+  .software-lock,
+:host
+  [data-device="iphone-17"]:has(
+    .home-layer:not(.home-layer--covered),
+    .expose,
+    .phone-screen--locked,
+    .phone-screen--asleep,
+    .phone-screen--unlocking
+  )
+  .phone-close {
+  color: #fff;
+}
+:host [data-device="iphone-17"].phone-panel--responsive {
+  --safe-bottom: calc(44px + env(safe-area-inset-bottom, 0px));
+}
+:host [data-device="iphone-17"].phone-panel--responsive .phone-device,
+:host [data-device="iphone-17"].phone-panel--responsive .phone-screen {
+  border-radius: 0;
+  box-shadow: none;
+}
+:host [data-device="iphone-17"].phone-panel--responsive .phone-close {
+  top: auto;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 3px);
+  right: 6px;
+  background: transparent;
+  color: var(--ios-ink);
+}

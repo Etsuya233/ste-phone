@@ -268,7 +268,7 @@ test("v4 settings migrate to delayed sending and the preference survives unrelat
   service.setWallpaper({ kind: "gradient" }, true);
   service.saveModelConnection(connection);
   assert.equal(new PhoneSettingsService(storage).wechatPreferences.getSnapshot(), "immediate");
-  assert.equal(service.getState().version, 6);
+  assert.equal(service.getState().version, 7);
 });
 
 test("history limit defaults to 100, migrates v5 and retains valid shared settings", () => {
@@ -336,4 +336,64 @@ test("invalid or failed history settings do not replace saved state; malformed v
   );
   assert.throws(() => service.wechatPreferences.setHistoryMessageLimit(200), /storage denied/);
   assert.equal(service.wechatPreferences.getHistoryMessageLimit(), 100);
+});
+
+test("appearance choices combine independently, persist and keep snapshots stable across unrelated edits", () => {
+  let stored: PhoneSettings | undefined;
+  const storage: SettingsStorage = {
+    ...library,
+    read: () => stored,
+    save: (value) => {
+      stored = value;
+    },
+  };
+  const service = new PhoneSettingsService(storage);
+  const initial = service.appearance.getSnapshot();
+  service.setWallpaper({ kind: "gradient" }, true);
+  assert.equal(service.appearance.getSnapshot(), initial);
+  service.appearance.setDeviceModel("iphone-17");
+  assert.deepEqual(service.appearance.getSnapshot(), {
+    deviceModel: "iphone-17",
+    systemStyle: "classic",
+  });
+  service.appearance.setSystemStyle("ios26");
+  service.appearance.setDeviceModel("iphone-6s");
+  assert.deepEqual(service.appearance.getSnapshot(), {
+    deviceModel: "iphone-6s",
+    systemStyle: "ios26",
+  });
+  assert.deepEqual(
+    new PhoneSettingsService(storage).appearance.getSnapshot(),
+    service.appearance.getSnapshot(),
+  );
+});
+
+test("failed appearance saves retain the applied choices and do not notify subscribers", () => {
+  const service = new PhoneSettingsService({
+    ...library,
+    read: () => undefined,
+    save: () => {
+      throw new Error("storage denied");
+    },
+  });
+  const initial = service.appearance.getSnapshot();
+  let notifications = 0;
+  service.appearance.subscribe(() => notifications++);
+  assert.throws(() => service.appearance.setDeviceModel("iphone-17"), /storage denied/);
+  assert.throws(() => service.appearance.setSystemStyle("ios26"), /storage denied/);
+  assert.equal(service.appearance.getSnapshot(), initial);
+  assert.equal(notifications, 0);
+});
+
+test("v6 settings preserve their content and migrate to the classic phone appearance", () => {
+  const { appearance: _appearance, ...previous } = defaultSettings;
+  void _appearance;
+  const old = { ...previous, version: 6 as const, blur: true, wechatHistoryMessageLimit: 42 };
+  const service = new PhoneSettingsService({ ...library, read: () => old, save: () => {} });
+  assert.deepEqual(service.appearance.getSnapshot(), {
+    deviceModel: "iphone-6s",
+    systemStyle: "classic",
+  });
+  assert.equal(service.getState().wechatHistoryMessageLimit, 42);
+  assert.equal(service.getState().blur, true);
 });

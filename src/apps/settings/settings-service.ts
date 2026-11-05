@@ -1,4 +1,6 @@
 import type {
+  AppearanceSettings,
+  AppearanceSnapshot,
   WallpaperReader,
   WallpaperSnapshot,
   ModelConnectionsReader,
@@ -25,13 +27,15 @@ export type {
   PhoneSettingsV3,
   PhoneSettingsV4,
   PhoneSettingsV5,
+  PhoneSettingsV6,
   LegacyPhoneSettings,
   SettingsStorage,
   Wallpaper,
   WallpaperImage,
 } from "./ports/settings-storage.ts";
 export const defaultSettings: PhoneSettings = {
-  version: 6,
+  version: 7,
+  appearance: { deviceModel: "iphone-6s", systemStyle: "classic" },
   wechatSendMode: "delayed",
   wechatHistoryMessageLimit: 100,
   wallpaper: { kind: "gradient" },
@@ -52,6 +56,23 @@ export class PhoneSettingsService {
   private wallpaperSnapshot!: WallpaperSnapshot;
   private connectionsSnapshot!: ModelConnectionsSnapshot;
   private homeSnapshot!: HomeLayout;
+  private appearanceSnapshot!: AppearanceSnapshot;
+  readonly appearance: AppearanceSettings = {
+    getSnapshot: () => this.appearanceSnapshot,
+    subscribe: (listener) => this.subscribe(listener),
+    setDeviceModel: (deviceModel) => {
+      if (deviceModel !== "iphone-6s" && deviceModel !== "iphone-17") {
+        throw new Error("不支持的手机外形");
+      }
+      this.save({ ...this.state, appearance: { ...this.state.appearance, deviceModel } });
+    },
+    setSystemStyle: (systemStyle) => {
+      if (systemStyle !== "classic" && systemStyle !== "ios26") {
+        throw new Error("不支持的系统风格");
+      }
+      this.save({ ...this.state, appearance: { ...this.state.appearance, systemStyle } });
+    },
+  };
   readonly homeScreen: HomeScreenSettings = {
     getSnapshot: () => this.homeSnapshot,
     subscribe: (listener) => this.subscribe(listener),
@@ -219,6 +240,13 @@ export class PhoneSettingsService {
     return validateModelConnection(connection);
   }
   private updateSnapshots() {
+    // 外观订阅不随壁纸或模型编辑产生新快照，切换机身和系统也只修改各自字段。
+    if (
+      this.appearanceSnapshot?.deviceModel !== this.state.appearance.deviceModel ||
+      this.appearanceSnapshot?.systemStyle !== this.state.appearance.systemStyle
+    ) {
+      this.appearanceSnapshot = Object.freeze({ ...this.state.appearance });
+    }
     this.homeSnapshot = Object.freeze({
       grid: Object.freeze([...this.state.homeLayout.grid]),
       dock: Object.freeze([...this.state.homeLayout.dock]),

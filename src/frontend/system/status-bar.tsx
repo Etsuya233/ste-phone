@@ -27,7 +27,7 @@ export function StatusBar({
           <i />
           <i />
         </span>
-        <span>STE</span>
+        <span className="status-carrier">STE</span>
         <svg className="status-wifi" viewBox="0 0 20 16">
           <path d="M2 5a13 13 0 0 1 16 0M5 8a8 8 0 0 1 10 0M8 11a3 3 0 0 1 4 0" />
           <circle cx="10" cy="14" r="1" />

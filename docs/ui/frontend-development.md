@@ -30,6 +30,8 @@ Foundation 组件应用位于 `src/apps/foundation/ui/`，可从主屏打开，�
 
 ## 手机会话与设置
 
+手机外形和系统风格分别由设置模块的 `AppearanceSettings` 提供，`PhoneApp` 订阅后在 panel 上声明 `data-device` 与 `data-system-style`，不改变 App key 或导航栈。机型几何集中在 `device/device-models.ts`，窗口缩放与 CSS 变量使用同一份尺寸；iPhone 17 的状态栏与安全区随外形变化，系统视觉集中在 `ios26.css`，支持经典机身搭配新系统。设置 v7 增加 `appearance`，历史迁移保留既有 v1–v5 → v6 路径，再追加 v6 → v7，默认经典 iPhone 6s。外观保存失败保留当前生效选项并在页面显示错误。
+
 锁屏属于设备内存会话，`device/use-screen-lock.ts` 持有 `unlocked / asleep / locked / unlocking` 状态：电源键从使用中或锁屏进入黑屏，黑屏点击、电源键或物理 Home 只唤醒到锁屏，再向右滑动解锁。桌面使用右侧机身电源键，响应式模式在软件 Home 左侧提供锁屏按钮；黑屏隐藏屏幕内的状态栏和软件控件，外层关闭按钮仍可用。Home 在亮起的锁屏页不导航，关闭重开保留熄屏或锁屏，刷新结束会话。应用保持挂载，锁屏时工作区设为 inert 并关闭前台显示副作用，已有生成任务沿用后台规则；解锁恢复原页面及锁屏前焦点。锁屏与关闭会收敛正在进行的应用转场并清除待执行 Home 单击。
 
 `device/lock-screen.tsx` 展示当前壁纸、现实本地时间与中文日期；`device/use-unlock-swipe.ts` 集中管理 pointer capture、设备缩放和取消，位移作用于时钟、日期和解锁提示共用的内容层，壁纸和状态栏保持原位。右滑距离达到逻辑屏宽 30% 且大于纵向位移才解锁，其余内容层回弹；取消手势不解锁，关闭手机卸载锁屏展示并清除拖动。成功进入 `unlocking` 后，锁屏以 300ms 淡出，内容层继续向右离开；原页面为主屏时复用 `home-layer--covered` 的缩放与透明度过渡，与 Expose 回桌面共用实现，原页面为应用或 Expose 时恢复对应页面。过渡期间保持工作区 inert，根锁屏 opacity 过渡完成才恢复前台和焦点。关闭或切换减少动态效果会完成这次解锁，再次锁屏后忽略旧过渡结束事件。Enter/空格同样进入解锁流程，减少动态效果下直接完成。箭头与解锁文字共用同一个扫光区域，参考 shadcn 的非重复渐变，斜向亮带的首尾均完全离开字形，避免循环复位跳变；相关样式集中在 `device/lock-screen.css`。`system/use-local-time.ts` 为锁屏和状态栏共用分钟边界校时，锁屏状态栏隐藏中央时间并停用自己的计时器，熄屏不运行锁屏时钟。
@@ -42,7 +44,7 @@ Foundation 组件应用位于 `src/apps/foundation/ui/`，可从主屏打开，�
 
 全局壁纸由 `src/apps/settings/settings-service.ts` 的 `PhoneSettingsService` 持有，设置页面只消费注入的服务。外壳通过 `src/apps/settings/public.ts` 的 `WallpaperReader` 订阅含图片 URL 的只读快照；模型消费者通过 `ModelConnectionsReader` 读取无凭据摘要，并显式取得独立连接配置副本。设置页面尚未打开或已退出时，这些读取仍然有效。图库只包含默认渐变和 Phone 上传的图片，三列 9:16 竖向缩略图，不显示文件名、说明或成功提示。「+」选择图片，实际解码通过后上传，成功进入独立全幅预览页；Blur 只修改预览，点「设定」保存并返回图库。导航栈保留图库滚动与页面状态，上传完成时页面退到后台则等待它回到前台再进入预览；离开已卸载的图库不发布迟到响应。
 
-生产接线使用 ST 的公开 `getContext()`、`extensionSettings.ste_phone`、`saveSettingsDebounced()`，图片通过 `POST /api/images/upload` 和 `POST /api/images/list`。固定 `ch_name` / `folder` 为 `ste-phone-wallpapers`，文件名使用 `crypto.getRandomValues()` 生成 128 位唯一值，原文件名和用户路径不进入请求。浏览器实际解码图片，核心服务限定 PNG、JPEG、WebP 与 10 MB；读取/上传失败显示简短错误，读取可重试，默认渐变始终可选。v6 设置保存所选图片路径、Blur、模型连接、默认连接、微信发送模式、AI 历史消息条数和主屏/Dock 有序应用 ID；v5 及更早版本补默认 100 条 AI 历史窗口，当前 v6 非法条数明确报错；v4 升级添加默认的微信延迟发送；v3 升级添加默认布局与 App Store；v1 旧地址列表与背景选择显式迁移为默认渐变，Blur 保留；v2 保留已有壁纸并补空连接。壁纸和连接使用服务的语义方法更新当前设置，页面不提交全量设置快照。
+生产接线使用 ST 的公开 `getContext()`、`extensionSettings.ste_phone`、`saveSettingsDebounced()`，图片通过 `POST /api/images/upload` 和 `POST /api/images/list`。固定 `ch_name` / `folder` 为 `ste-phone-wallpapers`，文件名使用 `crypto.getRandomValues()` 生成 128 位唯一值，原文件名和用户路径不进入请求。浏览器实际解码图片，核心服务限定 PNG、JPEG、WebP 与 10 MB；读取/上传失败显示简短错误，读取可重试，默认渐变始终可选。v7 设置保存手机外形、系统风格、所选图片路径、Blur、模型连接、默认连接、微信发送模式、AI 历史消息条数和主屏/Dock 有序应用 ID；v5 及更早版本补默认 100 条 AI 历史窗口，当前 v7 非法条数明确报错；v4 升级添加默认的微信延迟发送；v3 升级添加默认布局与 App Store；v1 旧地址列表与背景选择显式迁移为默认渐变，Blur 保留；v2 保留已有壁纸并补空连接。壁纸和连接使用服务的语义方法更新当前设置，页面不提交全量设置快照。
 
 模型连接列表与编辑页使用相同 NavigationStack，TextField 提供带标签的输入及尾部显隐操作。连接以稳定 ID 关联默认选择，支持无默认；整行用原生 radio 选择，左侧显示蓝色勾，右侧圆圈 i 按钮独立进入编辑，不嵌套交互控件。编辑页按草稿显式保存，未保存返回显示页内舍弃确认并滚入可见区域。连接测试由设置模块接收 `AiTransport` 创建，页面提交当前草稿；模块持有 Pi Agent、提示词、输出限制和 60 秒超时策略。Core 在 `src/core/ai/public.ts` 声明绑定连接快照的 `createStream` 契约，`src/infrastructure/host/ai-transport.ts` 通过宿主 Custom 代理发送请求并转换 Pi 文本事件；每次调用独立，不读取 ST 当前模型或生成参数。当前仅支持文本，工具和思考内容明确报错。修改请求字段、页内返回与卸载取消当前测试，Home、Expose 预览及关闭手机保留运行。迟到结果只由发起它的控制器接收，后台不抢焦点或导航；确认和配置错误仅当前页聚焦。生产请求的 CSRF 等宿主头与上游自定义头分开处理，错误信息脱敏且不输出完整请求。独立预览注入 `docs/ui/preview-ai-transport.ts` 的可控模拟传输，复用相同 Agent 与连接测试流程，不请求真实模型服务。
 

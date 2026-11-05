@@ -1,6 +1,8 @@
 # STE-PHONE
 
-面向 SillyTavern 的小手机插件。使用 React、TypeScript、普通 CSS 和 esbuild，提供 iPhone 6s 风格外壳、主屏幕、秒表、Foundation 组件、只读资料应用、Fake DBeaver 数据库应用、日志查看和壁纸设置。公共数据源连接 STE Memory，将 Phone 定义的标准视图注册到 Memory 已提交数据库，供当前人物、纪要、物品和世界状态查询。
+「设置 → 外观」可分别选择手机外形（iPhone 6s / iPhone 17）与系统风格（经典 iOS / iOS 26），支持四种自由组合，选择后立即应用并跨聊天保存。旧配置升级后保留经典 iPhone 6s；切换外观保留应用页面、草稿和后台任务。iPhone 17 使用全面屏、灵动岛与底部 Home 条；Home 条单击返回主屏、双击查看后台，左侧锁形按钮锁屏，亮起的锁屏仍向右滑动或按 Enter 解锁。iOS 26 风格提供大圆角分组、胶囊控件、玻璃导航与悬浮 Dock。
+
+面向 SillyTavern 的小手机插件。使用 React、TypeScript、普通 CSS 和 esbuild，提供 iPhone 6s / iPhone 17 风格外壳、主屏幕、秒表、Foundation 组件、只读资料应用、Fake DBeaver 数据库应用、日志查看和壁纸设置。公共数据源连接 STE Memory，将 Phone 定义的标准视图注册到 Memory 已提交数据库，供当前人物、纪要、物品和世界状态查询。
 
 点击机身右侧电源键锁屏，响应式模式使用底部 Home 左侧的锁形按钮。锁屏先熄灭屏幕，点击黑屏唤醒后显示当前壁纸、现实时间和日期，向右滑动解锁并回到原页面；键盘可按 Enter 或空格解锁。Home 只唤醒黑屏，亮起的锁屏页仍需解锁。关闭重开保留锁屏状态、应用草稿和后台任务，刷新后重新开始手机会话；当前不设密码或自动熄屏。
 

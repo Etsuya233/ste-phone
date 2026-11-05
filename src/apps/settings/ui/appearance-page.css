@@ -1,0 +1,34 @@
+:host .appearance-choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--ios-space-medium);
+  width: 100%;
+  min-height: var(--control-size);
+  cursor: pointer;
+}
+:host .appearance-choice input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+:host .appearance-choice:has(input:focus-visible) {
+  outline: var(--ios-focus-width) solid var(--ios-blue);
+  outline-offset: var(--ios-focus-offset);
+}
+:host .appearance-check {
+  margin-left: auto;
+  color: var(--ios-blue);
+  visibility: hidden;
+}
+:host .appearance-choice input:checked ~ .appearance-check {
+  visibility: visible;
+}
+:host .appearance-error {
+  margin: var(--ios-space-large);
+  color: var(--ios-red);
+}

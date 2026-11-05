@@ -18,7 +18,8 @@ const connections = [
 const wallpaper = { kind: "image", path: "/saved.png" };
 const homeLayout = { grid: ["wechat", "diary"], dock: ["settings"] };
 const legacyDefaults = {
-  version: 6,
+  version: 7,
+  appearance: { deviceModel: "iphone-6s", systemStyle: "classic" },
   wechatHistoryMessageLimit: 100,
   wechatSendMode: "delayed",
   wallpaper: { kind: "gradient" },
@@ -42,7 +43,7 @@ const legacyDefaults = {
   },
 };
 
-test("settings versions 1–5 retain their released upgrade results and record one direct step", () => {
+test("settings versions 1–5 retain their released upgrade results before adding independent appearance choices", () => {
   const common = {
     wallpaper,
     blur: true,
@@ -82,6 +83,7 @@ test("settings versions 1–5 retain their released upgrade results and record o
     assert.deepEqual(migrated.data, expected);
     assert.deepEqual(migrated.executed, [
       { from: raw.version, to: 6, name: `settings-v${raw.version}-to-v6` },
+      { from: 6, to: 7, name: "settings-v6-to-v7" },
     ]);
     assert.deepEqual(raw, original);
   }
@@ -127,7 +129,7 @@ test("damaged historical or current settings and unsupported versions fail befor
   const samples = [
     null,
     missingVersion,
-    { ...defaultSettings, version: 7 },
+    { ...defaultSettings, version: 8 },
     { version: 1, blur: true, wallpaper: { kind: "host" }, savedUrls: [42] },
     { version: 2, wallpaper },
     { ...defaultSettings, blur: "yes" },
@@ -136,6 +138,9 @@ test("damaged historical or current settings and unsupported versions fail befor
     { ...defaultSettings, homeLayout: { grid: [42], dock: [] } },
     { ...defaultSettings, wechatSendMode: "unknown" },
     { ...defaultSettings, wechatHistoryMessageLimit: 0 },
+    { ...defaultSettings, appearance: { deviceModel: "unknown", systemStyle: "classic" } },
+    { ...defaultSettings, appearance: { deviceModel: "iphone-17", systemStyle: "unknown" } },
+    { ...defaultSettings, appearance: null },
   ];
   let saves = 0;
   for (const raw of samples) {

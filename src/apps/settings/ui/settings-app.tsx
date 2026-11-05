@@ -12,8 +12,11 @@ import type { ModelConnection } from "../model-connections.ts";
 import type { TestModelConnection } from "../model-connection-test.ts";
 import { ModelConnections, ModelConnectionEditor } from "./model-connections.tsx";
 
+import { AppearancePage } from "./appearance-page.tsx";
+
 type SettingsRoute =
   | { page: "root" }
+  | { page: "appearance" }
   | { page: "wallpapers" }
   | { page: "preview"; wallpaper: Wallpaper }
   | { page: "connections" }
@@ -33,12 +36,18 @@ export function SettingsApp({
     <NavigationStack<SettingsRoute> initialRoutes={[{ page: "root" }]} active={active}>
       {(route, navigation) =>
         route.page === "root" ? (
-          <Page navBar={<NavBar title="设置" back={{ label: "主屏幕", onClick: onHome }} />}>
+          <Page
+            largeTitle="设置"
+            navBar={<NavBar title="设置" back={{ label: "主屏幕", onClick: onHome }} />}
+          >
             <GroupedList>
+              <ListCell title="外观" onClick={() => navigation.push({ page: "appearance" })} />
               <ListCell title="壁纸" onClick={() => navigation.push({ page: "wallpapers" })} />
               <ListCell title="模型连接" onClick={() => navigation.push({ page: "connections" })} />
             </GroupedList>
           </Page>
+        ) : route.page === "appearance" ? (
+          <AppearancePage appearance={settings.appearance} onBack={navigation.pop} />
         ) : route.page === "wallpapers" ? (
           <WallpaperLibrary settings={settings} navigation={navigation} />
         ) : route.page === "connections" ? (

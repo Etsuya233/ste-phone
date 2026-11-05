@@ -46,3 +46,16 @@ export interface WechatPreferences {
   getHistoryMessageLimit(): number;
   setHistoryMessageLimit(limit: number): void;
 }
+
+export type DeviceModel = "iphone-6s" | "iphone-17";
+export type SystemStyle = "classic" | "ios26";
+export interface AppearanceSnapshot {
+  readonly deviceModel: DeviceModel;
+  readonly systemStyle: SystemStyle;
+}
+export interface AppearanceSettings {
+  getSnapshot(): AppearanceSnapshot;
+  subscribe(listener: () => void): () => void;
+  setDeviceModel(value: DeviceModel): void;
+  setSystemStyle(value: SystemStyle): void;
+}

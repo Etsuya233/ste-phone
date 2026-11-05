@@ -1,0 +1,246 @@
+/* System appearance is scoped to the panel and independent of device geometry.
+   Opaque reading surfaces retain contrast; glass belongs to navigation and controls. */
+:host [data-system-style="ios26"] {
+  --ios-ink: #000;
+  --ios-blue: #0088ff;
+  --ios-green: #34c759;
+  --ios-surface: #f2f2f7;
+  --ios-row-surface: #fff;
+  --ios-row-active: #e9e9ee;
+  --ios-line: #e5e5ea;
+  --ios-secondary-ink: #8a8a8e;
+  --ios-accessory-ink: #c5c5c7;
+  --ios-control-radius: 24px;
+  --ios-group-gap: 28px;
+  --ios-bar: #f2f2f7cc;
+  --ios-bar-blur: 24px;
+  --ios-footer-blur: 30px;
+  --ios-footer-surface: #ffffffb8;
+  --ios-alert-surface: #f9f9f9eb;
+  --ios-alert-radius: 30px;
+  --ios-alert-width: 300px;
+  --ios-alert-padding: 24px;
+  --ios-alert-scrim: #0005;
+  --ios-app-icon-radius: 15px;
+  --ios-app-icon-shadow: 0 3px 9px #0002, inset 0 1px 1px #ffffff80;
+  --ios-switch-off: #c7c7cc;
+  --ios-switch-shadow: none;
+  --ios-display-tracking: -2.5px;
+  --ios-glass-surface: #ffffffb8;
+  --ios-glass-edge: #ffffffe6;
+  --ios-glass-shadow: 0 5px 20px #3030400c, inset 0 0 0 1px var(--ios-glass-edge);
+}
+:host [data-system-style="ios26"] .ios-nav {
+  --nav-height: 56px;
+  padding-inline: 12px;
+  border: 0;
+  background: linear-gradient(var(--ios-surface) 25%, #f2f2f7b8);
+  backdrop-filter: blur(var(--ios-bar-blur));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
+}
+:host [data-system-style="ios26"] .ios-page {
+  --nav-height: 56px;
+}
+:host [data-system-style="ios26"] .ios-nav .ios-button {
+  min-width: 44px;
+  max-width: 100%;
+  padding-inline: 12px;
+  gap: 5px;
+  border-radius: 24px;
+  color: var(--ios-ink);
+  background: var(--ios-glass-surface);
+  box-shadow: var(--ios-glass-shadow);
+  font-size: 15px;
+}
+:host [data-system-style="ios26"] .ios-nav .ios-button--filled {
+  color: var(--ios-on-accent);
+  background: var(--ios-blue);
+}
+:host [data-system-style="ios26"] .ios-nav .ios-button--danger {
+  color: var(--ios-red);
+}
+:host [data-system-style="ios26"] .ios-nav h1 {
+  font-weight: 650;
+  letter-spacing: -0.4px;
+}
+:host [data-system-style="ios26"] .ios-page-large-title {
+  display: block;
+  margin: 20px 16px 4px;
+  font-family: var(--ios-font);
+  font-size: 34px;
+  font-weight: 750;
+  letter-spacing: -1px;
+  line-height: 1.2;
+}
+:host [data-system-style="ios26"] .ios-page--large-title > .ios-nav h1 {
+  display: none;
+}
+:host [data-system-style="ios26"] .ios-page--large-title > .ios-nav .ios-nav-side--right {
+  grid-column: 3;
+}
+:host [data-system-style="ios26"] .ios-group {
+  margin-inline: 16px;
+}
+:host [data-system-style="ios26"] .ios-group-rows {
+  overflow: hidden;
+  border: 0;
+  border-radius: 26px;
+}
+:host [data-system-style="ios26"] .ios-group-title,
+:host [data-system-style="ios26"] .ios-group-description {
+  margin-inline: 16px;
+  font-size: 13px;
+}
+:host [data-system-style="ios26"] .ios-cell {
+  position: relative;
+  min-height: 52px;
+  padding-block: 14px;
+}
+:host [data-system-style="ios26"] .ios-cell + .ios-cell {
+  border-top: 0;
+}
+:host [data-system-style="ios26"] .ios-cell + .ios-cell::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline: 16px;
+  height: 1px;
+  background: var(--ios-line);
+}
+:host [data-system-style="ios26"] .ios-cell-chevron {
+  font-size: 27px;
+  font-weight: 500;
+}
+:host [data-system-style="ios26"] .ios-text-field {
+  padding-block: 10px;
+}
+:host [data-system-style="ios26"] .ios-text-field input {
+  background: transparent;
+}
+:host [data-system-style="ios26"] .ios-text-field input::placeholder {
+  color: #b6b6bb;
+}
+:host [data-system-style="ios26"] .ios-segmented-options {
+  padding: 3px;
+  gap: 2px;
+  border: 0;
+  border-radius: 26px;
+  background: #e3e3e9;
+}
+:host [data-system-style="ios26"] .ios-segment + .ios-segment {
+  border: 0;
+}
+:host [data-system-style="ios26"] .ios-segment span {
+  min-height: 32px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ios-ink);
+}
+:host [data-system-style="ios26"] .ios-segment:first-child span,
+:host [data-system-style="ios26"] .ios-segment:last-child span,
+:host [data-system-style="ios26"] .ios-segment span {
+  border-radius: 23px;
+}
+:host [data-system-style="ios26"] .ios-segment input:checked + span {
+  color: var(--ios-ink);
+  background: #fff;
+  box-shadow: 0 1px 4px #00000008;
+}
+:host [data-system-style="ios26"] .ios-switch {
+  min-height: 52px;
+}
+:host [data-system-style="ios26"] .ios-button--filled {
+  font-weight: 600;
+}
+:host [data-system-style="ios26"] .ios-alert {
+  box-shadow: var(--ios-glass-shadow);
+}
+:host [data-system-style="ios26"] .ios-alert-actions {
+  margin: 0 12px 12px;
+  gap: 8px;
+  border: 0;
+}
+:host [data-system-style="ios26"] .ios-alert-action {
+  min-height: 44px;
+  border: 0;
+  border-radius: 24px;
+  background: #e5e5eb;
+  font-size: 15px;
+}
+:host [data-system-style="ios26"] .ios-alert-action--primary {
+  color: #fff;
+  background: var(--ios-blue);
+}
+:host [data-system-style="ios26"] .ios-action-sheet-layer {
+  padding: 12px;
+  padding-bottom: calc(var(--safe-bottom) + 12px);
+}
+:host [data-system-style="ios26"] .ios-action-sheet {
+  gap: 10px;
+}
+:host [data-system-style="ios26"] .ios-action-sheet-group {
+  overflow: hidden;
+  border-radius: 28px;
+  box-shadow: var(--ios-glass-shadow);
+}
+:host [data-system-style="ios26"] .ios-action-sheet-action {
+  min-height: 54px;
+}
+:host [data-system-style="ios26"] .ios-text--display {
+  font-weight: 300;
+}
+/* Float the dock as a single glass surface; reserve its existing footer footprint. */
+:host [data-system-style="ios26"] .home-screen .ios-footer {
+  --ios-glass-edge: #ffffff73;
+  inset-inline: 12px;
+  bottom: calc(var(--safe-bottom) + 8px);
+  border-radius: 34px;
+  background: #ffffff40;
+  box-shadow: var(--ios-glass-shadow);
+  backdrop-filter: blur(28px) saturate(1.5);
+}
+:host [data-system-style="ios26"] .home-screen .ios-safe-area {
+  background: transparent;
+}
+/* Match the classic Dock's covered state so app/lock transitions reveal wallpaper. */
+:host [data-system-style="ios26"] .home-layer--covered .home-screen .ios-footer {
+  background-color: transparent;
+  backdrop-filter: blur(0px);
+  box-shadow: none;
+}
+:host [data-system-style="ios26"] .home-dock {
+  padding-inline: 10px;
+}
+:host [data-system-style="ios26"] .home-grid {
+  gap: 24px 12px;
+  padding-top: 28px;
+}
+:host [data-system-style="ios26"] .home-page-indicator {
+  bottom: calc(var(--page-bottom) + 23px);
+}
+:host [data-system-style="ios26"] .home-grid .ios-text--caption {
+  font-weight: 500;
+}
+/* The clock and date remain one swipe-owned layer, with room for either status bar. */
+:host [data-system-style="ios26"] .lock-screen-clock {
+  top: calc(var(--status-height) + 24px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+:host [data-system-style="ios26"] .lock-screen-clock > div {
+  order: -1;
+  margin: 0 0 4px;
+  font-size: 5.2cqw;
+  font-weight: 600;
+}
+:host [data-system-style="ios26"] .lock-screen-clock time {
+  font-size: 27cqw;
+  font-weight: 650;
+  letter-spacing: -0.065em;
+  line-height: 1.1;
+}
+:host [data-system-style="ios26"] .lock-screen-hint {
+  font-size: 4.5cqw;
+  font-weight: 500;
+}

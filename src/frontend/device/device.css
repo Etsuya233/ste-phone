@@ -176,6 +176,9 @@
 :host .software-home {
   display: none;
 }
+:host .device-island {
+  display: none;
+}
 :host .phone-panel--responsive {
   --safe-bottom: calc(50px + env(safe-area-inset-bottom, 0px));
 }

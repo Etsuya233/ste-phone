@@ -48,6 +48,7 @@ mountPhone({
   apps: phone.apps,
   wallpaper: phone.wallpaper,
   homeScreen: phone.homeScreen,
+  appearance: phone.appearance,
   menuEntry: { menu, button },
 });
 logs.info("system", "STE Phone", `v${__STE_PHONE_VERSION__} 已加载`);

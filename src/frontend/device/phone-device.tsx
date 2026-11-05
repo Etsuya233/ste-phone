@@ -14,7 +14,12 @@ import { StatusBar } from "../system/status-bar.tsx";
 import { appSession } from "./app-session.ts";
 import type { AppId } from "./app-session.ts";
 import type { AppDefinition } from "./app-lifecycle.ts";
-import type { WallpaperReader, HomeScreenSettings } from "../../apps/settings/public.ts";
+import type {
+  WallpaperReader,
+  HomeScreenSettings,
+  DeviceModel,
+} from "../../apps/settings/public.ts";
+import { deviceModels } from "./device-models.ts";
 import { LockScreen, SleepingScreen } from "./lock-screen.tsx";
 import { useScreenLock } from "./use-screen-lock.ts";
 import { Expose } from "./expose.tsx";
@@ -45,6 +50,7 @@ const RunningApp = memo(function RunningApp({
 export function PhoneDevice({
   wallpaper,
   homeScreen,
+  deviceModel,
   apps,
   visible,
   scale,
@@ -61,6 +67,7 @@ export function PhoneDevice({
   initialApp?: AppId | "home";
   wallpaper: WallpaperReader;
   homeScreen: HomeScreenSettings;
+  deviceModel: DeviceModel;
   apps: Record<AppId, AppDefinition>;
 }) {
   const screen = useRef<HTMLDivElement>(null);
@@ -77,7 +84,11 @@ export function PhoneDevice({
   const [exposeIndex, setExposeIndex] = useState(0);
   const [exposeDrag, setExposeDrag] = useState<ExposeDrag>(emptyDrag);
   const [quittingApp, setQuittingApp] = useState<AppId | null>(null);
-  const [screenSize, setScreenSize] = useState({ width: 375, height: 667, bottom: 0 });
+  const [screenSize, setScreenSize] = useState(() => ({
+    width: deviceModels[deviceModel].screenWidth,
+    height: deviceModels[deviceModel].screenHeight,
+    bottom: 0,
+  }));
   const homeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selectedSettings = useSyncExternalStore(wallpaper.subscribe, wallpaper.getSnapshot);
   const lastApp = useRef<AppId | null>(initialApp === "home" ? null : initialApp);
@@ -315,6 +326,11 @@ export function PhoneDevice({
       </div>
       <div ref={screen} className={`phone-screen phone-screen--${lock.state}`}>
         <div
+          className={`device-island ${draggable ? "device-island--draggable" : ""}`}
+          aria-hidden="true"
+          {...dragEvents}
+        />
+        <div
           inert={!interactive}
           aria-hidden={!interactive}
           className={`system-workspace ${page === "expose" ? "system-workspace--expose" : ""} ${exposeDrag.x || exposeDrag.y ? "system-workspace--dragging" : ""} ${transition === "expose-home" ? "system-workspace--expose-home" : ""}`}
@@ -462,6 +478,7 @@ export function PhoneDevice({
             </svg>
           </button>
           <button
+            className="software-home-button"
             aria-label={
               lock.state === "unlocked" ? "Home，单击返回主屏幕，双击查看后台" : "Home，唤醒到锁屏"
             }

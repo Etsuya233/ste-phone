@@ -67,6 +67,7 @@ mountPhone({
   apps: phone.apps,
   wallpaper: phone.wallpaper,
   homeScreen: phone.homeScreen,
+  appearance: phone.appearance,
   initialApp:
     options.get("gallery") === "1"
       ? "gallery"

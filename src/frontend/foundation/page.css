@@ -5,6 +5,10 @@
   --page-top: var(--status-height);
   --page-bottom: calc(var(--page-footer-height) + var(--safe-bottom));
 }
+/* Only the heading displayed by the current system style enters the accessibility tree. */
+:host .ios-page-large-title {
+  display: none;
+}
 :host .ios-page--nav {
   --page-top: calc(var(--status-height) + var(--nav-height));
 }

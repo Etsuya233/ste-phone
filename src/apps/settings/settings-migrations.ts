@@ -28,13 +28,26 @@ const v6Defaults = {
 };
 
 export const phoneSettingsMigrationPlan: MigrationPlan<PhoneSettings> = {
-  currentVersion: 6,
-  steps: [1, 2, 3, 4, 5].map((from) => ({
-    from,
-    to: 6,
-    name: `settings-v${from}-to-v6`,
-    migrate: migrateLegacySettings,
-  })),
+  currentVersion: 7,
+  steps: [
+    ...[1, 2, 3, 4, 5].map((from) => ({
+      from,
+      to: 6,
+      name: `settings-v${from}-to-v6`,
+      migrate: migrateLegacySettings,
+    })),
+    {
+      from: 6,
+      to: 7,
+      name: "settings-v6-to-v7",
+      migrate: (value) => {
+        const settings = settingsRecord(value);
+        validateSettingsFields(settings, 6);
+        validateWechatHistoryLimit(settings.wechatHistoryMessageLimit as number);
+        return { ...settings, appearance: { deviceModel: "iphone-6s", systemStyle: "classic" } };
+      },
+    },
+  ],
   validate: validatePhoneSettings,
 };
 
@@ -63,11 +76,18 @@ function migrateLegacySettings(value: unknown): unknown {
 
 function validatePhoneSettings(value: unknown): asserts value is PhoneSettings {
   const settings = settingsRecord(value);
-  if (settings.version !== 6) {
+  if (settings.version !== 7) {
     throw new Error("不支持的手机设置版本");
   }
-  validateSettingsFields(settings, 6);
+  validateSettingsFields(settings, 7);
   validateWechatHistoryLimit(settings.wechatHistoryMessageLimit as number);
+  const appearance = settingsRecord(settings.appearance);
+  if (appearance.deviceModel !== "iphone-6s" && appearance.deviceModel !== "iphone-17") {
+    throw new Error("不支持的手机外形");
+  }
+  if (appearance.systemStyle !== "classic" && appearance.systemStyle !== "ios26") {
+    throw new Error("不支持的系统风格");
+  }
 }
 
 /** 校验各历史阶段已经存在的字段；后续新增字段由迁移步骤显式补齐。 */

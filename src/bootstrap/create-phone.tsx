@@ -26,6 +26,7 @@ import type {
   ModelConnectionsReader,
   WallpaperReader,
   HomeScreenSettings,
+  AppearanceSettings,
 } from "../apps/settings/public.ts";
 import { AppStore } from "../apps/app-store/ui/app-store.tsx";
 import { WechatService } from "../apps/wechat/wechat-service.ts";
@@ -38,6 +39,7 @@ export interface PhoneRuntime {
   readonly apps: Record<AppId, AppDefinition>;
   readonly wallpaper: WallpaperReader;
   readonly homeScreen: HomeScreenSettings;
+  readonly appearance: AppearanceSettings;
   readonly modelConnections: ModelConnectionsReader;
   readonly data: DataAppPublic;
   readonly chat: ChatContext;
@@ -161,6 +163,7 @@ export function createPhone(dependencies: {
     apps,
     wallpaper: settings.wallpaper,
     homeScreen: settings.homeScreen,
+    appearance: settings.appearance,
     modelConnections: settings.modelConnections,
     data,
     chat: dependencies.chat,

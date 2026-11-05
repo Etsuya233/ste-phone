@@ -1,20 +1,24 @@
-import type { WallpaperReader, HomeScreenSettings } from "../apps/settings/public.ts";
+import type {
+  WallpaperReader,
+  HomeScreenSettings,
+  AppearanceSettings,
+} from "../apps/settings/public.ts";
 import type { AppDefinition } from "./device/app-lifecycle.ts";
 import type { AppId } from "./device/app-session.ts";
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties, PointerEvent } from "react";
 import { PhoneDevice } from "./device/phone-device.tsx";
 import { StEntry } from "./host/st-entry.tsx";
 import type { StMenuEntry } from "./host/st-entry.tsx";
 import { usePhoneInputVisibility, usePhoneViewport } from "./device/use-phone-viewport.ts";
+import { deviceModels } from "./device/device-models.ts";
 
-const DEVICE_WIDTH = 430;
-const DEVICE_HEIGHT = 886;
 const VIEWPORT_GAP = 12;
 
 export function PhoneApp({
   wallpaper,
   homeScreen,
+  appearance,
   apps,
   responsive = false,
   draggable = false,
@@ -26,6 +30,7 @@ export function PhoneApp({
   initialApp?: "home" | AppId;
   wallpaper: WallpaperReader;
   homeScreen: HomeScreenSettings;
+  appearance: AppearanceSettings;
   apps: Record<AppId, AppDefinition>;
   menuEntry?: StMenuEntry;
 }) {
@@ -42,16 +47,18 @@ export function PhoneApp({
   const [started, setStarted] = useState(false);
   const { layout, visible: viewport } = usePhoneViewport(panel, open);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const selectedAppearance = useSyncExternalStore(appearance.subscribe, appearance.getSnapshot);
+  const device = deviceModels[selectedAppearance.deviceModel];
   const fullscreen = responsive && layout.width <= 480;
   const scale = fullscreen
     ? 1
     : Math.min(
         1,
-        (layout.width - VIEWPORT_GAP * 2) / DEVICE_WIDTH,
-        (layout.height - VIEWPORT_GAP * 2) / DEVICE_HEIGHT,
+        (layout.width - VIEWPORT_GAP * 2) / device.width,
+        (layout.height - VIEWPORT_GAP * 2) / device.height,
       );
-  const width = fullscreen ? viewport.width : DEVICE_WIDTH * scale;
-  const height = fullscreen ? viewport.height : DEVICE_HEIGHT * scale;
+  const width = fullscreen ? viewport.width : device.width * scale;
+  const height = fullscreen ? viewport.height : device.height * scale;
   const horizontalTravel = Math.max(0, (viewport.width - width) / 2 - VIEWPORT_GAP);
   const verticalTravel = Math.max(0, (viewport.height - height) / 2 - VIEWPORT_GAP);
   const x = fullscreen ? 0 : Math.max(-horizontalTravel, Math.min(horizontalTravel, position.x));
@@ -114,6 +121,8 @@ export function PhoneApp({
         ref={panel}
         id="ste-phone-panel"
         className={`phone-panel ${fullscreen ? "phone-panel--responsive" : ""}`}
+        data-device={selectedAppearance.deviceModel}
+        data-system-style={selectedAppearance.systemStyle}
         aria-label="小手机"
         style={
           {
@@ -122,6 +131,11 @@ export function PhoneApp({
             left: viewport.left + (viewport.width - width) / 2 + x,
             top: `calc(${viewport.top + (viewport.height - height) / 2 + y}px + var(--phone-input-offset, 0px))`,
             "--device-scale": scale,
+            "--device-width": `${device.width}px`,
+            "--device-height": `${device.height}px`,
+            "--device-bezel-height": `${device.bezel}px`,
+            "--device-inset": `${device.inset}px`,
+            "--screen-height": `${device.screenHeight}px`,
           } as CSSProperties
         }
         onClose={() => {
@@ -151,6 +165,7 @@ export function PhoneApp({
               visible={open}
               wallpaper={wallpaper}
               homeScreen={homeScreen}
+              deviceModel={selectedAppearance.deviceModel}
               apps={apps}
               initialApp={initialApp}
               scale={scale}
