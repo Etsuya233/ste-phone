@@ -1,5 +1,5 @@
 import type { Agent, AgentEvent, AgentMessage } from "@earendil-works/pi-agent-core";
-import type { Model } from "@earendil-works/pi-ai";
+import type { Model, UserMessage } from "@earendil-works/pi-ai";
 
 /** 连接仅声明模型 ID；容量和价格未知，实际预算由应用随请求提供。 */
 export function createCompletionModel(id: string): Model<"openai-completions"> {
@@ -25,10 +25,10 @@ export interface AgentRunResult {
 /** 只管理一次运行的超时、取消和订阅；回复是否满足业务要求由应用判断。 */
 export async function runAgent(
   agent: Agent,
-  prompt: string,
+  prompt: string | UserMessage,
   options: {
     signal: AbortSignal;
-    timeoutMs: number;
+    timeoutMs?: number;
     onEvent(event: AgentEvent): void;
   },
 ): Promise<AgentRunResult> {
@@ -37,12 +37,19 @@ export async function runAgent(
   const abort = () => agent.abort();
   const unsubscribe = agent.subscribe(options.onEvent);
   options.signal.addEventListener("abort", abort, { once: true });
-  const timer = setTimeout(() => {
-    timedOut = true;
-    agent.abort();
-  }, options.timeoutMs);
+  const timer =
+    options.timeoutMs === undefined
+      ? undefined
+      : setTimeout(() => {
+          timedOut = true;
+          agent.abort();
+        }, options.timeoutMs);
   try {
-    await agent.prompt(prompt);
+    const message: UserMessage =
+      typeof prompt === "string"
+        ? { role: "user", content: [{ type: "text", text: prompt }], timestamp: Date.now() }
+        : prompt;
+    await agent.prompt(message);
     return { reply: agent.state.messages.at(-1), timedOut };
   } finally {
     clearTimeout(timer);

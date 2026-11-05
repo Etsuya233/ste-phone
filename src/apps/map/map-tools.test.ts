@@ -65,7 +65,9 @@ function fixture(
       fetchImpl: async () => sse(next(++rounds), rounds),
     }),
     connection,
-    prompt: "地图测试",
+    prompt: { role: "user", content: "地图测试", timestamp: 0 },
+    history: [],
+    recordMessages() {},
     signal: controller.signal,
     saved,
     candidate: saved,
@@ -140,43 +142,23 @@ test("query stays read-only and story tools only exist for the supplied reader",
   assert.doesNotMatch(JSON.stringify(first.tools), /map_story|visual/);
   assert.deepEqual(base.features, [point("a")]);
 });
-test("invalid raw parameters and unknown tools count toward the consecutive failure limit", async () => {
-  const f = fixture((round) => [
-    operation(round % 2 ? "map_read" : "map_forbidden", { query: 42 }),
-  ]);
-  await assert.rejects(f.run, /连续工具失败/);
-  assert.equal(f.rounds(), 5);
-  assert.equal(
-    results(f.trace).every((result) => result.failed),
-    true,
-  );
-});
-test("successful tools can still reach the model round limit", async () => {
-  const f = fixture(() => [operation("map_read", {})]);
-  await assert.rejects(f.run, /模型轮次上限/);
-  assert.equal(f.rounds(), 20);
-});
-test("oversized tool batches abort before executing any calls", async () => {
-  let reads = 0;
-  const f = fixture(
-    () => Array.from({ length: 61 }, () => operation("map_story_summary", {})),
-    emptyMap(),
-    () => ({
-      memoryIds: new Set(),
-      async directory() {
-        return {};
-      },
-      async records() {
-        return {};
-      },
-      async summary() {
-        reads++;
-        return {};
-      },
-    }),
-  );
-  await assert.rejects(f.run, /工具调用上限/);
-  assert.equal(reads, 0);
+test("map keeps running beyond the old model, tool and consecutive failure limits", async () => {
+  const f = fixture((round) => {
+    if (round <= 6) {
+      return [operation("map_read", { query: 42 })];
+    }
+    if (round === 7) {
+      return Array.from({ length: 61 }, () => operation("map_read", {}));
+    }
+    if (round <= 20) {
+      return [operation("map_read", {})];
+    }
+    return { type: "query", summary: "已检查", featureIds: [], routeRoadIds: [] };
+  });
+  assert.equal((await f.run).type, "query");
+  assert.equal(f.rounds(), 21);
+  assert.equal(results(f.trace).filter((result) => result.failed).length, 6);
+  assert.equal(results(f.trace).length, 80);
 });
 test(
   "abort settles a hanging story read and prevents another model request",

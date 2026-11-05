@@ -54,7 +54,9 @@ export function MapAgentPanel({
     });
   };
   const startNewConversation = () => {
-    service.newConversation();
+    if (!service.newConversation()) {
+      return;
+    }
     onClearSelection();
     setInstruction("");
     follow.current = true;

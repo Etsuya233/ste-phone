@@ -1,6 +1,6 @@
 import { MapService } from "../apps/map/map-service.ts";
 import { MapApp } from "../apps/map/ui/map-app.tsx";
-import type { MapStorage } from "../apps/map/map.ts";
+import type { MapConversationStorage, MapStorage } from "../apps/map/map.ts";
 import { GalleryApp } from "../apps/gallery/ui/gallery-app.tsx";
 import { ImagePlaygroundApp } from "../apps/image-playground/ui/image-playground-app.tsx";
 import type { ImageHub } from "../core/image-hub/public.ts";
@@ -59,6 +59,7 @@ export function createPhone(dependencies: {
   chat: ChatContext;
   diaryStorage: DiaryStorage;
   mapStorage: MapStorage;
+  mapConversations: MapConversationStorage;
   wechatStorage: WechatStorage;
   wechatStickerStorage: WechatStickerStorage;
   logs: PhoneLog;
@@ -89,6 +90,7 @@ export function createPhone(dependencies: {
   });
   const map = new MapService({
     storage: dependencies.mapStorage,
+    conversations: dependencies.mapConversations,
     logs: dependencies.logs,
     data,
     chat: dependencies.chat,

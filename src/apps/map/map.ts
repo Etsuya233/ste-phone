@@ -1,3 +1,5 @@
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
+
 export type MapPoint = [number, number];
 export interface MapCartography {
   layer: "terrain" | "district" | "building";
@@ -79,6 +81,7 @@ export interface MapToolStep {
   output: string | null;
 }
 export interface MapConversationTurn {
+  messages: AgentMessage[];
   id: string;
   instruction: string;
   thinking: string;
@@ -87,6 +90,11 @@ export interface MapConversationTurn {
   error: string | null;
   status: "running" | "done" | "failed" | "cancelled";
 }
+export interface MapConversationStorage {
+  read(chatId: string, scopeKey: string): MapConversationTurn[];
+  write(chatId: string, scopeKey: string, turns: MapConversationTurn[]): void;
+}
+
 export interface MapSnapshot {
   progress?: string | null;
   chatId: string | null;

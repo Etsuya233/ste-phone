@@ -1,3 +1,4 @@
+import type { UserMessage } from "@earendil-works/pi-ai";
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { ChatContext } from "../../core/chat/public.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
@@ -8,6 +9,7 @@ import type {
 } from "../settings/public.ts";
 import {
   emptyMap,
+  type MapConversationStorage,
   type MapConversationTurn,
   type MapData,
   type MapDocument,
@@ -23,6 +25,7 @@ import type { PhoneLog } from "../logs/public.ts";
 
 interface Dependencies {
   storage: MapStorage;
+  conversations: MapConversationStorage;
   data: DataAppPublic;
   chat: ChatContext;
   connections: ModelConnectionsReader;
@@ -52,7 +55,7 @@ export class MapService {
   #undo: MapDocument | null = null;
   #binding: string;
   #snapshot: MapSnapshot;
-  #turnId = 0;
+  #conversationScope: string | null = null;
   constructor(deps: Dependencies) {
     this.#deps = deps;
     this.#chatId = deps.chat.getSnapshot()?.id ?? null;
@@ -88,21 +91,27 @@ export class MapService {
         return false;
       }
       const scopeKey = stableMapKey(schema);
-      if (scopeKey !== this.#snapshot.scopeKey) {
+      if (scopeKey !== this.#snapshot.scopeKey || this.#conversationScope !== scopeKey) {
         if (this.#task) {
           this.cancel();
         }
+        const conversation = this.#chatId
+          ? this.#deps.conversations.read(this.#chatId, scopeKey)
+          : [];
+        this.#conversationScope = scopeKey;
         this.#undo = null;
         this.#publish({
           map: this.#data.maps[scopeKey] ?? emptyMap(),
           scopeKey,
           canUndo: false,
           proposal: null,
-          conversation: [],
+          error: null,
+          conversation,
           highlightIds: [],
         });
+      } else {
+        this.#publish({ error: null });
       }
-      this.#publish({ error: null });
       return true;
     } catch (error) {
       if (version === this.#preparing) {
@@ -141,7 +150,6 @@ export class MapService {
     }
     // 在异步取材前固定配置副本。此后设置中的编辑和删除仅影响后续任务。
     const connection: ModelConnectionSnapshot = this.#deps.connections.getConnection(connectionId);
-    const turnId = this.#startTurn(input.instruction.trim());
     const reservation = {};
     // 空间查询前即占用入口并固定会话，双击或切换聊天都不能把旧指令带入新目标。
     const session = this.#session;
@@ -159,12 +167,22 @@ export class MapService {
       return;
     }
     this.#reservation = null;
+    const { scopeKey, map, proposal, conversation } = this.#snapshot;
+    const history = conversation.flatMap((turn) => turn.messages);
+    const instruction = input.instruction.trim();
+    const content = JSON.stringify({
+      instruction,
+      selectedId: input.selectedId ?? null,
+      selectedPoint: input.selectedPoint ?? null,
+    });
+    const prompt: UserMessage = { role: "user", content, timestamp: Date.now() };
+    const turnId = this.#startTurn(instruction, prompt);
     if (!prepared) {
       this.#failTurn(turnId, this.#snapshot.error ?? new Error("读取地图资料失败"));
       this.#publish({ status: "idle", error: null });
+      this.#persistConversation();
       return;
     }
-    const { scopeKey, map, proposal } = this.#snapshot;
     if (!this.#chatId || !scopeKey) {
       this.#failTurn(turnId, new Error("请先打开聊天并连接 Memory 资料空间"));
       this.#publish({ status: "idle" });
@@ -178,19 +196,20 @@ export class MapService {
     };
     this.#task = task;
     this.#publish({ status: "reading", error: null });
+    this.#persistConversation();
+    let messages: MapConversationTurn["messages"] = [prompt];
     try {
       this.#publish({ status: "generating", progress: null });
       const candidate = proposal?.map ?? map;
-      const prompt = JSON.stringify({
-        instruction: input.instruction.trim(),
-        selectedId: input.selectedId ?? null,
-        selectedPoint: input.selectedPoint ?? null,
-      });
-      this.#deps.logs?.info("map", "地图助手", "开始地图任务", { prompt });
+      this.#deps.logs?.info("map", "地图助手", "开始地图任务", { prompt: content });
       const turn = await generateMapTurn({
         transport: this.#deps.transport,
         connection,
         prompt,
+        history,
+        recordMessages: (transcript) => {
+          messages = transcript;
+        },
         signal: task.controller.signal,
         saved: map,
         candidate,
@@ -226,6 +245,7 @@ export class MapService {
       if (stableMapKey(currentSchema) !== task.scopeKey) {
         throw new Error("生成期间稳定资料空间已变化，地图提案已丢弃");
       }
+      this.#updateTurn(turnId, { messages });
       if (turn.type === "query") {
         const { reply } = turn;
         this.#completeTurn(turnId, reply.summary);
@@ -240,11 +260,13 @@ export class MapService {
       }
     } catch (error) {
       if (this.#owns(task)) {
+        this.#updateTurn(turnId, { messages });
         this.#failTurn(turnId, error as Error);
         this.#publish({ status: "idle" });
       }
     } finally {
       if (this.#task === task) {
+        this.#persistConversation();
         this.#task = null;
       }
     }
@@ -274,11 +296,20 @@ export class MapService {
     this.#publish({ proposal: null, highlightIds: [] });
   }
   /** 新对话保留已保存地图与撤销记录，只清空对话、待确认提案和高亮。 */
-  newConversation(): void {
+  newConversation(): boolean {
     if (this.#saving) {
       throw new Error("地图正在保存，请等待完成");
     }
     this.cancel();
+    const { scopeKey } = this.#snapshot;
+    try {
+      if (this.#chatId && scopeKey) {
+        this.#deps.conversations.write(this.#chatId, scopeKey, []);
+      }
+    } catch (error) {
+      this.#publish({ error: new Error("无法清除本地地图对话", { cause: error }) });
+      return false;
+    }
     this.#publish({
       conversation: [],
       proposal: null,
@@ -286,6 +317,7 @@ export class MapService {
       progress: null,
       highlightIds: [],
     });
+    return true;
   }
   cancel(): void {
     ++this.#preparing;
@@ -296,6 +328,7 @@ export class MapService {
     const running = this.#snapshot.conversation.findLast((turn) => turn.status === "running");
     if (running) {
       this.#updateTurn(running.id, { status: "cancelled" });
+      this.#persistConversation();
     }
     // 已提交的保存属于原聊天，等待其完成；退出只使结果失去当前界面归属。
     if (this.#snapshot.status !== "saving") {
@@ -379,9 +412,10 @@ export class MapService {
       task.scopeKey === this.#snapshot.scopeKey
     );
   }
-  #startTurn(instruction: string): string {
+  #startTurn(instruction: string, prompt: UserMessage): string {
     const turn: MapConversationTurn = {
-      id: `turn-${++this.#turnId}`,
+      id: `turn-${this.#snapshot.conversation.length + 1}`,
+      messages: [prompt],
       instruction,
       thinking: "",
       tools: [],
@@ -470,6 +504,7 @@ export class MapService {
     this.#undo = null;
     this.#chatId = chatId;
     this.#binding = binding;
+    this.#conversationScope = null;
     this.#data = chatId
       ? (this.#deps.storage.read(chatId) ?? { version: 1, maps: {} })
       : { version: 1, maps: {} };
@@ -487,6 +522,16 @@ export class MapService {
     });
     void this.prepare();
   };
+  #persistConversation(): void {
+    const { scopeKey, conversation } = this.#snapshot;
+    if (this.#chatId && scopeKey && scopeKey === this.#conversationScope) {
+      try {
+        this.#deps.conversations.write(this.#chatId, scopeKey, conversation);
+      } catch (error) {
+        this.#publish({ error: new Error("无法保存本地地图对话", { cause: error }) });
+      }
+    }
+  }
   #publish(patch: Partial<MapSnapshot>): void {
     this.#snapshot = { ...this.#snapshot, ...patch };
     this.#listeners.forEach((listener) => listener());

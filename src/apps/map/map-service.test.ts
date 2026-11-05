@@ -1,3 +1,4 @@
+import { createMapConversationStorage } from "../../infrastructure/host/map-conversation-storage.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { MapService } from "./map-service.ts";
@@ -73,7 +74,8 @@ function deferred<T>() {
 }
 const flush = () => new Promise<void>((accept) => setImmediate(accept));
 
-function fixture(initial: MapDocument = emptyMap()) {
+function fixture(initial: MapDocument = emptyMap(), disk = new Map<string, string>()) {
+  const requests: { messages: { role: string; content: string }[]; max_tokens?: number }[] = [];
   let selectedModel: string | null = connection.id;
   let configured = [{ ...connection }, { ...connection, id: "global", model: "global-test" }];
   const requestedModels: { model: string; custom_url: string }[] = [];
@@ -87,6 +89,7 @@ function fixture(initial: MapDocument = emptyMap()) {
   const prompts: { map: MapDocument; instruction: string }[] = [];
   const requestedTools: string[][] = [];
   let replyValue = proposal("one");
+  let truncate = false;
   let delayedReply: Promise<Response> | undefined;
   let describeGate: Promise<void> | null = null;
   let saveGate: Promise<void> | null = null;
@@ -144,6 +147,18 @@ function fixture(initial: MapDocument = emptyMap()) {
     readSummary: unused,
   };
   const service = new MapService({
+    conversations: createMapConversationStorage(
+      {
+        getItem: (key) => disk.get(key) ?? null,
+        setItem: (key, value) => {
+          disk.set(key, value);
+        },
+        removeItem: (key) => {
+          disk.delete(key);
+        },
+      },
+      "test:",
+    ),
     data,
     chat: {
       getSnapshot: () => ({ id: chatId, name: chatId }),
@@ -173,6 +188,7 @@ function fixture(initial: MapDocument = emptyMap()) {
           custom_url: string;
           tools?: { function?: { name?: string } }[];
         };
+        requests.push(body);
         requestedModels.push({ model: body.model, custom_url: body.custom_url });
         requestedTools.push(
           (body.tools ?? []).flatMap((tool) => (tool.function?.name ? [tool.function.name] : [])),
@@ -182,7 +198,9 @@ function fixture(initial: MapDocument = emptyMap()) {
           prompts.push(JSON.parse(last.content));
           return delayedReply ?? tool("map_read", {});
         }
-        const results = body.messages.filter((message) => message.role === "tool");
+        const results = body.messages
+          .slice(body.messages.findLastIndex((message) => message.role === "user") + 1)
+          .filter((message) => message.role === "tool");
         if (results.length === 1) {
           prompts.at(-1)!.map = JSON.parse(last.content).value;
           if (replyValue.type === "query") {
@@ -192,6 +210,11 @@ function fixture(initial: MapDocument = emptyMap()) {
           return tool("map_apply", { title, upsert, remove, events });
         }
         if (results.length === 2) {
+          if (truncate) {
+            return new Response(
+              'data: {"choices":[{"delta":{},"finish_reason":"length"}]}\n\ndata: [DONE]\n\n',
+            );
+          }
           return tool("map_check", {});
         }
         return response({ type: "proposal", summary: replyValue.summary });
@@ -213,6 +236,8 @@ function fixture(initial: MapDocument = emptyMap()) {
   });
   return {
     service,
+    requests,
+    disk,
     saved,
     prompts,
     requestedModels,
@@ -235,6 +260,9 @@ function fixture(initial: MapDocument = emptyMap()) {
     },
     reply: (value: MapReply) => {
       replyValue = value;
+    },
+    setTruncated: (value: boolean) => {
+      truncate = value;
     },
     delayReply: (promise: Promise<Response>) => {
       delayedReply = promise;
@@ -509,5 +537,65 @@ test("new conversation cancels a running turn and discards its late reply", asyn
   assert.equal(snapshot.proposal, null);
   assert.equal(snapshot.status, "idle");
   assert.equal(f.writes, 0);
+  f.service.dispose();
+});
+
+test("wire history survives reload as an exact prefix and new conversation clears it", async () => {
+  const first = fixture();
+  await first.service.request({ instruction: "新增一", selectedPoint: [10, 20] });
+  const previousRequest = first.requests.at(-1)!;
+  assert.equal("max_tokens" in previousRequest, false);
+  first.service.dispose();
+
+  const reopened = fixture(emptyMap(), first.disk);
+  await reopened.service.prepare();
+  const restored = reopened.service.getSnapshot().conversation[0]!;
+  assert.equal(restored.instruction, "新增一");
+  assert.equal(restored.answer, "新增one");
+  assert.deepEqual(
+    restored.tools.map((tool) => tool.name),
+    ["map_read", "map_apply", "map_check"],
+  );
+  reopened.reply(proposal("two"));
+  await reopened.service.request({ instruction: "继续" });
+  const messages = reopened.requests[0]!.messages;
+  assert.deepEqual(messages.slice(0, previousRequest.messages.length), previousRequest.messages);
+  assert.deepEqual(
+    messages.slice(previousRequest.messages.length).map((message) => message.role),
+    ["assistant", "user"],
+  );
+  reopened.switchChat("b");
+  await reopened.service.prepare();
+  assert.deepEqual(reopened.service.getSnapshot().conversation, []);
+  reopened.switchChat("a");
+  await reopened.service.prepare();
+  assert.equal(reopened.service.getSnapshot().conversation.length, 2);
+  assert.equal(reopened.service.newConversation(), true);
+  reopened.service.dispose();
+
+  const cleared = fixture(emptyMap(), first.disk);
+  await cleared.service.prepare();
+  assert.deepEqual(cleared.service.getSnapshot().conversation, []);
+  await cleared.service.request({ instruction: "重新开始" });
+  assert.deepEqual(
+    cleared.requests[0]!.messages.map((message) => message.role),
+    ["system", "user"],
+  );
+  cleared.service.dispose();
+});
+
+test("after truncation, continue keeps the original instruction and complete tool exchanges", async () => {
+  const f = fixture();
+  f.setTruncated(true);
+  await f.service.request({ instruction: "新增一" });
+  assert.match(f.service.getSnapshot().conversation[0]!.error!, /地图回复被截断/);
+  const previousRequest = f.requests.at(-1)!.messages;
+  assert.equal(previousRequest.at(-1)!.role, "tool");
+
+  f.setTruncated(false);
+  await f.service.request({ instruction: "继续" });
+  const followUp = f.requests.find((request) => request.messages.at(-1)?.content.includes("继续"))!;
+  assert.deepEqual(followUp.messages.slice(0, -1), previousRequest);
+  assert.equal(f.service.getSnapshot().conversation.at(-1)!.status, "done");
   f.service.dispose();
 });

@@ -180,7 +180,11 @@ export function previewMapReply(
   messages: readonly Message[],
   mode: string | null,
 ): string | ToolCall {
-  const user = messages.find((message) => message.role === "user")!;
+  const userIndex = messages.findLastIndex((message) => message.role === "user");
+  const user = messages[userIndex]!;
+  if (user.role !== "user") {
+    throw new Error("缺少本轮地图指令");
+  }
   const text =
     typeof user.content === "string"
       ? user.content
@@ -191,6 +195,7 @@ export function previewMapReply(
   const input = JSON.parse(text) as PreviewMapInstruction;
   const results = new Map(
     messages
+      .slice(userIndex + 1)
       .filter((message) => message.role === "toolResult")
       .map((result) => [result.toolName, toolValue(result)]),
   );

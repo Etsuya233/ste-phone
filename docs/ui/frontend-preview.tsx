@@ -1,3 +1,4 @@
+import { createMapConversationStorage } from "../../src/infrastructure/host/map-conversation-storage.ts";
 import { PhoneSettingsService } from "../../src/apps/settings/settings-service.ts";
 import { createPreviewMapStorage } from "./preview-map.ts";
 import { createPreviewImageHub } from "./preview-image-hub.ts";
@@ -73,6 +74,10 @@ const phone = createPhone({
   ),
   chat: createPreviewChatContext(),
   dataProvider: new MemoryDatabaseProvider(),
+  mapConversations: createMapConversationStorage(
+    localStorage,
+    "ste-phone-preview-map-conversation-v1:",
+  ),
   mapStorage: createPreviewMapStorage(options.get("map-test")),
   diaryStorage: createPreviewDiaryStorage(options.get("diary-test")),
   wechatStorage: createPreviewWechatStorage(
