@@ -160,7 +160,6 @@ export function createPreviewMapStorage(mode: string | null): MapStorage {
 interface PreviewMapInstruction {
   instruction: string;
   selectedId: string | null;
-  includeStory: boolean;
 }
 
 function toolValue(result: ToolResultMessage): unknown {
@@ -201,7 +200,7 @@ export function previewMapReply(
     name,
     arguments: args,
   });
-  if (input.includeStory && !results.has("map_story_summary")) {
+  if (!results.has("map_story_summary")) {
     return call("map_story_summary");
   }
   if (!results.has("map_read")) {

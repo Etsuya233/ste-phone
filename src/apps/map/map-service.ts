@@ -8,14 +8,16 @@ import type {
 } from "../settings/public.ts";
 import {
   emptyMap,
+  type MapConversationTurn,
   type MapData,
   type MapDocument,
   type MapSnapshot,
   type MapStorage,
   type MapPoint,
+  type MapToolStep,
 } from "./map.ts";
 import { mapScope, stableMapKey } from "./map-context.ts";
-import { generateMapTurn } from "./map-generation.ts";
+import { generateMapTurn, type MapAgentTrace } from "./map-generation.ts";
 import { createMapStoryReader } from "./map-tool-story.ts";
 import type { PhoneLog } from "../logs/public.ts";
 
@@ -50,6 +52,7 @@ export class MapService {
   #undo: MapDocument | null = null;
   #binding: string;
   #snapshot: MapSnapshot;
+  #turnId = 0;
   constructor(deps: Dependencies) {
     this.#deps = deps;
     this.#chatId = deps.chat.getSnapshot()?.id ?? null;
@@ -65,10 +68,9 @@ export class MapService {
       proposal: null,
       status: "idle",
       error: null,
-      answer: null,
+      conversation: [],
       highlightIds: [],
       canUndo: false,
-      storyTables: [],
     };
     this.#unsubscribe = [deps.chat.subscribe(this.#changed), deps.data.subscribe(this.#changed)];
   }
@@ -96,22 +98,11 @@ export class MapService {
           scopeKey,
           canUndo: false,
           proposal: null,
+          conversation: [],
           highlightIds: [],
         });
       }
-      const previous = this.#snapshot.storyTables;
-      const storyTables = schema.objects
-        .filter((table) => table.name.startsWith("src_"))
-        .map((table) => ({
-          name: table.name,
-          description: table.description,
-          selected:
-            previous.find((item) => item.name === table.name)?.selected ??
-            /地点|地理|位置|区域|地图|场景|location|place|region|world|story_state|chronicle|plot_summar|important_event/i.test(
-              `${table.name} ${table.description}`,
-            ),
-        }));
-      this.#publish({ storyTables, error: null });
+      this.#publish({ error: null });
       return true;
     } catch (error) {
       if (version === this.#preparing) {
@@ -119,21 +110,6 @@ export class MapService {
       }
       return false;
     }
-  }
-
-  setStoryTables(names: string[]): void {
-    if (this.#task) {
-      throw new Error("请等待地图取材完成后调整资料表");
-    }
-    if (names.some((name) => !this.#snapshot.storyTables.some((table) => table.name === name))) {
-      throw new Error("资料表不存在");
-    }
-    this.#publish({
-      storyTables: this.#snapshot.storyTables.map((table) => ({
-        ...table,
-        selected: names.includes(table.name),
-      })),
-    });
   }
 
   selectModel(id: string): void {
@@ -146,7 +122,6 @@ export class MapService {
   async request(input: {
     instruction: string;
     selectedId?: string;
-    includeStory?: boolean;
     selectedPoint?: MapPoint;
   }): Promise<void> {
     if (this.#task || this.#reservation || this.#saving) {
@@ -166,6 +141,7 @@ export class MapService {
     }
     // 在异步取材前固定配置副本。此后设置中的编辑和删除仅影响后续任务。
     const connection: ModelConnectionSnapshot = this.#deps.connections.getConnection(connectionId);
+    const turnId = this.#startTurn(input.instruction.trim());
     const reservation = {};
     // 空间查询前即占用入口并固定会话，双击或切换聊天都不能把旧指令带入新目标。
     const session = this.#session;
@@ -184,12 +160,14 @@ export class MapService {
     }
     this.#reservation = null;
     if (!prepared) {
-      this.#publish({ status: "idle" });
+      this.#failTurn(turnId, this.#snapshot.error ?? new Error("读取地图资料失败"));
+      this.#publish({ status: "idle", error: null });
       return;
     }
     const { scopeKey, map, proposal } = this.#snapshot;
     if (!this.#chatId || !scopeKey) {
-      this.#publish({ error: new Error("请先打开聊天并连接 Memory 资料空间"), status: "idle" });
+      this.#failTurn(turnId, new Error("请先打开聊天并连接 Memory 资料空间"));
+      this.#publish({ status: "idle" });
       return;
     }
     const task: Task = {
@@ -199,23 +177,16 @@ export class MapService {
       scopeKey,
     };
     this.#task = task;
-    this.#publish({ status: "reading", error: null, answer: null });
+    this.#publish({ status: "reading", error: null });
     try {
-      const tables = this.#snapshot.storyTables
-        .filter((table) => table.selected)
-        .map((table) => table.name);
       this.#publish({ status: "generating", progress: null });
       const candidate = proposal?.map ?? map;
       const prompt = JSON.stringify({
         instruction: input.instruction.trim(),
         selectedId: input.selectedId ?? null,
         selectedPoint: input.selectedPoint ?? null,
-        includeStory: !!input.includeStory,
       });
-      this.#deps.logs?.info("map", "地图助手", "开始地图任务", {
-        prompt,
-        tables: input.includeStory ? tables : [],
-      });
+      this.#deps.logs?.info("map", "地图助手", "开始地图任务", { prompt });
       const turn = await generateMapTurn({
         transport: this.#deps.transport,
         connection,
@@ -223,15 +194,23 @@ export class MapService {
         signal: task.controller.signal,
         saved: map,
         candidate,
-        story: input.includeStory
-          ? (signal) => createMapStoryReader(this.#deps.data, tables, signal, task.scopeKey)
-          : undefined,
+        story: (signal) => createMapStoryReader(this.#deps.data, signal, task.scopeKey),
         progress: (progress) => {
           if (this.#owns(task)) {
             this.#publish({ progress });
           }
         },
         trace: (event) => {
+          if (!this.#owns(task)) {
+            return;
+          }
+          if (event.type === "assistant") {
+            this.#appendThinking(turnId, event.thinking);
+          } else if (event.type === "tool_call") {
+            this.#startTool(turnId, event);
+          } else if (event.type === "tool_result") {
+            this.#finishTool(turnId, event);
+          }
           if (event.type !== "request" && event.type !== "assistant") {
             this.#deps.logs?.info("map", "地图助手", event.type, event);
           }
@@ -249,18 +228,20 @@ export class MapService {
       }
       if (turn.type === "query") {
         const { reply } = turn;
+        this.#completeTurn(turnId, reply.summary);
         this.#publish({
-          answer: reply.summary,
           highlightIds: [...reply.featureIds, ...reply.routeRoadIds],
           status: "idle",
         });
       } else {
         const next = turn.proposal;
+        this.#completeTurn(turnId, next.summary);
         this.#publish({ proposal: next, highlightIds: next.affectedIds, status: "idle" });
       }
     } catch (error) {
       if (this.#owns(task)) {
-        this.#publish({ error: error as Error, status: "idle" });
+        this.#failTurn(turnId, error as Error);
+        this.#publish({ status: "idle" });
       }
     } finally {
       if (this.#task === task) {
@@ -290,7 +271,21 @@ export class MapService {
       throw new Error("地图正在保存，请等待完成");
     }
     this.cancel();
-    this.#publish({ proposal: null, answer: null, highlightIds: [] });
+    this.#publish({ proposal: null, highlightIds: [] });
+  }
+  /** 新对话保留已保存地图与撤销记录，只清空对话、待确认提案和高亮。 */
+  newConversation(): void {
+    if (this.#saving) {
+      throw new Error("地图正在保存，请等待完成");
+    }
+    this.cancel();
+    this.#publish({
+      conversation: [],
+      proposal: null,
+      error: null,
+      progress: null,
+      highlightIds: [],
+    });
   }
   cancel(): void {
     ++this.#preparing;
@@ -298,9 +293,13 @@ export class MapService {
     this.#task?.controller.abort();
     this.#task = null;
     this.#reservation = null;
+    const running = this.#snapshot.conversation.findLast((turn) => turn.status === "running");
+    if (running) {
+      this.#updateTurn(running.id, { status: "cancelled" });
+    }
     // 已提交的保存属于原聊天，等待其完成；退出只使结果失去当前界面归属。
     if (this.#snapshot.status !== "saving") {
-      this.#publish({ status: "idle" });
+      this.#publish({ status: "idle", progress: null });
     }
   }
   dispose(): void {
@@ -347,7 +346,6 @@ export class MapService {
         map,
         proposal: null,
         highlightIds: [],
-        answer: null,
         canUndo: undo !== null,
         status: "idle",
       });
@@ -381,6 +379,78 @@ export class MapService {
       task.scopeKey === this.#snapshot.scopeKey
     );
   }
+  #startTurn(instruction: string): string {
+    const turn: MapConversationTurn = {
+      id: `turn-${++this.#turnId}`,
+      instruction,
+      thinking: "",
+      tools: [],
+      answer: null,
+      error: null,
+      status: "running",
+    };
+    this.#publish({ conversation: [...this.#snapshot.conversation, turn] });
+    return turn.id;
+  }
+  /** 对话被新对话或聊天切换清空后，迟到的工具事件找不到归属时直接忽略。 */
+  #updateTurn(id: string, patch: Partial<MapConversationTurn>): void {
+    if (!this.#snapshot.conversation.some((turn) => turn.id === id)) {
+      return;
+    }
+    this.#publish({
+      conversation: this.#snapshot.conversation.map((turn) =>
+        turn.id === id ? { ...turn, ...patch } : turn,
+      ),
+    });
+  }
+  #appendThinking(id: string, text: string): void {
+    if (!text.trim()) {
+      return;
+    }
+    const turn = this.#snapshot.conversation.find((entry) => entry.id === id);
+    if (!turn) {
+      return;
+    }
+    this.#updateTurn(id, { thinking: turn.thinking ? `${turn.thinking}\n\n${text}` : text });
+  }
+  #startTool(id: string, event: Extract<MapAgentTrace, { type: "tool_call" }>): void {
+    const turn = this.#snapshot.conversation.find((entry) => entry.id === id);
+    if (!turn) {
+      return;
+    }
+    const step: MapToolStep = {
+      id: event.id,
+      name: event.name,
+      label: event.label,
+      status: "running",
+      input: event.args,
+      output: null,
+    };
+    this.#updateTurn(id, { tools: [...turn.tools, step] });
+  }
+  #finishTool(id: string, event: Extract<MapAgentTrace, { type: "tool_result" }>): void {
+    const turn = this.#snapshot.conversation.find((entry) => entry.id === id);
+    if (!turn) {
+      return;
+    }
+    this.#updateTurn(id, {
+      tools: turn.tools.map((tool) =>
+        tool.id === event.id
+          ? {
+              ...tool,
+              status: event.failed ? "failed" : "completed",
+              output: event.output,
+            }
+          : tool,
+      ),
+    });
+  }
+  #completeTurn(id: string, answer: string): void {
+    this.#updateTurn(id, { answer, status: "done", error: null });
+  }
+  #failTurn(id: string, error: Error): void {
+    this.#updateTurn(id, { status: "failed", error: error.message });
+  }
   #sourceBinding(): string {
     const source = this.#deps.data.getSnapshot();
     return JSON.stringify([
@@ -410,10 +480,9 @@ export class MapService {
       scopeKey: entry?.[0] ?? null,
       proposal: null,
       error: null,
-      answer: null,
+      conversation: [],
       highlightIds: [],
       canUndo: false,
-      storyTables: [],
       status: this.#saving ? "saving" : "idle",
     });
     void this.prepare();

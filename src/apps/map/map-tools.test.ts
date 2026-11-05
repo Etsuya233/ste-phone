@@ -126,7 +126,7 @@ test("remove and re-add cannot change a stable source binding, even to a known I
     );
   }
 });
-test("query stays read-only and story tools are absent without authorization", async () => {
+test("query stays read-only and story tools only exist for the supplied reader", async () => {
   const base = { ...emptyMap(), features: [point("a")] };
   const f = fixture(
     (round) =>

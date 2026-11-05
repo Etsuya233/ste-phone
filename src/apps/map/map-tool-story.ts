@@ -7,11 +7,9 @@ const MAX_OFFSET = 100_000;
 /** Each generation owns its reader and the stable IDs actually returned to its model. */
 export function createMapStoryReader(
   data: DataAppPublic,
-  selectedTables: string[],
   signal: AbortSignal,
   expectedScopeKey?: string,
 ) {
-  const allowed = new Set(selectedTables);
   const memoryIds = new Set<string>();
   const initial = data.getSnapshot().context;
   let binding: string | undefined;
@@ -46,14 +44,12 @@ export function createMapStoryReader(
       return {
         sourceId: schema.sourceId,
         stableScopeId: schema.stableScopeId,
-        tables: schema.objects.filter(
-          (table) => allowed.has(table.name) && table.name.startsWith("src_"),
-        ),
+        tables: schema.objects.filter((table) => table.name.startsWith("src_")),
       };
     },
     async records(table: string, limit: number, offset: number) {
-      if (!allowed.has(table) || !table.startsWith("src_")) {
-        throw new Error(`未选择剧情资料表：${table}`);
+      if (!table.startsWith("src_")) {
+        throw new Error(`不是可读取的剧情资料表：${table}`);
       }
       if (
         !Number.isSafeInteger(limit) ||
@@ -69,7 +65,7 @@ export function createMapStoryReader(
       }
       const schema = await describe();
       if (!schema.objects.some((item) => item.name === table)) {
-        throw new Error(`所选剧情资料表已不存在：${table}`);
+        throw new Error(`剧情资料表已不存在：${table}`);
       }
       const result = await data.query({
         ...currentScope(),

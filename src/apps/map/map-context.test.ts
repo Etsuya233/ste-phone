@@ -3,7 +3,7 @@ import test from "node:test";
 import { createMapStoryReader } from "./map-tool-story.ts";
 import type { DataAppPublic, DatabaseSchema } from "../data-source/public.ts";
 
-test("explicit source selection reads a nonstandard setting table with its stable record identity", async () => {
+test("default story reading exposes every src table and its stable record identity", async () => {
   const queried: string[] = [];
   const schema: DatabaseSchema = {
     sourceId: "memory",
@@ -30,13 +30,13 @@ test("explicit source selection reads a nonstandard setting table with its stabl
       };
     },
   } as unknown as DataAppPublic;
-  const reader = createMapStoryReader(data, ["src_setting_archive"], new AbortController().signal);
+  const reader = createMapStoryReader(data, new AbortController().signal);
   assert.deepEqual(
     (await reader.directory()).tables.map((table) => table.name),
     ["src_setting_archive"],
   );
   assert.deepEqual(queried, []);
-  await assert.rejects(reader.records("src_private", 1, 0), /未选择/);
+  await assert.rejects(reader.records("src_private", 1, 0), /不存在/);
   assert.deepEqual(queried, []);
   const page = await reader.records("src_setting_archive", 1, 0);
   assert.match(queried[0]!, /"src_setting_archive"/);

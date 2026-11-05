@@ -22,6 +22,7 @@
 @import "../apps/image-playground/ui/playground-app.css";
 
 @import "./images/images.css";
+@import "./agent/agent-activity.css";
 @import "./ios26.css";
 
 @import "../apps/map/map.css";

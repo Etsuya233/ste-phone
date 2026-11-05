@@ -1,153 +1,166 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { MapPoint, MapSnapshot } from "../map.ts";
 import type { MapService } from "../map-service.ts";
-import { MapStoryTables } from "./map-story-tables.tsx";
-import { MapStoryActions } from "./map-story-actions.tsx";
-import { MapModelSelector, type MapModelOptions } from "./map-model-selector.tsx";
+import { MapAgentComposer } from "./map-agent-composer.tsx";
+import { MapAgentConversation } from "./map-agent-conversation.tsx";
+import type { MapModelOptions } from "./map-model-selector.tsx";
+import type { AgentSheetSize, useAgentSheet } from "./use-agent-sheet.ts";
+
+type AgentSheet = ReturnType<typeof useAgentSheet>;
 
 export function MapAgentPanel({
   service,
   state,
   model,
+  sheet,
   selectedId,
+  selectedName,
   selectedPoint,
   onClearPoint,
+  onClearSelection,
 }: {
   service: MapService;
   state: MapSnapshot;
   model: MapModelOptions;
+  sheet: AgentSheet;
   selectedId: string | null;
+  selectedName: string | null;
   selectedPoint: MapPoint | null;
   onClearPoint: () => void;
+  onClearSelection: () => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
   const [instruction, setInstruction] = useState("");
-  const [includeStory, setIncludeStory] = useState(false);
+  const body = useRef<HTMLDivElement>(null);
+  const follow = useRef(true);
   const busy = state.status !== "idle";
   const canRequest = model.selectedId !== null;
-  const selected = (state.proposal?.map ?? state.map).features.find(
-    (feature) => feature.id === selectedId,
-  );
+
+  useEffect(() => {
+    const element = body.current;
+    if (element && follow.current) {
+      element.scrollTop = element.scrollHeight;
+    }
+  }, [state.conversation, state.proposal, state.error]);
+
   const submit = () => {
     if (!instruction.trim() || busy || !canRequest) {
       return;
     }
+    setInstruction("");
     void service.request({
       instruction,
       selectedId: selectedId ?? undefined,
       selectedPoint: selectedPoint ?? undefined,
-      includeStory,
     });
   };
+  const startNewConversation = () => {
+    service.newConversation();
+    onClearSelection();
+    setInstruction("");
+    follow.current = true;
+  };
+
   return (
-    <section className="map-agent" aria-label="地图助手">
-      <MapAgentToggle state={state} expanded={expanded} onToggle={() => setExpanded(!expanded)} />
-      {expanded ? (
-        <div className="map-agent-content">
-          {selected ? <div className="map-context">针对「{selected.name}」</div> : null}
-          {selectedPoint ? (
-            <div className="map-context">
-              选中位置 ({selectedPoint.join(", ")})<button onClick={onClearPoint}>清除</button>
-            </div>
-          ) : null}
-          {state.proposal ? <MapProposalCard service={service} state={state} /> : null}
-          {state.answer ? <p className="map-answer">{state.answer}</p> : null}
-          {state.error ? (
-            <p className="map-error" role="alert">
-              {state.error.message}
-            </p>
-          ) : null}
-          <MapModelSelector model={model} service={service} disabled={busy} />
-          <textarea
-            aria-label="地图指令"
-            value={instruction}
-            onChange={(event) => setInstruction(event.target.value)}
-            placeholder={
-              state.proposal ? "继续描述想调整的地方…" : "描述你的世界，或询问地点与路线…"
-            }
-            rows={2}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-                event.preventDefault();
-                submit();
-              }
-            }}
-          />
-          <div className="map-compose-tools">
-            <label>
-              <input
-                type="checkbox"
-                checked={includeStory}
-                onChange={(event) => setIncludeStory(event.target.checked)}
-                disabled={busy}
-              />
-              允许读取剧情资料
-            </label>
-            {busy && state.status !== "saving" ? (
-              <button onClick={() => service.cancel()}>停止</button>
-            ) : (
-              <button
-                className="map-primary"
-                disabled={busy || !canRequest || !instruction.trim()}
-                onClick={submit}
-              >
-                {state.proposal ? "继续调整" : "发送"}
-              </button>
-            )}
-          </div>
-          <MapStoryTables service={service} state={state} />
-          <MapStoryActions
-            service={service}
-            state={state}
-            canRequest={canRequest}
-            selectedId={selectedId}
-            selectedPoint={selectedPoint}
-          />
-        </div>
-      ) : null}
+    <section
+      ref={sheet.panelRef}
+      className="map-agent"
+      aria-label="地图助手"
+      data-size={sheet.size}
+      data-dragging={sheet.height !== null}
+    >
+      <MapAgentHeader
+        state={state}
+        size={sheet.size}
+        onNewConversation={startNewConversation}
+        onToggleSize={sheet.toggleFull}
+        handlers={sheet.handlers}
+      />
+      <div
+        className="map-agent-body"
+        ref={body}
+        onScroll={() => {
+          const element = body.current;
+          if (element) {
+            follow.current = element.scrollHeight - element.scrollTop - element.clientHeight < 40;
+          }
+        }}
+      >
+        <MapAgentConversation service={service} state={state} />
+      </div>
+      <MapAgentComposer
+        service={service}
+        state={state}
+        model={model}
+        selectedName={selectedName}
+        selectedPoint={selectedPoint}
+        instruction={instruction}
+        onInstruction={setInstruction}
+        onSubmit={submit}
+        onClearPoint={onClearPoint}
+      />
     </section>
   );
 }
 
-function MapAgentToggle({
+function MapAgentHeader({
   state,
-  expanded,
-  onToggle,
+  size,
+  onNewConversation,
+  onToggleSize,
+  handlers,
 }: {
   state: MapSnapshot;
-  expanded: boolean;
-  onToggle: () => void;
+  size: AgentSheetSize;
+  onNewConversation: () => void;
+  onToggleSize: () => void;
+  handlers: AgentSheet["handlers"];
 }) {
-  const status = {
-    reading: "读取资料中…",
-    generating: state.progress ?? "正在构思…",
-    saving: "保存中…",
-    idle: state.proposal ? "有待确认的修改" : expanded ? "收起⌄" : "展开⌃",
-  }[state.status];
   return (
-    <button className="map-agent-toggle" onClick={onToggle} aria-expanded={expanded}>
-      <span className="map-agent-grip" />
-      <span>地图助手</span>
-      <span className="map-agent-state">{status}</span>
-    </button>
+    <header className="map-agent-header" {...handlers}>
+      <span className="map-agent-grip" aria-hidden="true" />
+      <div className="map-agent-heading">
+        <strong>地图助手</strong>
+        <span className="map-agent-state">{agentStatus(state)}</span>
+      </div>
+      <div className="map-agent-header-actions">
+        <button
+          type="button"
+          aria-label="新对话"
+          disabled={state.status === "saving"}
+          onClick={onNewConversation}
+        >
+          新对话
+        </button>
+        <button type="button" onClick={onToggleSize}>
+          {size === "full" ? "收起" : size === "collapsed" ? "展开" : "全屏"}
+        </button>
+      </div>
+    </header>
   );
 }
 
-function MapProposalCard({ service, state }: { service: MapService; state: MapSnapshot }) {
-  const busy = state.status !== "idle";
-  return (
-    <div className="map-proposal">
-      <strong>修改预览</strong>
-      <p>{state.proposal!.summary}</p>
-      <span className="map-caption">金色标出本次影响的要素，确认后保存。</span>
-      <div className="map-actions">
-        <button className="map-primary" disabled={busy} onClick={() => void service.apply()}>
-          应用修改
-        </button>
-        <button disabled={busy} onClick={() => service.discard()}>
-          放弃
-        </button>
-      </div>
-    </div>
-  );
+function agentStatus(state: MapSnapshot): string {
+  if (state.status === "reading") {
+    return "读取资料中…";
+  }
+  if (state.status === "generating") {
+    return state.progress ?? "正在构思…";
+  }
+  if (state.status === "saving") {
+    return "保存中…";
+  }
+  if (state.error) {
+    return state.error.message;
+  }
+  const last = state.conversation.at(-1);
+  if (last?.status === "failed") {
+    return "上次任务失败";
+  }
+  if (last?.status === "cancelled") {
+    return "已停止";
+  }
+  if (state.proposal) {
+    return "有待确认的修改";
+  }
+  return state.conversation.length ? "已完成" : "描述世界或询问地图";
 }

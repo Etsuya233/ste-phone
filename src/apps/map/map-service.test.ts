@@ -36,7 +36,7 @@ const proposal = (id: string): MapReply => ({
 });
 const response = (value: unknown) =>
   new Response(
-    `data: ${JSON.stringify({ choices: [{ delta: { content: JSON.stringify(value) }, finish_reason: null }] })}\n\ndata: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: "stop" }] })}\n\ndata: [DONE]\n\n`,
+    `data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: "整理地图结果", content: JSON.stringify(value) }, finish_reason: null }] })}\n\ndata: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: "stop" }] })}\n\ndata: [DONE]\n\n`,
   );
 function tool(name: string, args: unknown) {
   const encoded = JSON.stringify(args);
@@ -45,6 +45,7 @@ function tool(name: string, args: unknown) {
     choices: [
       {
         delta: {
+          ...(index === 0 ? { reasoning_content: "检查当前地图" } : {}),
           tool_calls: [
             {
               index: 0,
@@ -84,6 +85,7 @@ function fixture(initial: MapDocument = emptyMap()) {
     ["a", { version: 1, maps: { [key]: structuredClone(initial) } }],
   ]);
   const prompts: { map: MapDocument; instruction: string }[] = [];
+  const requestedTools: string[][] = [];
   let replyValue = proposal("one");
   let delayedReply: Promise<Response> | undefined;
   let describeGate: Promise<void> | null = null;
@@ -98,7 +100,7 @@ function fixture(initial: MapDocument = emptyMap()) {
     schemaVersion: 1,
     schemaKey: "schema",
     databaseKey: "db",
-    objects: [],
+    objects: [{ name: "src_locations", kind: "view", description: "地点", columns: [] }],
   };
   const source = (): DataSourceSnapshot => ({
     sourceId: "ste-memory",
@@ -169,8 +171,12 @@ function fixture(initial: MapDocument = emptyMap()) {
           messages: { role: string; content: string }[];
           model: string;
           custom_url: string;
+          tools?: { function?: { name?: string } }[];
         };
         requestedModels.push({ model: body.model, custom_url: body.custom_url });
+        requestedTools.push(
+          (body.tools ?? []).flatMap((tool) => (tool.function?.name ? [tool.function.name] : [])),
+        );
         const last = body.messages.at(-1)!;
         if (last.role === "user") {
           prompts.push(JSON.parse(last.content));
@@ -210,6 +216,7 @@ function fixture(initial: MapDocument = emptyMap()) {
     saved,
     prompts,
     requestedModels,
+    requestedTools,
     unsetModel: () => {
       selectedModel = null;
     },
@@ -288,7 +295,8 @@ test("offline maps remain readable but generation refuses unavailable source", a
   f.offline();
   await f.service.request({ instruction: "新增" });
   assert.deepEqual(f.service.getSnapshot().map, original);
-  assert.match(f.service.getSnapshot().error!.message, /离线/);
+  assert.match(f.service.getSnapshot().conversation.at(-1)!.error!, /离线/);
+  assert.equal(f.service.getSnapshot().error, null);
   assert.equal(f.prompts.length, 0);
   f.service.dispose();
 });
@@ -403,7 +411,7 @@ test("a generation finishing after same-instance stable scope replacement is dis
   late.resolve(tool("map_read", {}));
   await running;
   assert.equal(f.service.getSnapshot().proposal, null);
-  assert.match(f.service.getSnapshot().error!.message, /稳定资料空间已变化/);
+  assert.match(f.service.getSnapshot().conversation.at(-1)!.error!, /稳定资料空间已变化/);
   assert.equal(f.writes, 0);
   f.service.dispose();
 });
@@ -440,5 +448,66 @@ test("map holds the chosen connection before async preparation and through every
     f.requestedModels.slice(4),
     Array.from({ length: 4 }, () => ({ model: "edited", custom_url: "https://edited.invalid/v1" })),
   );
+  f.service.dispose();
+});
+
+test("conversation records the instruction, thinking, tool calls and final answer", async () => {
+  const f = fixture();
+  await f.service.request({ instruction: "新增地点一" });
+  const turn = f.service.getSnapshot().conversation.at(-1)!;
+  assert.equal(turn.instruction, "新增地点一");
+  assert.match(turn.thinking, /检查当前地图/);
+  assert.deepEqual(
+    turn.tools.map((tool) => [tool.name, tool.status]),
+    [
+      ["map_read", "completed"],
+      ["map_apply", "completed"],
+      ["map_check", "completed"],
+    ],
+  );
+  assert.equal(turn.answer, "新增one");
+  assert.equal(turn.status, "done");
+  assert.ok(
+    f.requestedTools.every((names) =>
+      [
+        "map_read",
+        "map_apply",
+        "map_check",
+        "map_story_directory",
+        "map_story_records",
+        "map_story_summary",
+      ].every((name) => names.includes(name)),
+    ),
+  );
+  f.service.dispose();
+});
+
+test("new conversation clears previous turns and a pending proposal but keeps the saved map", async () => {
+  const f = fixture();
+  await f.service.request({ instruction: "新增地点一" });
+  assert.ok(f.service.getSnapshot().proposal);
+  f.service.newConversation();
+  const snapshot = f.service.getSnapshot();
+  assert.deepEqual(snapshot.conversation, []);
+  assert.equal(snapshot.proposal, null);
+  assert.equal(snapshot.map.revision, 0);
+  assert.equal(f.writes, 0);
+  f.service.dispose();
+});
+
+test("new conversation cancels a running turn and discards its late reply", async () => {
+  const f = fixture();
+  const late = deferred<Response>();
+  f.delayReply(late.promise);
+  const running = f.service.request({ instruction: "还在生成" });
+  await flush();
+  f.service.newConversation();
+  late.resolve(tool("map_read", {}));
+  await running;
+  const snapshot = f.service.getSnapshot();
+  assert.deepEqual(snapshot.conversation, []);
+  assert.equal(snapshot.proposal, null);
+  assert.equal(snapshot.status, "idle");
+  assert.equal(f.writes, 0);
   f.service.dispose();
 });

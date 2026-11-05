@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+} from "react";
 import type { MapService } from "../map-service.ts";
 import type { MapPoint, MapSnapshot } from "../map.ts";
 import { MapCanvas } from "./map-canvas.tsx";
 import { MapSearch, MapFeatureDetails } from "./map-browser.tsx";
 import { MapAgentPanel } from "./map-agent-panel.tsx";
+import { useAgentSheet } from "./use-agent-sheet.ts";
 import type { MapModelPreference, ModelConnectionsReader } from "../../settings/public.ts";
 import type { MapModelOptions } from "./map-model-selector.tsx";
 const EMPTY_IDS: string[] = [];
@@ -61,6 +69,7 @@ function MapWorkspace({
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null);
+  const sheet = useAgentSheet();
   const selectFeature = useCallback((id: string) => {
     setSelectedId(id);
     setSelectedPoint(null);
@@ -68,6 +77,10 @@ function MapWorkspace({
   const selectPoint = useCallback((point: MapPoint) => {
     setSelectedPoint(point);
     setSelectedId(null);
+  }, []);
+  const clearSelection = useCallback(() => {
+    setSelectedId(null);
+    setSelectedPoint(null);
   }, []);
   const document = state.proposal?.map ?? state.map;
   const selected = document.features.find((feature) => feature.id === selectedId);
@@ -84,7 +97,11 @@ function MapWorkspace({
   );
   const pending = document.features.filter((feature) => !feature.geometry);
   return (
-    <div className="map-app">
+    <div
+      className="map-app"
+      data-agent-size={sheet.size}
+      style={{ "--map-agent-height": sheet.cssHeight } as CSSProperties}
+    >
       <header className="map-header">
         <button onClick={onHome}>‹ 主屏幕</button>
         <h1>{document.title}</h1>
@@ -125,6 +142,7 @@ function MapWorkspace({
         ) : null}
         {state.proposal ? <span className="map-preview-badge">修改预览 · 尚未保存</span> : null}
       </div>
+      <div className="map-agent-spacer" aria-hidden="true" />
       {selected ? (
         <MapFeatureDetails
           feature={selected}
@@ -136,9 +154,12 @@ function MapWorkspace({
         service={service}
         state={state}
         model={model}
+        sheet={sheet}
         selectedId={selected?.id ?? null}
+        selectedName={selected?.name ?? null}
         selectedPoint={selectedPoint}
         onClearPoint={() => setSelectedPoint(null)}
+        onClearSelection={clearSelection}
       />
     </div>
   );

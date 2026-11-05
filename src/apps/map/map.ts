@@ -69,15 +69,32 @@ export interface MapProposal {
   map: MapDocument;
   affectedIds: string[];
 }
+export type MapToolStatus = "running" | "completed" | "failed";
+export interface MapToolStep {
+  id: string;
+  name: string;
+  label: string;
+  status: MapToolStatus;
+  input: unknown;
+  output: string | null;
+}
+export interface MapConversationTurn {
+  id: string;
+  instruction: string;
+  thinking: string;
+  tools: MapToolStep[];
+  answer: string | null;
+  error: string | null;
+  status: "running" | "done" | "failed" | "cancelled";
+}
 export interface MapSnapshot {
   progress?: string | null;
   chatId: string | null;
-  storyTables: { name: string; description: string; selected: boolean }[];
   map: MapDocument;
   proposal: MapProposal | null;
   status: "idle" | "reading" | "generating" | "saving";
   error: Error | null;
-  answer: string | null;
+  conversation: MapConversationTurn[];
   highlightIds: string[];
   canUndo: boolean;
   scopeKey: string | null;

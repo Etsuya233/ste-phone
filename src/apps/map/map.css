@@ -70,6 +70,21 @@
   overflow: hidden;
   background: var(--map-ground);
 }
+:host .map-agent-spacer {
+  flex: 0 0 auto;
+  height: var(--map-agent-height);
+}
+:host .map-app[data-agent-size="full"] .map-header,
+:host .map-app[data-agent-size="full"] .map-world,
+:host .map-app[data-agent-size="full"] .map-agent-spacer,
+:host .map-app[data-agent-size="full"] .map-feature-details {
+  visibility: hidden;
+}
+:host .map-app[data-agent-size="full"] .map-world,
+:host .map-app[data-agent-size="full"] .map-agent-spacer,
+:host .map-app[data-agent-size="full"] .map-feature-details {
+  display: none;
+}
 :host .map-canvas {
   width: 100%;
   height: 100%;
@@ -216,12 +231,17 @@
   color: var(--ios-secondary-ink);
 }
 :host .map-feature-details {
-  flex: 0 0 auto;
+  position: absolute;
+  z-index: 880;
+  left: 0;
+  right: 0;
+  bottom: var(--map-agent-height);
   max-height: 165px;
   overflow-y: auto;
   padding: 10px 16px;
   background: var(--ios-row-surface);
   border-top: 1px solid var(--ios-line);
+  box-shadow: 0 -4px 16px #344b6414;
 }
 :host .map-feature-details header {
   display: flex;
