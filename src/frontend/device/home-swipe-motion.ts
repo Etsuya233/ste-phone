@@ -22,7 +22,7 @@ export class HomeSwipeMotion {
     }
   }
 
-  release(point: MotionPoint): number {
+  release(point: MotionPoint, measure: "speed" | "horizontal" = "speed"): number {
     const last = this.points.at(-1)!;
     if (point.x !== last.x || point.y !== last.y) {
       this.record(point);
@@ -33,9 +33,14 @@ export class HomeSwipeMotion {
       return 0;
     }
     const first = this.points[0]!;
-    const distance = Math.hypot(end.x - first.x, end.y - first.y);
+    const dx = end.x - first.x;
+    const distance = measure === "horizontal" ? dx : Math.hypot(dx, end.y - first.y);
     const elapsed = Math.min(SAMPLE_WINDOW_MS, end.time - first.time);
     // Same-frame movement is instantaneous; a same-position release has zero speed.
-    return elapsed === 0 ? (distance === 0 ? 0 : Infinity) : distance / elapsed;
+    return elapsed === 0
+      ? distance === 0
+        ? 0
+        : Math.sign(distance) * Infinity
+      : distance / elapsed;
   }
 }

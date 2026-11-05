@@ -3,19 +3,9 @@ import type { CSSProperties, PointerEvent } from "react";
 import { appNames } from "./app-session.ts";
 import type { AppId } from "./app-session.ts";
 import { AppIcon } from "../system/app-icon.tsx";
-
-export interface ExposeDrag {
-  x: number;
-  y: number;
-  app: AppId | null;
-}
-export interface ExposeLayout {
-  width: number;
-  height: number;
-  left: number;
-  top: number;
-  stride: number;
-}
+import { exposeSwipeSteps, placeExposeCard } from "./expose-layout.ts";
+import type { ExposeDrag, ExposeLayout } from "./expose-layout.ts";
+import { HomeSwipeMotion } from "./home-swipe-motion.ts";
 interface Gesture {
   pointer: number;
   x: number;
@@ -24,6 +14,7 @@ interface Gesture {
   app: AppId | null;
   dx: number;
   dy: number;
+  motion: HomeSwipeMotion;
 }
 
 /** The gesture layer is separate from the retained, inert application pages below it. */
@@ -79,7 +70,7 @@ export function Expose({
     }
     gesture.current = null;
     onDrag({ x: 0, y: 0, app: null });
-  }, [visible, blocked, onDrag]);
+  }, [visible, blocked, onDrag, layout.style]);
   const select = (index: number) => onSelect(Math.max(0, Math.min(apps.length - 1, index)));
   const start = (event: PointerEvent<HTMLDivElement>) => {
     if (blocked || !event.isPrimary || event.button !== 0) {
@@ -95,6 +86,7 @@ export function Expose({
       app: app ?? null,
       dx: 0,
       dy: 0,
+      motion: new HomeSwipeMotion({ x: 0, y: 0, time: event.timeStamp }),
     };
     suppressClick.current = true;
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -107,14 +99,17 @@ export function Expose({
     }
     current.dx = (event.clientX - current.x) / deviceScale;
     current.dy = (event.clientY - current.y) / deviceScale;
+    current.motion.record({ x: current.dx, y: current.dy, time: event.timeStamp });
     if (!current.axis && Math.max(Math.abs(current.dx), Math.abs(current.dy)) > 8) {
       current.axis = Math.abs(current.dx) > Math.abs(current.dy) ? "x" : "y";
     }
-    const atEdge =
-      (selectedIndex === 0 && current.dx > 0) ||
-      (selectedIndex === apps.length - 1 && current.dx < 0);
+    const travel = current.dx * layout.direction;
+    const edge = Math.max(
+      -(apps.length - 1 - selectedIndex) * layout.stride,
+      Math.min(selectedIndex * layout.stride, travel),
+    );
     onDrag({
-      x: current.axis === "x" ? current.dx * (atEdge ? 0.3 : 1) : 0,
+      x: current.axis === "x" ? (edge + (travel - edge) * 0.3) * layout.direction : 0,
       y: current.axis === "y" ? Math.min(0, current.dy) : 0,
       app: current.app,
     });
@@ -126,8 +121,13 @@ export function Expose({
     }
     gesture.current = null;
     onDrag({ x: 0, y: 0, app: null });
-    if (current.axis === "x" && Math.abs(current.dx) >= 48) {
-      select(selectedIndex + (current.dx < 0 ? 1 : -1));
+    if (current.axis === "x") {
+      const distance = (event.clientX - current.x) / deviceScale;
+      const velocity = current.motion.release(
+        { x: distance, y: (event.clientY - current.y) / deviceScale, time: event.timeStamp },
+        "horizontal",
+      );
+      select(selectedIndex + exposeSwipeSteps(layout, distance, velocity));
     } else if (current.axis === "y" && current.dy <= -90 && current.app) {
       onQuit(current.app);
     } else if (!current.axis && current.app) {
@@ -169,7 +169,7 @@ export function Expose({
         }
         if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
           event.preventDefault();
-          select(selectedIndex + (event.key === "ArrowRight" ? 1 : -1));
+          select(selectedIndex + (event.key === "ArrowRight" ? 1 : -1) * layout.direction);
         } else if (event.key === "Delete") {
           event.preventDefault();
           onQuit(selected!);
@@ -183,6 +183,7 @@ export function Expose({
     >
       {apps.map((app, index) => {
         const current = selectedIndex === index;
+        const card = placeExposeCard(layout, index, selectedIndex, drag.x);
         return (
           <div
             key={app}
@@ -190,10 +191,11 @@ export function Expose({
             aria-hidden={!current}
             style={
               {
-                width: layout.width,
-                height: layout.height + 104,
-                left: layout.left + (index - selectedIndex) * layout.stride + drag.x,
-                top: layout.top + (drag.app === app ? drag.y : 0),
+                width: card.width,
+                height: card.height + (layout.style === "classic" ? 104 : 0),
+                left: card.left,
+                top: card.top + (drag.app === app ? drag.y : 0),
+                zIndex: card.zIndex,
               } as CSSProperties
             }
           >
@@ -203,7 +205,7 @@ export function Expose({
               tabIndex={current ? 0 : -1}
               aria-label={`打开${appNames[app]}预览`}
               aria-current={current ? "true" : undefined}
-              style={{ height: layout.height }}
+              style={layout.style === "classic" ? { height: card.height } : undefined}
               onClick={() => onOpen(app)}
             />
             <button

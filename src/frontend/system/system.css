@@ -4,6 +4,16 @@
   position: absolute;
   inset: 0;
 }
+/* Keep card stacking local so previews never cover Home, lock, or the gesture overlay. */
+:host .app-deck {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+:host .app-layer {
+  pointer-events: auto;
+}
 :host .home-layer {
   transition:
     transform 300ms ease,

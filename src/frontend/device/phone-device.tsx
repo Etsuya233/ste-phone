@@ -18,13 +18,15 @@ import type {
   WallpaperReader,
   HomeScreenSettings,
   DeviceModel,
+  SystemStyle,
 } from "../../apps/settings/public.ts";
 import { deviceModels } from "./device-models.ts";
 import { LockScreen, SleepingScreen } from "./lock-screen.tsx";
 import { useScreenLock } from "./use-screen-lock.ts";
 import { useHomeControl } from "./use-home-control.ts";
 import { Expose } from "./expose.tsx";
-import type { ExposeDrag } from "./expose.tsx";
+import { createExposeLayout, placeExposeCard } from "./expose-layout.ts";
+import type { ExposeDrag } from "./expose-layout.ts";
 
 type Transition = "entering" | "leaving" | "resuming" | "expose-home" | null;
 const emptyDrag: ExposeDrag = { x: 0, y: 0, app: null };
@@ -52,6 +54,7 @@ export function PhoneDevice({
   wallpaper,
   homeScreen,
   deviceModel,
+  systemStyle,
   apps,
   visible,
   scale,
@@ -69,6 +72,7 @@ export function PhoneDevice({
   wallpaper: WallpaperReader;
   homeScreen: HomeScreenSettings;
   deviceModel: DeviceModel;
+  systemStyle: SystemStyle;
   apps: Record<AppId, AppDefinition>;
 }) {
   const screen = useRef<HTMLDivElement>(null);
@@ -89,6 +93,7 @@ export function PhoneDevice({
     width: deviceModels[deviceModel].screenWidth,
     height: deviceModels[deviceModel].screenHeight,
     bottom: 0,
+    status: 20,
   }));
   const selectedSettings = useSyncExternalStore(wallpaper.subscribe, wallpaper.getSnapshot);
   const lastApp = useRef<AppId | null>(initialApp === "home" ? null : initialApp);
@@ -102,11 +107,13 @@ export function PhoneDevice({
         width: element.clientWidth,
         height: element.clientHeight,
         bottom: element.querySelector<HTMLElement>(".software-home")!.clientHeight,
+        status: parseFloat(getComputedStyle(element).getPropertyValue("--status-height")),
       };
       setScreenSize((previous) =>
         previous.width === size.width &&
         previous.height === size.height &&
-        previous.bottom === size.bottom
+        previous.bottom === size.bottom &&
+        previous.status === size.status
           ? previous
           : size,
       );
@@ -115,7 +122,7 @@ export function PhoneDevice({
     const observer = new ResizeObserver(measure);
     observer.observe(screen.current!);
     return () => observer.disconnect();
-  }, [visible]);
+  }, [visible, deviceModel]);
   const completeQuit = () => {
     const removedIndex = session.recent.indexOf(quittingApp!);
     apps[quittingApp!].onQuit?.();
@@ -258,19 +265,7 @@ export function PhoneDevice({
     }
     setExposeDrag(emptyDrag);
   };
-  // Leave space above and below the preview-and-icon group, including on short screens.
-  const previewScale = Math.min(
-    0.64,
-    (screenSize.height - screenSize.bottom - 240) / screenSize.height,
-  );
-  const previewWidth = screenSize.width * previewScale;
-  const previewHeight = screenSize.height * previewScale;
-  const previewLeft = (screenSize.width - previewWidth) / 2;
-  const previewTop = Math.max(
-    72,
-    (screenSize.height - screenSize.bottom - previewHeight - 118) / 2,
-  );
-  const stride = previewWidth + 28;
+  const exposeLayout = createExposeLayout(screenSize, systemStyle);
   const homeControl = useHomeControl({
     deviceModel,
     visible,
@@ -361,76 +356,76 @@ export function PhoneDevice({
               }}
             />
           </div>
-          {session.recent.map((app, index) => {
-            const foreground = page === app;
-            const inExpose = page === "expose";
-            const active = interactive && foreground && !transition;
-            const x = previewLeft + (index - exposeIndex) * stride + exposeDrag.x;
-            const y =
-              quittingApp === app
-                ? -screenSize.height
-                : previewTop + (exposeDrag.app === app ? exposeDrag.y : 0);
-            return (
-              <div
-                key={app}
-                data-app={app}
-                className={`app-layer ${inExpose ? "app-layer--preview" : ""} ${quittingApp === app ? "app-layer--quitting" : ""} ${foreground && transition ? `app-layer--${transition}` : ""}`}
-                hidden={!foreground && !inExpose}
-                style={
-                  {
-                    "--app-origin": origin,
-                    transform: inExpose
-                      ? `translate(${x}px, ${y}px) scale(${previewScale})`
-                      : undefined,
-                  } as CSSProperties
-                }
-                onTransitionEnd={(event) => {
-                  if (event.target !== event.currentTarget || event.propertyName !== "transform") {
-                    return;
+          <div className="app-deck">
+            {session.recent.map((app, index) => {
+              const foreground = page === app;
+              const inExpose = page === "expose";
+              const active = interactive && foreground && !transition;
+              const card = placeExposeCard(exposeLayout, index, exposeIndex, exposeDrag.x);
+              const y =
+                quittingApp === app
+                  ? -screenSize.height
+                  : card.top + (exposeDrag.app === app ? exposeDrag.y : 0);
+              return (
+                <div
+                  key={app}
+                  data-app={app}
+                  className={`app-layer ${inExpose ? "app-layer--preview" : ""} ${quittingApp === app ? "app-layer--quitting" : ""} ${foreground && transition ? `app-layer--${transition}` : ""}`}
+                  hidden={!foreground && !inExpose}
+                  style={
+                    {
+                      "--app-origin": origin,
+                      zIndex: inExpose ? card.zIndex : undefined,
+                      transform: inExpose
+                        ? `translate(${card.left}px, ${y}px) scale(${card.scale})`
+                        : undefined,
+                    } as CSSProperties
                   }
-                  if (quittingApp === app) {
-                    completeQuit();
-                  } else if (foreground && transition === "resuming") {
+                  onTransitionEnd={(event) => {
+                    if (
+                      event.target !== event.currentTarget ||
+                      event.propertyName !== "transform"
+                    ) {
+                      return;
+                    }
+                    if (quittingApp === app) {
+                      completeQuit();
+                    } else if (foreground && transition === "resuming") {
+                      setTransition(null);
+                    }
+                  }}
+                  onAnimationEnd={(event) => {
+                    if (event.target !== event.currentTarget) {
+                      return;
+                    }
+                    if (transition === "leaving") {
+                      dispatch({ type: "home" });
+                    }
                     setTransition(null);
-                  }
-                }}
-                onAnimationEnd={(event) => {
-                  if (event.target !== event.currentTarget) {
-                    return;
-                  }
-                  if (transition === "leaving") {
-                    dispatch({ type: "home" });
-                  }
-                  setTransition(null);
-                }}
-              >
-                <div className="app-content" inert={!active} aria-hidden={!active}>
-                  <div className="app-preview-status">
-                    <StatusBar light={false} active={false} />
+                  }}
+                >
+                  <div className="app-content" inert={!active} aria-hidden={!active}>
+                    <div className="app-preview-status">
+                      <StatusBar light={false} active={false} />
+                    </div>
+                    <RunningApp
+                      definition={apps[app]}
+                      active={active}
+                      foreground={foreground && lock.state === "unlocked"}
+                      windowVisible={interactive}
+                      onHome={home}
+                      onOpen={openApp}
+                    />
                   </div>
-                  <RunningApp
-                    definition={apps[app]}
-                    active={active}
-                    foreground={foreground && lock.state === "unlocked"}
-                    windowVisible={interactive}
-                    onHome={home}
-                    onOpen={openApp}
-                  />
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
           {page === "expose" ? (
             <Expose
               apps={session.recent}
               selectedIndex={exposeIndex}
-              layout={{
-                width: previewWidth,
-                height: previewHeight,
-                left: previewLeft,
-                top: previewTop,
-                stride,
-              }}
+              layout={exposeLayout}
               drag={exposeDrag}
               deviceScale={scale}
               visible={interactive}

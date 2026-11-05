@@ -166,6 +166,7 @@ export function PhoneApp({
               wallpaper={wallpaper}
               homeScreen={homeScreen}
               deviceModel={selectedAppearance.deviceModel}
+              systemStyle={selectedAppearance.systemStyle}
               apps={apps}
               initialApp={initialApp}
               scale={scale}
