@@ -1,11 +1,10 @@
 import type { DataAppPublic, DataScope, CharacterProfile } from "../data-source/public.ts";
 import { buildWechatPrompt } from "./wechat-prompt.ts";
 import type { WechatConversation } from "./wechat.ts";
-import type { WechatPerson } from "./wechat.ts";
 import type { wechatStickerCatalog } from "./wechat-stickers.ts";
 
-/** 当前范围的帐号候选全部来自 Memory；删除或换范围后不按姓名重绑。 */
-export async function readWechatRoster(data: DataAppPublic, account: WechatPerson | null) {
+/** 当前范围的帐号候选全部来自 Memory。 */
+export async function readWechatRoster(data: DataAppPublic) {
   const scope = data.getSnapshot().context;
   if (!scope.available) {
     throw new Error(scope.message ?? "当前人物资料不可用");
@@ -14,14 +13,9 @@ export async function readWechatRoster(data: DataAppPublic, account: WechatPerso
   if (background.backgroundError) {
     throw new Error(background.backgroundError);
   }
-  const present =
-    account &&
-    account.scopeId === background.stableScopeId &&
-    background.characters.some((person) => person.id === account.id);
   return {
     people: background.characters,
     scopeId: background.stableScopeId,
-    account: present ? account : null,
   };
 }
 

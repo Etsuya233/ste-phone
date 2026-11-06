@@ -120,14 +120,24 @@ export class WechatService {
     const version = ++this.#preparation;
     this.#publish({ loading: true, error: null });
     try {
-      if (!this.#snapshot.chatId) {
+      const { chatId } = this.#snapshot;
+      if (!chatId) {
         throw new Error("请先打开一个 ST 聊天");
       }
-      const roster = await readWechatRoster(this.#dependencies.data, this.#snapshot.data.account);
+      const roster = await readWechatRoster(this.#dependencies.data);
       if (version !== this.#preparation) {
         return;
       }
-      if (this.#snapshot.data.account && !roster.account) {
+      // 切换聊天时旧空间可能暂时匹配不到帐号。以校验时已保存的选择为准，按稳定身份匹配。
+      const savedAccount =
+        this.#snapshot.data.account ?? this.#dependencies.storage.read(chatId)?.account;
+      const account =
+        savedAccount &&
+        savedAccount.scopeId === roster.scopeId &&
+        roster.people.some((person) => person.id === savedAccount.id)
+          ? savedAccount
+          : null;
+      if (this.#snapshot.data.account && !account) {
         this.cancel();
       }
       this.#publish({
@@ -135,7 +145,7 @@ export class WechatService {
         scopeId: roster.scopeId,
         momentsScopeId: roster.scopeId,
         loading: false,
-        data: { ...this.#snapshot.data, account: roster.account },
+        data: { ...this.#snapshot.data, account },
       });
     } catch (error) {
       if (version === this.#preparation) {

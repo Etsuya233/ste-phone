@@ -1535,3 +1535,23 @@ test("取消撤回恢复未完成的队列位置，已完成的消息只回到�
   assert.equal(latestPayload(f.prompt).当前微信历史[0].text, "可恢复的消息");
   f.service.dispose();
 });
+
+test("wechat recovers the saved account when Memory catches up after a chat switch", async () => {
+  const f = fixture();
+  try {
+    await f.service.prepare();
+    await f.service.selectAccount("a");
+    f.switchChat("other-chat");
+    f.setScope("other-stable");
+    f.switchChat("st-chat");
+    await f.service.prepare();
+    assert.equal(f.service.getSnapshot().data.account, null);
+
+    f.setScope("stable");
+    f.sourceChanged(true, "instance");
+    await new Promise(setImmediate);
+    assert.deepEqual(f.service.getSnapshot().data.account, f.stored!.account);
+  } finally {
+    f.service.dispose();
+  }
+});
