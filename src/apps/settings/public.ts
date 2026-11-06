@@ -64,3 +64,4 @@ export interface AppearanceSettings {
   setDeviceModel(value: DeviceModel): void;
   setSystemStyle(value: SystemStyle): void;
 }
+export type { PhoneSettingsService } from "./settings-service.ts";

@@ -1,5 +1,9 @@
 # STE-PHONE
 
+「声乐园」可以输入台词、生成配音、试听和下载 MP3。在「设置 → 语音连接」填写完整的 OpenAI Compatible Speech 地址、模型和音色列表，设定默认音色、合成语速、播放速度、音量及变速时是否保留音高。应用内可覆盖这些声音参数并恢复默认。音色和合成语速用于下一次生成，播放选项即时应用于试听。现有桌面从 App Store 安装，新桌面默认提供入口。
+
+声乐园从浏览器直连 Speech 接口，跨域时由接口网关允许 CORS。使用 Realtime 适配器时填入 HTTPS Speech 地址、`gpt-realtime-2.1-mini` 和独立的 `BRIDGE_TOKEN`。默认与临时朗读风格通过 `instructions` 发送，由支持该字段的服务应用。独立预览 `/?voice-playground=1` 使用模拟音频。
+
 「设置 → 外观」可分别选择手机外形（iPhone 6s / iPhone 17）与系统风格（经典 iOS / iOS 26），支持四种自由组合，选择后立即应用并跨聊天保存。旧配置升级后保留经典 iPhone 6s；切换外观保留应用页面、草稿和后台任务。iPhone 17 使用全面屏、灵动岛与底部 Home 条；从条快速上滑松手返回主屏，上滑减速定住后松手或按住停留约 240ms 查看后台，锁屏时上滑解锁。iPhone 6s 亮起锁屏后长按 Home 600ms 解锁。交互跟随手机外形，iOS 26 风格提供大圆角分组、胶囊控件、顶部渐隐导航、无边框模糊 Dock。
 
 面向 SillyTavern 的小手机插件。使用 React、TypeScript、普通 CSS 和 esbuild，提供 iPhone 6s / iPhone 17 风格外壳、主屏幕、秒表、Foundation 组件、只读资料应用、Fake DBeaver 数据库应用、日志查看和壁纸设置。公共数据源连接 STE Memory，将 Phone 定义的标准视图注册到 Memory 已提交数据库，供当前人物、纪要、物品和世界状态查询。
@@ -44,7 +48,7 @@
 
 ## 安装与运行要求
 
-当前版本：**0.0.9**。资料与数据库功能需要 **[STE Memory](https://github.com/Etsuya233/ste-memory) 0.2.6 或更新版本**，该版本提供 `STE_MEMORY_API.database v1` 与日记所需的 `STE_MEMORY_API.chat v1`。请先安装或升级 Memory，再刷新 ST。未连接 Memory 时，手机外壳、秒表及组件应用仍可使用。
+当前版本：**0.0.10**。资料与数据库功能需要 **[STE Memory](https://github.com/Etsuya233/ste-memory) 0.2.6 或更新版本**，该版本提供 `STE_MEMORY_API.database v1` 与日记所需的 `STE_MEMORY_API.chat v1`。请先安装或升级 Memory，再刷新 ST。未连接 Memory 时，手机外壳、秒表及组件应用仍可使用。
 
 本轮源码还要求 Memory 提供 `identity v1` 稳定身份能力，请配套更新两个插件。空间导出导入和分支继承会保留人物等资料的稳定身份，当前实例 ID 仍可改变。Phone 的日记存储格式保持 v1，已有作者引用无需改写；Memory 旧快照升级时使用原空间与记录 ID 初始化稳定身份。旧版导入已经遗失的身份对应关系无法自动恢复。缺少稳定身份能力时明确提示升级，已保存日记仍可阅读。
 
@@ -53,7 +57,7 @@
 | 插件               | 仓库 URL                                  | Branch or tag name           |
 | ------------------ | ----------------------------------------- | ---------------------------- |
 | STE Memory ≥ 0.2.6 | `https://github.com/Etsuya233/ste-memory` | `release/sillytavern-plugin` |
-| STE Phone 0.0.9    | `https://github.com/Etsuya233/ste-phone`  | `release/sillytavern-plugin` |
+| STE Phone 0.0.10   | `https://github.com/Etsuya233/ste-phone`  | `release/sillytavern-plugin` |
 
 安装后刷新页面，从聊天输入区的**魔法棒菜单 → 小手机**打开。更新使用 ST 扩展面板的 Update；升级 Phone 前请核对本节所需的 Memory 最低版本。`main` 分支用于源码开发，ST 安装请选择上述构建产物分支。
 

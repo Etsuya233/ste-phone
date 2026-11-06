@@ -1,6 +1,7 @@
 import type { AppearanceSnapshot, WechatSendMode } from "../public.ts";
 import type { ModelConnection } from "../model-connections.ts";
 import type { HomeLayout } from "../../../core/launcher/catalog.ts";
+import type { SpeechConnection } from "../../../core/speech/public.ts";
 export type Wallpaper = { kind: "gradient" } | { kind: "image"; path: string };
 export interface PhoneSettings {
   version: 8;
@@ -13,6 +14,7 @@ export interface PhoneSettings {
   defaultModelConnectionId: string | null;
   mapModelConnectionId: string | null;
   homeLayout: HomeLayout;
+  speechConnection?: SpeechConnection;
 }
 export interface PhoneSettingsV7 extends Omit<PhoneSettings, "version" | "mapModelConnectionId"> {
   version: 7;

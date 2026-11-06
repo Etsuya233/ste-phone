@@ -13,6 +13,8 @@ import type { TestModelConnection } from "../model-connection-test.ts";
 import { ModelConnections, ModelConnectionEditor } from "./model-connections.tsx";
 
 import { AppearancePage } from "./appearance-page.tsx";
+import { SpeechSettingsPage } from "../../voice-playground/public.ts";
+import type { SpeechTransport } from "../../../core/speech/public.ts";
 
 type SettingsRoute =
   | { page: "root" }
@@ -20,15 +22,18 @@ type SettingsRoute =
   | { page: "wallpapers" }
   | { page: "preview"; wallpaper: Wallpaper }
   | { page: "connections" }
+  | { page: "speech" }
   | { page: "connection-editor"; connection: ModelConnection | null };
 export function SettingsApp({
   settings,
   testModelConnection,
+  speech,
   active,
   onHome,
 }: {
   settings: PhoneSettingsService;
   testModelConnection: TestModelConnection;
+  speech: SpeechTransport;
   active: boolean;
   onHome: () => void;
 }) {
@@ -44,10 +49,18 @@ export function SettingsApp({
               <ListCell title="外观" onClick={() => navigation.push({ page: "appearance" })} />
               <ListCell title="壁纸" onClick={() => navigation.push({ page: "wallpapers" })} />
               <ListCell title="模型连接" onClick={() => navigation.push({ page: "connections" })} />
+              <ListCell title="语音连接" onClick={() => navigation.push({ page: "speech" })} />
             </GroupedList>
           </Page>
         ) : route.page === "appearance" ? (
           <AppearancePage appearance={settings.appearance} onBack={navigation.pop} />
+        ) : route.page === "speech" ? (
+          <SpeechSettingsPage
+            settings={settings}
+            transport={speech}
+            active={active && navigation.current}
+            onBack={navigation.pop}
+          />
         ) : route.page === "wallpapers" ? (
           <WallpaperLibrary settings={settings} navigation={navigation} />
         ) : route.page === "connections" ? (

@@ -3,6 +3,8 @@ import { MapApp } from "../apps/map/ui/map-app.tsx";
 import type { MapConversationStorage, MapStorage } from "../apps/map/map.ts";
 import { GalleryApp } from "../apps/gallery/ui/gallery-app.tsx";
 import { ImagePlaygroundApp } from "../apps/image-playground/ui/image-playground-app.tsx";
+import { VoicePlaygroundApp } from "../apps/voice-playground/ui/voice-playground-app.tsx";
+import type { SpeechTransport } from "../core/speech/public.ts";
 import type { ImageHub } from "../core/image-hub/public.ts";
 import { PhoneSettingsService } from "../apps/settings/settings-service.ts";
 import type { SettingsStorage } from "../apps/settings/ports/settings-storage.ts";
@@ -64,6 +66,7 @@ export function createPhone(dependencies: {
   wechatStickerStorage: WechatStickerStorage;
   logs: PhoneLog;
   imageHub: ImageHub;
+  speech: SpeechTransport;
 }): PhoneRuntime {
   const settings = new PhoneSettingsService(dependencies.settingsStorage);
   const data = new PhoneDataService(dependencies.dataProvider);
@@ -126,6 +129,17 @@ export function createPhone(dependencies: {
         />
       ),
     },
+    "voice-playground": {
+      render: ({ active, onHome, onOpen }) => (
+        <VoicePlaygroundApp
+          active={active}
+          settings={settings}
+          transport={dependencies.speech}
+          onHome={onHome}
+          onSettings={() => onOpen("settings")}
+        />
+      ),
+    },
     wechat: {
       render: ({ active, onHome }) => (
         <WechatApp
@@ -161,6 +175,7 @@ export function createPhone(dependencies: {
           active={active}
           settings={settings}
           testModelConnection={testModelConnection}
+          speech={dependencies.speech}
           onHome={onHome}
         />
       ),

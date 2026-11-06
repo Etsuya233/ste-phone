@@ -46,6 +46,21 @@ export function AppIcon({ app }: { app: AppId }) {
       </Icon>
     );
   }
+  if (app === "voice-playground") {
+    return (
+      <Icon appearance="app" className="voice-app-icon">
+        <svg
+          viewBox="0 0 60 60"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="4"
+          strokeLinecap="round"
+        >
+          <path d="M12 26v8m9-14v20m9-29v38m9-29v20m9-14v8" />
+        </svg>
+      </Icon>
+    );
+  }
   if (app === "wechat") {
     return (
       <Icon appearance="app" className="wechat-app-icon">

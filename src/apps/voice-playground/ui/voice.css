@@ -1,0 +1,66 @@
+:host .voice-app-icon {
+  color: #d5f8fa;
+  background: #17586a;
+}
+
+:host .voice-studio,
+:host .voice-fields,
+:host .voice-result {
+  display: grid;
+  gap: 12px;
+}
+
+:host .voice-studio {
+  padding: 14px 16px 20px;
+}
+
+:host .voice-reel {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 12px;
+  color: #d5f8fa;
+  background: #153944;
+  font-variant-numeric: tabular-nums;
+}
+
+:host .voice-reel svg {
+  width: 100px;
+  fill: none;
+  stroke: #79e0db;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+:host .voice-fields > label,
+:host .voice-script {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px;
+}
+
+:host .voice-fields > label > :is(input, select, textarea),
+:host .voice-script textarea {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+}
+
+:host .voice-script textarea {
+  resize: vertical;
+}
+
+:host .voice-studio :is(audio, textarea) {
+  width: 100%;
+}
+
+:host .voice-studio p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+:host .voice-studio details > summary {
+  margin-bottom: 8px;
+}

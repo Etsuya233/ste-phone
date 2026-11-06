@@ -2,6 +2,7 @@ import { createMapConversationStorage } from "../infrastructure/host/map-convers
 import { createStMapStorage } from "../infrastructure/host/map-storage.ts";
 import { createStImageHub } from "../infrastructure/host/image-hub.ts";
 import { createStSettingsStorage } from "../infrastructure/host/st-settings.ts";
+import { createBrowserSpeech } from "../infrastructure/browser/speech.ts";
 import { createStAiTransport } from "../infrastructure/host/ai-transport.ts";
 import { createPhone } from "../bootstrap/create-phone.tsx";
 import { createStChatContext } from "../infrastructure/host/chat-context.ts";
@@ -30,6 +31,7 @@ const logs = createPhoneLog({
   storage: createIndexedDbLogStorage("ste-phone-logs-v1"),
 });
 const phone = createPhone({
+  speech: createBrowserSpeech(),
   imageHub: createStImageHub(),
   dataProvider: new MemoryDatabaseProvider(),
   settingsStorage: createStSettingsStorage(),

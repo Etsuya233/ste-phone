@@ -60,7 +60,9 @@ test("version 1 migration discards host backgrounds and external URLs while pres
       ...defaultSettings,
       homeLayout: {
         ...defaultSettings.homeLayout,
-        grid: defaultSettings.homeLayout.grid.filter((id) => id !== "map"),
+        grid: defaultSettings.homeLayout.grid.filter(
+          (id) => id !== "map" && id !== "voice-playground",
+        ),
       },
       wallpaper: { kind: "gradient" },
       blur: true,
@@ -145,7 +147,9 @@ test("version 2 migration preserves wallpaper and starts without connections", (
     ...defaultSettings,
     homeLayout: {
       ...defaultSettings.homeLayout,
-      grid: defaultSettings.homeLayout.grid.filter((id) => id !== "map"),
+      grid: defaultSettings.homeLayout.grid.filter(
+        (id) => id !== "map" && id !== "voice-playground",
+      ),
     },
     wallpaper: { kind: "image", path: image.path },
     blur: true,

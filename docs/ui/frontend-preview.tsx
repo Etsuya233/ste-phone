@@ -13,6 +13,8 @@ import { mountPhone } from "../../src/frontend/host/mount-phone.tsx";
 import { createPreviewMemory } from "./data-source-fixture.ts";
 import { createIndexedDbLogStorage } from "../../src/infrastructure/browser/log-storage.ts";
 import { createPhoneLog } from "../../src/apps/logs/public.ts";
+import { defaultSpeechConnection } from "../../src/core/speech/public.ts";
+import { previewSpeech } from "./preview-speech.ts";
 
 import { MemoryDatabaseProvider } from "../../src/infrastructure/ste-memory/memory-database-provider.ts";
 
@@ -47,6 +49,15 @@ if (options.get("logs-test") === "demo") {
   });
 }
 const settingsStorage = await createPreviewSettingsStorage();
+if (options.get("voice-playground") === "1") {
+  const settings = new PhoneSettingsService(settingsStorage);
+  if (!settings.getState().speechConnection) {
+    settings.saveSpeechConnection({
+      ...defaultSpeechConnection,
+      endpoint: "https://preview.invalid/v1/audio/speech",
+    });
+  }
+}
 // 地图入口提供模拟连接，全部请求仍由 preview-ai-transport 截获。
 if (options.get("map") === "1") {
   const settings = new PhoneSettingsService(settingsStorage);
@@ -62,6 +73,7 @@ if (options.get("map") === "1") {
   }
 }
 const phone = createPhone({
+  speech: previewSpeech,
   imageHub: createPreviewImageHub(options.get("image-test")),
   settingsStorage,
   aiTransport: createPreviewAiTransport(
@@ -93,29 +105,31 @@ mountPhone({
   homeScreen: phone.homeScreen,
   appearance: phone.appearance,
   initialApp:
-    options.get("map") === "1"
-      ? "map"
-      : options.get("gallery") === "1"
-        ? "gallery"
-        : options.get("image-playground") === "1"
-          ? "image-playground"
-          : options.get("wechat") === "1"
-            ? "wechat"
-            : options.get("diary") === "1"
-              ? "diary"
-              : options.get("app-store") === "1"
-                ? "app-store"
-                : options.get("settings") === "1"
-                  ? "settings"
-                  : options.get("database") === "1"
-                    ? "database"
-                    : options.get("data-source") === "1"
-                      ? "data-source"
-                      : options.get("logs") === "1"
-                        ? "logs"
-                        : options.get("foundation") === "1"
-                          ? "foundation"
-                          : "home",
+    options.get("voice-playground") === "1"
+      ? "voice-playground"
+      : options.get("map") === "1"
+        ? "map"
+        : options.get("gallery") === "1"
+          ? "gallery"
+          : options.get("image-playground") === "1"
+            ? "image-playground"
+            : options.get("wechat") === "1"
+              ? "wechat"
+              : options.get("diary") === "1"
+                ? "diary"
+                : options.get("app-store") === "1"
+                  ? "app-store"
+                  : options.get("settings") === "1"
+                    ? "settings"
+                    : options.get("database") === "1"
+                      ? "database"
+                      : options.get("data-source") === "1"
+                        ? "data-source"
+                        : options.get("logs") === "1"
+                          ? "logs"
+                          : options.get("foundation") === "1"
+                            ? "foundation"
+                            : "home",
   responsive: options.get("responsive") === "1",
   draggable: options.get("draggable") === "1",
 });

@@ -8,6 +8,7 @@ export const appCatalog = {
     removable: true,
   },
   wechat: { name: "微信", description: "切换人物帐号，与故事中的好友聊天", removable: true },
+  "voice-playground": { name: "声乐园", description: "为台词配音，试听不同音色", removable: true },
   diary: { name: "日记", description: "以人物的视角记录故事与回忆", removable: true },
   database: {
     name: "Fake DBeaver",
@@ -43,6 +44,7 @@ export const defaultHomeLayout: HomeLayout = {
     "gallery",
     "image-playground",
     "map",
+    "voice-playground",
   ],
   dock: ["stopwatch"],
 };

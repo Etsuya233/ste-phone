@@ -1,5 +1,6 @@
 import type { MigrationPlan } from "../../core/storage/migrations.ts";
 import type { PhoneSettings } from "./ports/settings-storage.ts";
+import { validateSpeechConnection } from "../../core/speech/public.ts";
 
 // 历史步骤固定输出 v6；未来默认布局变化不能改写旧版本迁移的结果。
 const v6Defaults = {
@@ -86,6 +87,9 @@ function validatePhoneSettings(value: unknown): asserts value is PhoneSettings {
     throw new Error("不支持的手机设置版本");
   }
   validateSettingsFields(settings, 8);
+  if (settings.speechConnection !== undefined) {
+    validateSpeechConnection(settings.speechConnection);
+  }
   if (
     settings.mapModelConnectionId !== null &&
     (typeof settings.mapModelConnectionId !== "string" || !settings.mapModelConnectionId.trim())

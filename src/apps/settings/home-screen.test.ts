@@ -46,7 +46,9 @@ test("v3 migration adds the store and preserves wallpaper and model credentials"
     wechatSendMode: "delayed",
     homeLayout: {
       ...defaultSettings.homeLayout,
-      grid: defaultSettings.homeLayout.grid.filter((id) => id !== "map"),
+      grid: defaultSettings.homeLayout.grid.filter(
+        (id) => id !== "map" && id !== "voice-playground",
+      ),
     },
   });
   assert.deepEqual(storage.read(), service.getState());
@@ -97,6 +99,7 @@ test("moving between home and dock, uninstalling and reinstalling survive a new 
       "gallery",
       "image-playground",
       "map",
+      "voice-playground",
       "database",
     ],
     dock: ["settings"],

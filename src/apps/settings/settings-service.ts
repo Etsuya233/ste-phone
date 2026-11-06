@@ -1,3 +1,4 @@
+import { validateSpeechConnection, type SpeechConnection } from "../../core/speech/public.ts";
 import type {
   AppearanceSettings,
   AppearanceSnapshot,
@@ -187,6 +188,10 @@ export class PhoneSettingsService {
     this.updateSnapshots();
   }
   getState = () => this.state;
+  saveSpeechConnection(connection: SpeechConnection) {
+    validateSpeechConnection(connection);
+    this.save({ ...this.state, speechConnection: { ...connection } });
+  }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => {
