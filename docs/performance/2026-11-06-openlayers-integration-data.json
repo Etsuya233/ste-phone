@@ -1,0 +1,53 @@
+{
+  "date": "2026-11-06",
+  "environment": "Windows Edge / real SillyTavern; LittleWhiteBox disabled",
+  "connection": "Command Code",
+  "scope": "Whole ST target metrics include other extensions and automation; not iPhone or map-exclusive measurements.",
+  "zoom10Cycles": {
+    "elapsedSeconds": 8.54256400000304,
+    "taskSeconds": 7.786953,
+    "scriptSeconds": 1.884003,
+    "heapBeforeBytes": 215229240,
+    "heapAfterBytes": 207662740,
+    "nodesBefore": 120240,
+    "nodesAfter": 120239,
+    "canvasCount": 1,
+    "longTasks": [57],
+    "sameCanvas": true
+  },
+  "panel10Cycles": {
+    "elapsedSeconds": 12.164139000000432,
+    "taskSeconds": 9.957937999999999,
+    "scriptSeconds": 0.4688310000000002,
+    "heapBeforeBytes": 229338596,
+    "heapAfterBytes": 211718732,
+    "nodesBefore": 120239,
+    "nodesAfter": 120243
+  },
+  "realAI": {
+    "before": {
+      "revision": 8,
+      "count": 111
+    },
+    "applied": {
+      "revision": 9,
+      "count": 112,
+      "temporaryPoint": [[580, 450]]
+    },
+    "undone": {
+      "revision": 10,
+      "count": 111
+    },
+    "originalFeaturesAndEventsUnchanged": true,
+    "undoRestoredAllContent": true
+  },
+  "tests": {
+    "passed": 301,
+    "failed": 0
+  },
+  "productionFiles": {
+    "index.js": 1244962,
+    "style.css": 137303,
+    "manifest.json": 207
+  }
+}

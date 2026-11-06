@@ -1,4 +1,4 @@
-@import "./ui/map-leaflet.css";
+@import "./ui/map-openlayers.css";
 @import "./ui/map-agent-panel.css";
 
 :host .map-app {

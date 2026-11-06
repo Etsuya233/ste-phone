@@ -216,7 +216,7 @@ export function previewMapReply(
   if (/查询|在哪|定位|路线|怎么走/.test(input.instruction)) {
     return mode === "invalid" ? "模拟非法地图 JSON" : previewMapQuery(map, input.instruction);
   }
-  const { summary, ...patch } = previewMapPatch(map, input);
+  const { summary, ...patch } = previewMapPatch(map, input, mode);
   if (!results.has("map_apply")) {
     return call("map_apply", patch);
   }
@@ -246,7 +246,7 @@ function previewMapQuery(map: MapDocument, instruction: string): string {
   });
 }
 
-function previewMapPatch(map: MapDocument, input: PreviewMapInstruction) {
+function previewMapPatch(map: MapDocument, input: PreviewMapInstruction, mode: string | null) {
   if (!map.features.length) {
     return {
       summary: "绘制椿城的河流、街区与主要地点，未确定的地点保留待定。",
@@ -257,6 +257,26 @@ function previewMapPatch(map: MapDocument, input: PreviewMapInstruction) {
     };
   }
   const selected = map.features.find((item) => item.id === input.selectedId);
+  // Explicit preview modes exercise geometry changes through the real tool/proposal pipeline.
+  if (mode === "move" || mode === "delete") {
+    const target = selected ?? map.features.find((item) => item.id === "station")!;
+    return {
+      summary: `${mode === "move" ? "移动" : "删除"}「${target.name}」的模拟提案。`,
+      title: map.title,
+      upsert:
+        mode === "move"
+          ? [
+              {
+                ...target,
+                geometry:
+                  target.geometry?.map(([x, y]): [number, number] => [x + 80, y + 50]) ?? null,
+              },
+            ]
+          : [],
+      remove: mode === "delete" ? [target.id] : [],
+      events: [],
+    };
+  }
   const upsert = selected
     ? [{ ...selected, description: `${selected.description} 【模拟调整】${input.instruction}` }]
     : [

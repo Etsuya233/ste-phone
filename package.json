@@ -23,13 +23,14 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test --test-concurrency=1 scripts/*.test.ts src/core/storage/*.test.ts src/apps/*/*.test.ts src/infrastructure/ste-memory/*.test.ts src/infrastructure/host/*.test.ts src/frontend/device/*.test.ts"
+    "test": "node --test --test-concurrency=1 scripts/*.test.ts src/core/storage/*.test.ts src/apps/*/*.test.ts src/infrastructure/ste-memory/*.test.ts src/infrastructure/host/*.test.ts src/frontend/device/*.test.ts",
+    "preview:map-comparison": "node scripts/preview-map-comparison.ts"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "0.83.0",
     "@earendil-works/pi-ai": "0.83.0",
     "jszip": "3.10.1",
-    "leaflet": "1.9.4",
+    "ol": "10.11.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "typebox": "1.3.7"
@@ -45,6 +46,7 @@
     "eslint": "10.0.0",
     "eslint-config-prettier": "^10.0.0",
     "globals": "17.9.0",
+    "leaflet": "1.9.4",
     "prettier": "^3.0.0",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.0.0"

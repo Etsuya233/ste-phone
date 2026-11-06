@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>地图渲染引擎对照 · 2026-11-06</title
+  ><style>
+    body {
+      font:
+        16px/1.75 system-ui,
+        sans-serif;
+      background: #f3f2ed;
+      color: #273b36;
+      margin: 0;
+    }
+    main {
+      max-width: 1000px;
+      margin: auto;
+      padding: 32px 24px;
+    }
+    h1 {
+      font-size: 32px;
+    }
+    h2 {
+      margin-top: 34px;
+    }
+    a {
+      color: #216644;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      font-size: 14px;
+    }
+    th,
+    td {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid #dfe5df;
+    }
+    .scroll {
+      overflow: auto;
+    }
+    .lead {
+      background: #e2ece2;
+      padding: 20px;
+      border-radius: 12px;
+    }
+    .muted {
+      color: #607168;
+    }
+    code {
+      background: #e7e8df;
+      padding: 2px 5px;
+    }
+  </style>
+  <main>
+    <p class="muted">STE PHONE / 2026-11-06 / 独立对照原型</p>
+    <h1>OpenLayers 能接管绘制和标签避让，<br />内存收益仍需真机验证</h1>
+    <p class="lead">
+      前台交互与 100 次重建续测支持继续推进 OpenLayers
+      的完整业务接入。先补齐点击、提案、空图与缩放边界， 再做手机外壳和 AI
+      流程验收；当前生产仍使用已优化的 Leaflet，iPhone 页面重启仍需真机验证。
+    </p>
+    <p>
+      <a href="http://127.0.0.1:18829/?engine=leaflet">打开 Leaflet</a> ·
+      <a href="http://127.0.0.1:18829/?engine=openlayers">打开 OpenLayers</a> ·
+      <a href="2026-11-06-map-engine-comparison-data.json">完整原始数据</a>
+    </p>
+    <section id="interaction-validation">
+      <h2>续测：前台交互与 100 次重建</h2>
+      <p>
+        <strong>本轮结果支持继续推进 OpenLayers 业务接入验证。</strong>用户体验上更偏好
+        OpenLayers；前台输入实测没有发现明显卡顿或重建后画布残留。完整替换仍需补齐点击、提案与视图生命周期。
+      </p>
+      <p>
+        两边都在 Windows Edge 前台使用同一地图，通过 CDP
+        投递鼠标按下/移动/抬起及滚轮事件，另点击高度切换按钮。每种场景各一次，表内为
+        requestAnimationFrame 间隔，单位
+        ms。它反映页面帧调度，无法测量手指到像素显示的端到端延迟，也不能代表真实 iPhone
+        触摸。工具投递间隔影响总测试时长，不能将两边序列用时当作跟手速度。本轮实际窗口
+        1905×1089、DPR 约 1.33，与前述定时序列的 DPR 不同。
+      </p>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>引擎</th>
+              <th>输入场景</th>
+              <th>P95间隔</th>
+              <th>最大间隔</th>
+              <th>间隔&gt;50ms</th>
+              <th>长任务&gt;50ms</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>openlayers</td>
+              <td>连续拖动：6 次 / 120 次移动输入</td>
+              <td>11.6</td>
+              <td>22.7</td>
+              <td>0</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>openlayers</td>
+              <td>连续滚轮：40 次输入</td>
+              <td>11.6</td>
+              <td>22.3</td>
+              <td>0</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>openlayers</td>
+              <td>容器高度：20 次切换</td>
+              <td>12.0</td>
+              <td>22.6</td>
+              <td>0</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>leaflet</td>
+              <td>连续拖动：6 次 / 120 次移动输入</td>
+              <td>11.7</td>
+              <td>21.9</td>
+              <td>0</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>leaflet</td>
+              <td>连续滚轮：40 次输入</td>
+              <td>22.5</td>
+              <td>55.4</td>
+              <td>1</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>leaflet</td>
+              <td>容器高度：20 次切换</td>
+              <td>11.6</td>
+              <td>22.1</td>
+              <td>0</td>
+              <td>0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        OpenLayers 三项的最大帧间隔约 23ms；Leaflet 拖动与高度切换同样稳定，滚轮缩放出现一次 55.4ms
+        间隔。两边均无超过 50ms
+        的主线程长任务。滚轮按各库默认缩放/动画策略处理，最终缩放量不同；这里只比较同类输入下的观察结果。测量在最后一次输入后结束，未专门覆盖动画尾段。Leaflet
+        阻止 wheel 冒泡，因此页面监听器计数为 0，实际视图分辨率变化确认输入已处理。
+      </p>
+      <p>
+        最初一次 OpenLayers 拖动在未确认前台状态时出现约 1 秒帧间隔。随后显式激活页面并验证
+        visible/focus
+        后消失，该轮保留原始数据但从交互结论中排除。此前报告的定时序列没有逐轮记录前台状态，其长任务与经过时间不能当作严格的跟手性对比。
+      </p>
+      <p>
+        <strong>100 次卸载重建：</strong>OpenLayers 地图内部始终 8 个元素、1 张画布；第 50–100
+        次已启用性能计数的样本，JS 堆在 12.65–25.45 MiB 间回收波动，进程级监听器计数在 133 与 169
+        间反复变化，没有在这些采样点持续累积。前 50 次只记录节点与画布，未采集到 JS 堆。
+      </p>
+      <p>
+        Leaflet 同样完成 100 次重建，地图内部保持 241 个元素、1 张画布。进程级监听器曾逐步增加至
+        371；额外 20 次重建后降至 333，JS 堆也从约 31.1 回落到 22.5
+        MiB。当前样本无法证明持续泄漏，也没有强制 GC
+        或堆快照。两边过程均未发生页面重载或地图消失，长期后台保活及真机进程内存仍未验证。
+      </p>
+      <p>
+        <strong>发现的原型缺口：</strong>OpenLayers 当前 minResolution=0.5，连续点击 12
+        次放大后实测停在 0.5；Leaflet 的 maxZoom=5 对应 0.03125，两者最大放大尺度相差 16
+        倍。迁移需明确对齐放大上限。截图还显示边缘文字会被裁切，当前没有地点标签左右换向或边缘避让。空图在原型中会抛错，正式地图允许空图，必须补齐。
+      </p>
+      <p>
+        后续接入保持 MapService 和已有地图文档为业务权威：地图回调只发出地点 ID
+        或平面坐标；数据、选中、高亮、查询定位及提案旧几何由页面状态更新绘制。重点验收地点/道路/区域点击与装饰命中隔离、空白坐标、查询路线、提案新增/移动/删除及应用/放弃/撤销，以及
+        Home 保活、切聊天销毁、Expose 退出和面板收放。无需另写一套碰撞计算；由 OpenLayers declutter
+        承担标签碰撞，应用维护优先级和显示规则。
+      </p>
+      <p>
+        本轮只验证并补充报告，未修改生产或原型绘制代码。<a
+          href="2026-11-06-map-interaction-validation-data.json"
+          >续测完整原始数据</a
+        >。
+      </p>
+    </section>
+    <h2>首轮定时序列实测结果</h2>
+    <p>
+      Windows Edge；同一份地图 v8，111 个语义要素、208 栋装饰建筑、57 棵树。地图容器 390×520 CSS
+      像素，使用相同初始中心、分辨率及固定动作；每项 10 次往返、每个动作后等待
+      350ms，共三轮。下表是三轮 TaskDuration 增量的中位数，包含序列准备与少量测试界面工作。CPU
+      指标为浏览器主线程忙碌时间，未采集整机 CPU 百分比或 GPU 时间。
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>场景</th>
+          <th>Leaflet 优化版</th>
+          <th>OpenLayers</th>
+          <th>主线程耗时减少</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>缩放往返 ×10</td>
+          <td>595.5 ms</td>
+          <td>120.8 ms</td>
+          <td>79.7%</td>
+        </tr>
+        <tr>
+          <td>平移往返 ×10</td>
+          <td>141.2 ms</td>
+          <td>98.0 ms</td>
+          <td>30.6%</td>
+        </tr>
+        <tr>
+          <td>高度往返 ×10</td>
+          <td>146.7 ms</td>
+          <td>62.2 ms</td>
+          <td>57.6%</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      动作序列本身有约 7 秒等待，不能用总经过时间当绘制耗时。Leaflet 首轮缩放出现 8 个长任务，最长
+      1562ms；第二轮为 0，第三轮为 1 个 72ms。OpenLayers 三轮全部场景均未记录到超过 50ms
+      的长任务。首轮 Leaflet 缩放时另一个 ST
+      测试页仍打开，后续关闭；这次离群值保留在原始数据中，不能认定为稳定卡顿。没有做帧率跟踪或持续触摸手势测试。
+    </p>
+    <h2>内存：画布有明确差异，JS 堆结果重叠</h2>
+    <p>
+      实测稳定画面的 Leaflet 装饰画布为 1560×2080 像素，OpenLayers 为 780×1040；单张 RGBA
+      缓冲理论值分别约 12.38 MiB、3.09 MiB。Leaflet 当前装饰 Canvas 的
+      padding=0.5，使绘制区域宽高各扩大到 2 倍。这里只计算一个像素缓冲，未包含浏览器复制、纹理、SVG
+      合成和驱动开销；不能视为整个进程或 GPU 实际占用。
+    </p>
+    <p>
+      序列结束时，Leaflet JS 堆样本为 12.3–28.4 MiB，OpenLayers 为 11.5–34.5
+      MiB，明显受垃圾回收时机影响。没有强制 GC，无法据此证明哪边稳态内存更低。地图 Shadow DOM
+      元素数为 241 对 8，但 OpenLayers 创建了 921 个内部图形要素；DOM 减少并不代表所有内存同步减少。
+    </p>
+    <p>
+      额外各点击 10 次卸载重建：Leaflet 堆约 12.3→11.6 MiB，OpenLayers 约 18.7→32.2
+      MiB。一次短序列不足以判断泄漏。两侧代码均调用地图销毁，OpenLayers 同时解除 target；需要固定 GC
+      条件、堆快照或真机长期会话进一步确认。
+    </p>
+    <h2>对照边界</h2>
+    <p>
+      Leaflet 直接复用已提交的生产 MapDrawing。OpenLayers 使用 Canvas VectorLayer 和 Text
+      declutter，保留地图几何、装饰生成与基本色彩，但省略部分地面纹理、语义建筑屋顶、阴影及生产选中/高亮/提案效果，桥梁层级也有差异。标签没有复刻小区域/短道路门槛、控件保留区及地点左右换向，因此显示密度与位置不同；111
+      个 labelCandidates
+      为候选数量，不能当作最终显示标签数。本轮属于实现方案比较，包含这些差异，无法把全部性能收益归因于库本身。
+    </p>
+    <p>
+      页面没有 ST 聊天、React 手机外壳、键盘或地图 AI。本轮高度往返只改变地图容器，不能复现 iPhone
+      收键盘的系统视口行为。运行时读到窗口 1920×1500、DPR 约
+      2；浏览器接口请求的模拟设置没有按预期反映在运行时，因此报告按实际读数记录。所有结果均为桌面
+      Edge，不代表 iPhone 17 / iOS 26 的 Edge 或 TauriTavern。
+    </p>
+    <h2>依赖体积</h2>
+    <p>
+      以下为同一 esbuild 配置下的独立原型 JS 输出，gzip
+      在本地计算。每次导航只加载选中的引擎，公共入口及共享块另计；这不是生产插件体积。OpenLayers
+      适配器分块更大，不能称为包体更轻。
+    </p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>分块</th>
+            <th>minified KiB</th>
+            <th>gzip KiB</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>comparison.js</td>
+            <td>9.7</td>
+            <td>3.7</td>
+          </tr>
+          <tr>
+            <td>leaflet-renderer-GOSNAO5U.js</td>
+            <td>156.7</td>
+            <td>46.5</td>
+          </tr>
+          <tr>
+            <td>openlayers-renderer-65U2WWRB.js</td>
+            <td>274.8</td>
+            <td>81.4</td>
+          </tr>
+          <tr>
+            <td>chunk-W2OTA4J6.js</td>
+            <td>3.1</td>
+            <td>1.5</td>
+          </tr>
+          <tr>
+            <td>chunk-SQE76S5B.js</td>
+            <td>0.6</td>
+            <td>0.4</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <h2>推荐后续顺序</h2>
+    <p>
+      <strong>先做低风险内存优化。</strong>单独对照装饰 Canvas padding 0.5
+      与较小值，检查连续拖动边缘、快速缩放和容器变化；收益明确再保留。继续记录手机收键盘与展开 AI
+      区域时的视口更新频率，合并重复尺寸更新，避免地图与外层布局相互触发。所有改动仍需 iPhone 实测。
+    </p>
+    <p>
+      <strong>再评估 OpenLayers 完整迁移。</strong
+      >由库维护视图、绘制、标签碰撞和命中检测；应用继续维护地点/道路/区域样式、优先级、缩放显示规则、选中与提案状态以及数据增量更新。补齐当前省略的效果后重新测同一张图，并接回
+      AI 应用/撤销流程。若目标是减少手写标签布局，它具备直接价值；若目标是解决
+      Jetsam，仍需进程内存证据。
+    </p>
+    <p>
+      之前的 iPhone Jetsam 日志显示 WebContent
+      内存压力值得关注，但本原型无法证明页面重启的具体触发链。生产插件源码本轮未迁移，重新构建的
+      index.js SHA256
+      与已提交优化版一致（e3c3ff8f6ef49caa81507aee82dc68432cf11c14eaa7bd7042e868d940082d57）。typecheck、对照源文件
+      ESLint 和生产 build 通过。
+    </p>
+    <h2>全部样本</h2>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>引擎</th>
+            <th>场景</th>
+            <th>轮次</th>
+            <th>Task ms</th>
+            <th>Layout ms</th>
+            <th>Style ms</th>
+            <th>JS堆 MiB</th>
+            <th>长任务数 / 最长ms</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>leaflet</td>
+            <td>缩放往返</td>
+            <td>1</td>
+            <td>1766.1</td>
+            <td>75.4</td>
+            <td>260.7</td>
+            <td>28.4</td>
+            <td>8 / 1562</td>
+          </tr>
+          <tr>
+            <td>leaflet</td>
+            <td>平移往返</td>
+            <td>1</td>
+            <td>127.4</td>
+            <td>7.2</td>
+            <td>14.3</td>
+            <td>19.0</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>leaflet</td>
+            <td>高度往返</td>
+            <td>1</td>
+            <td>146.7</td>
+            <td>8.8</td>
+            <td>26.0</td>
+            <td>16.5</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>openlayers</td>
+            <td>缩放往返</td>
+            <td>1</td>
+            <td>120.8</td>
+            <td>0.4</td>
+            <td>0.3</td>
+            <td>25.7</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>openlayers</td>
+            <td>平移往返</td>
+            <td>1</td>
+            <td>68.5</td>
+            <td>0.7</td>
+            <td>0.1</td>
+            <td>28.2</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>openlayers</td>
+            <td>高度往返</td>
+            <td>1</td>
+            <td>62.2</td>
+            <td>5.6</td>
+            <td>2.7</td>
+            <td>30.3</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>leaflet</td>
+            <td>缩放往返</td>
+            <td>2</td>
+            <td>398.1</td>
+            <td>21.8</td>
+            <td>70.4</td>
+            <td>12.3</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>leaflet</td>
+            <td>平移往返</td>
+            <td>2</td>
+            <td>141.2</td>
+            <td>7.0</td>
+            <td>16.3</td>
+            <td>13.4</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>leaflet</td>
+            <td>高度往返</td>
+            <td>2</td>
+            <td>134.9</td>
+            <td>8.9</td>
+            <td>23.3</td>
+            <td>14.0</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>openlayers</td>
+            <td>缩放往返</td>
+            <td>2</td>
+            <td>121.6</td>
+            <td>0.3</td>
+            <td>0.3</td>
+            <td>28.4</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>openlayers</td>
+            <td>平移往返</td>
+            <td>2</td>
+            <td>98.0</td>
+            <td>1.3</td>
+            <td>0.1</td>
+            <td>25.7</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>openlayers</td>
+            <td>高度往返</td>
+            <td>2</td>
+            <td>48.9</td>
+            <td>5.1</td>
+            <td>2.3</td>
+            <td>26.5</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>openlayers</td>
+            <td>缩放往返</td>
+            <td>3</td>
+            <td>62.9</td>
+            <td>0.3</td>
+            <td>0.1</td>
+            <td>34.5</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>openlayers</td>
+            <td>平移往返</td>
+            <td>3</td>
+            <td>98.6</td>
+            <td>0.8</td>
+            <td>0.1</td>
+            <td>12.0</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>openlayers</td>
+            <td>高度往返</td>
+            <td>3</td>
+            <td>86.6</td>
+            <td>5.7</td>
+            <td>2.8</td>
+            <td>11.5</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>leaflet</td>
+            <td>缩放往返</td>
+            <td>3</td>
+            <td>595.5</td>
+            <td>25.8</td>
+            <td>93.7</td>
+            <td>22.3</td>
+            <td>1 / 72</td>
+          </tr>
+          <tr>
+            <td>leaflet</td>
+            <td>平移往返</td>
+            <td>3</td>
+            <td>155.4</td>
+            <td>9.0</td>
+            <td>20.1</td>
+            <td>13.3</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>leaflet</td>
+            <td>高度往返</td>
+            <td>3</td>
+            <td>294.4</td>
+            <td>14.2</td>
+            <td>33.7</td>
+            <td>12.3</td>
+            <td>0 / 0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">
+      代码入口：docs/ui/map-renderer-comparison/comparison.ts；绘制与标签规则：openlayers-renderer.ts、openlayers-roads.ts；本地启动：pnpm
+      preview:map-comparison &lt;MapDocument JSON 路径&gt;。测试数据留在本地 tmp，不随插件发布。
+    </p>
+  </main>
+</html>

@@ -16,5 +16,5 @@
     "skipLibCheck": true,
     "jsx": "react-jsx"
   },
-  "include": ["src", "scripts", "docs/ui/frontend-preview.tsx"]
+  "include": ["src", "scripts", "docs/ui/frontend-preview.tsx", "docs/ui/map-renderer-comparison"]
 }
