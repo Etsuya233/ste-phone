@@ -1,6 +1,6 @@
 :host .map-app {
   --map-agent-collapsed-height: 56px;
-  --map-agent-height: 52%;
+  --map-agent-height: 44%;
 }
 
 :host .map-agent {
@@ -187,31 +187,65 @@
 }
 
 :host .map-model-selector {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  position: relative;
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 6px;
+}
+
+:host .map-model-chip {
+  display: flex;
   align-items: center;
-  gap: 6px 8px;
-  margin-bottom: 7px;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--ios-muted-fill);
   color: var(--ios-secondary-ink);
   font-size: 11px;
 }
 
-:host .map-model-selector select {
-  width: 100%;
-  min-width: 0;
-  border: 1px solid var(--ios-line);
-  border-radius: 7px;
-  padding: 4px 5px;
-  background: var(--ios-row-surface);
-  color: var(--ios-ink);
-  font: inherit;
+:host .map-model-chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-:host .map-model-selector .map-error {
-  grid-column: 1 / -1;
+:host .map-model-chip svg {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:host .map-model-selector select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+:host .map-model-selector[data-disabled="true"] {
+  opacity: var(--ios-disabled-opacity);
+}
+
+:host .map-model-selector[data-disabled="true"] select {
+  cursor: default;
 }
 
 :host .map-model-selector select:focus-visible {
+  outline: none;
+}
+
+:host .map-model-selector:has(select:focus-visible) .map-model-chip {
   outline: 2px solid var(--ios-blue);
   outline-offset: 1px;
 }

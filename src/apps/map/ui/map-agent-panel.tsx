@@ -37,7 +37,16 @@ export function MapAgentPanel({
 
   useEffect(() => {
     const element = body.current;
-    if (element && follow.current) {
+    if (!element) {
+      return;
+    }
+    const hasContent =
+      state.conversation.length > 0 || state.proposal !== null || state.error !== null;
+    if (!hasContent) {
+      element.scrollTop = 0;
+      return;
+    }
+    if (follow.current) {
       element.scrollTop = element.scrollHeight;
     }
   }, [state.conversation, state.proposal, state.error]);

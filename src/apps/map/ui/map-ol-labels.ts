@@ -64,7 +64,13 @@ export function createMapLabelLayer(map: Map) {
         const style = new Style({ text });
         feature.setStyle(() => {
           const pixel = map.getPixelFromCoordinate(center);
-          const width = map.getSize()?.[0] ?? 0;
+          const size = map.getSize();
+          const width = size?.[0] ?? 0;
+          const height = size?.[1] ?? 0;
+          // 全图与缩放控件固定在右下角，标签不得压到按钮下面。
+          if (pixel[0]! > width - 56 && pixel[1]! > height - 118) {
+            return undefined;
+          }
           let available: number;
           if (item.kind === "place") {
             const left = width - pixel[0]! - 20 < fullWidth && pixel[0]! > width - pixel[0]!;

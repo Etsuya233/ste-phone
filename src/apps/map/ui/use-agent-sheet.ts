@@ -2,8 +2,10 @@ import { useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEve
 
 export type AgentSheetSize = "collapsed" | "half" | "full";
 
-/** 半展开占手机可用高度的 52%，用于首次尚未测量容器高度时。 */
-const HALF_RATIO = 0.52;
+/** 半展开占手机可用高度的 44%，给地图留出主体视野；首次尚未测量容器高度时使用。 */
+const HALF_RATIO = 0.44;
+/** 标题栏和输入区之外至少保留的对话高度，短屏幕上避免半屏被内容挤没。 */
+const MIN_BODY_HEIGHT = 44;
 
 export function useAgentSheet() {
   const panelRef = useRef<HTMLElement>(null);
@@ -17,18 +19,36 @@ export function useAgentSheet() {
   const [size, setSize] = useState<AgentSheetSize>("half");
   const [height, setHeight] = useState<number | null>(null);
   const [containerHeight, setContainerHeight] = useState<number | null>(null);
+  const [chromeHeight, setChromeHeight] = useState(0);
+  const composerHeight = useRef(0);
 
   useLayoutEffect(() => {
-    const container = panelRef.current?.parentElement;
-    if (!container) {
+    const panel = panelRef.current;
+    const container = panel?.parentElement;
+    if (!panel || !container) {
       return;
     }
-    const update = () => setContainerHeight(container.clientHeight);
+    const composer = panel.querySelector<HTMLElement>(".map-agent-composer");
+    const update = () => {
+      setContainerHeight(container.clientHeight);
+      const header = panel.querySelector<HTMLElement>(".map-agent-header")?.offsetHeight ?? 56;
+      const safeBottom = Number.parseFloat(getComputedStyle(panel).paddingBottom) || 0;
+      // 收起时输入区为 display:none，沿用最后一次可见高度，避免随后展开的半屏过矮。
+      const measured = composer?.offsetHeight ?? 0;
+      if (measured > 0) {
+        composerHeight.current = measured;
+      }
+      setChromeHeight(header + composerHeight.current + safeBottom);
+    };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(container);
+    observer.observe(panel);
     return () => observer.disconnect();
   }, []);
+
+  const halfHeight = (container: number) =>
+    Math.min(container, Math.max(container * HALF_RATIO, chromeHeight + MIN_BODY_HEIGHT));
 
   const collapsedHeight = () => {
     const panel = panelRef.current;
@@ -41,7 +61,7 @@ export function useAgentSheet() {
     const container = panelRef.current?.parentElement?.clientHeight ?? value;
     const targets: [AgentSheetSize, number][] = [
       ["collapsed", collapsedHeight()],
-      ["half", container * HALF_RATIO],
+      ["half", halfHeight(container)],
       ["full", container],
     ];
     return targets.reduce((nearest, entry) =>
@@ -111,7 +131,7 @@ export function useAgentSheet() {
           : size === "half"
             ? containerHeight === null
               ? `${HALF_RATIO * 100}%`
-              : `${containerHeight * HALF_RATIO}px`
+              : `${halfHeight(containerHeight)}px`
             : "calc(var(--map-agent-collapsed-height) + var(--safe-bottom))",
     toggleFull: () => setSize((current) => (current === "half" ? "full" : "half")),
     handlers: {

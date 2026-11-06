@@ -33,28 +33,47 @@
   outline-offset: 2px;
 }
 :host .map-header {
+  position: relative;
   display: flex;
   align-items: center;
   min-height: var(--nav-height);
-  gap: 6px;
+  gap: 8px;
   padding: 0 10px;
   z-index: 900;
   background: var(--ios-bar);
 }
-:host .map-header button {
-  font-size: 14px;
-  padding-left: 0;
+:host .map-app-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
   white-space: nowrap;
 }
-:host .map-header h1 {
-  flex: 1;
-  margin: 0;
-  min-width: 0;
-  font-size: 17px;
-  text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
+:host .map-header button {
+  font-size: 14px;
   white-space: nowrap;
+}
+:host .map-app .map-home {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 0;
+}
+:host .map-app .map-home svg {
+  width: 10px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 :host .map-revision {
   color: var(--ios-secondary-ink);
@@ -91,53 +110,91 @@
   background: var(--map-ground);
 }
 :host .map-search {
-  position: absolute;
-  z-index: 850;
-  top: 12px;
-  left: 12px;
-  right: 12px;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 :host .map-search-field {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  gap: 7px;
   align-items: center;
-  min-height: 38px;
-  padding: 0 10px;
-  background: var(--ios-alert-surface);
-  backdrop-filter: blur(12px);
-  border-radius: 12px;
-  box-shadow: 0 2px 10px #344b6415;
+  gap: 6px;
+  height: 32px;
+  padding: 0 9px;
+  border-radius: 10px;
+  background: var(--ios-muted-fill);
   color: var(--ios-secondary-ink);
 }
-:host .map-search-field > span {
-  font-size: 25px;
+:host .map-search-icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
 }
 :host .map-search input {
   flex: 1;
   min-width: 0;
-  width: 100%;
-  padding: 7px 0;
-  font: 14px var(--ios-font);
-  color: var(--ios-ink);
+  padding: 0;
   border: 0;
   background: transparent;
+  color: var(--ios-ink);
+  font: 15px var(--ios-font);
+}
+:host .map-search input::placeholder {
+  color: var(--ios-secondary-ink);
+  opacity: 1;
+}
+:host .map-search input:focus-visible {
+  outline: none;
+}
+:host .map-search-field:has(input:focus-visible) {
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 1px;
+}
+:host .map-app .map-search-clear {
+  flex: none;
+  padding: 0 2px;
+  color: var(--ios-secondary-ink);
+  font-size: 16px;
+  line-height: 1;
+}
+:host .map-app .map-search-cancel {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 44px;
+  min-height: 44px;
 }
 :host .map-search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 10px;
+  right: 10px;
   max-height: 210px;
   overflow-y: auto;
-  margin-top: 6px;
   border-radius: 12px;
   background: var(--ios-row-surface);
   box-shadow: 0 5px 20px #344b6420;
 }
-:host .map-search-results button {
+:host .map-app .map-search-results button {
   display: flex;
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  text-align: left;
   padding: 12px;
   border-bottom: 1px solid var(--ios-muted-fill);
+  color: var(--ios-ink);
+  text-align: left;
+}
+:host .map-search-results button:last-child {
+  border-bottom: 0;
 }
 :host .map-search-results span {
   font-size: 11px;
@@ -149,32 +206,32 @@
   margin: 0;
   font-size: 13px;
 }
-:host .map-compass {
+:host .map-app .map-fit {
   position: absolute;
   z-index: 800;
-  top: 62px;
-  right: 18px;
+  right: 12px;
+  bottom: 86px;
   display: grid;
-  justify-items: center;
-  gap: 1px;
-  font-size: 10px;
-  color: #5a7780;
-  pointer-events: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 12px;
+  background: var(--ios-row-surface);
+  box-shadow: 0 2px 12px #344b6420;
 }
-:host .map-compass span {
-  font-size: 26px;
-}
-:host .map-fit {
-  position: absolute;
-  z-index: 800;
-  top: 62px;
-  left: 12px;
-  background: var(--ios-alert-surface) !important;
-  font-size: 11px !important;
+:host .map-fit svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 :host .map-empty {
   position: absolute;
-  inset: 64px 32px 20px;
+  inset: 12px 32px 20px;
   display: flex;
   flex-direction: column;
   justify-content: center;
