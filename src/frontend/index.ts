@@ -10,7 +10,7 @@ import { MemoryDatabaseProvider } from "../infrastructure/ste-memory/memory-data
 import { createStDiaryStorage } from "../infrastructure/host/diary-storage.ts";
 import { createStWechatStorage } from "../infrastructure/host/wechat-storage.ts";
 import { createStWechatStickerStorage } from "../infrastructure/host/wechat-stickers.ts";
-import { createLocalStorageLogStorage } from "../infrastructure/browser/log-storage.ts";
+import { createIndexedDbLogStorage } from "../infrastructure/browser/log-storage.ts";
 import { createPhoneLog } from "../apps/logs/public.ts";
 import type { PhoneLogApp } from "../apps/logs/public.ts";
 
@@ -27,7 +27,7 @@ if (!menu || !button) {
 // 宿主上下文与 App 的具体实现只在入口组装。
 const chat = createStChatContext(() => window.SillyTavern.getContext());
 const logs = createPhoneLog({
-  storage: createLocalStorageLogStorage("ste-phone-logs-v1"),
+  storage: createIndexedDbLogStorage("ste-phone-logs-v1"),
 });
 const phone = createPhone({
   imageHub: createStImageHub(),

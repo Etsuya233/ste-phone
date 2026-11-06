@@ -1,5 +1,6 @@
 import { useState, useSyncExternalStore } from "react";
-import { appCatalog } from "../../../core/launcher/catalog.ts";
+import { LogDetail } from "./log-detail.tsx";
+import { formatTime, levelName, logAppName } from "./log-labels.ts";
 import { Alert } from "../../../frontend/foundation/alert.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { GroupedList } from "../../../frontend/foundation/grouped-list.tsx";
@@ -8,9 +9,15 @@ import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { NavigationStack } from "../../../frontend/foundation/navigation-stack.tsx";
 import { Page } from "../../../frontend/foundation/page.tsx";
 import { SegmentedControl } from "../../../frontend/foundation/segmented-control.tsx";
-import type { PhoneLog, PhoneLogApp, PhoneLogEntry, PhoneLogLevel } from "../public.ts";
+import type {
+  PhoneLog,
+  PhoneLogApp,
+  PhoneLogRow,
+  PhoneLogLevel,
+  PhoneLogSnapshot,
+} from "../public.ts";
 
-type LogsRoute = { page: "root" } | { page: "apps" } | { page: "detail"; entry: PhoneLogEntry };
+type LogsRoute = { page: "root" } | { page: "apps" } | { page: "detail"; entry: PhoneLogRow };
 type LevelFilter = PhoneLogLevel | "all";
 
 const levelOptions = [
@@ -29,7 +36,7 @@ export function LogsApp({
   logs: PhoneLog;
   onHome: () => void;
 }) {
-  const entries = useSyncExternalStore(logs.subscribe, logs.getSnapshot);
+  const snapshot = useSyncExternalStore(logs.subscribe, logs.getSnapshot);
   const [level, setLevel] = useState<LevelFilter>("all");
   const [app, setApp] = useState<PhoneLogApp | null>(null);
   return (
@@ -38,7 +45,6 @@ export function LogsApp({
         route.page === "root" ? (
           <LogsRoot
             active={active}
-            entries={entries}
             level={level}
             app={app}
             onHome={onHome}
@@ -46,10 +52,12 @@ export function LogsApp({
             onPickApp={() => navigation.push({ page: "apps" })}
             onOpen={(entry) => navigation.push({ page: "detail", entry })}
             onClear={logs.clear}
+            onRetry={logs.retry}
+            snapshot={snapshot}
           />
         ) : route.page === "apps" ? (
           <LogAppFilter
-            entries={entries}
+            entries={snapshot.entries}
             selected={app}
             onBack={navigation.pop}
             onSelect={(next) => {
@@ -58,7 +66,13 @@ export function LogsApp({
             }}
           />
         ) : (
-          <LogDetail entry={route.entry} onBack={navigation.pop} />
+          <LogDetail
+            entry={route.entry}
+            current={snapshot.entries.find((row) => row.id === route.entry.id)}
+            logs={logs}
+            active={active}
+            onBack={navigation.pop}
+          />
         )
       }
     </NavigationStack>
@@ -67,7 +81,7 @@ export function LogsApp({
 
 function LogsRoot({
   active,
-  entries,
+  snapshot,
   level,
   app,
   onHome,
@@ -75,17 +89,20 @@ function LogsRoot({
   onPickApp,
   onOpen,
   onClear,
+  onRetry,
 }: {
   active: boolean;
-  entries: readonly PhoneLogEntry[];
+  snapshot: PhoneLogSnapshot;
   level: LevelFilter;
   app: PhoneLogApp | null;
   onHome: () => void;
   onLevelChange: (level: LevelFilter) => void;
   onPickApp: () => void;
-  onOpen: (entry: PhoneLogEntry) => void;
-  onClear: () => void;
+  onOpen: (entry: PhoneLogRow) => void;
+  onClear: () => Promise<void>;
+  onRetry: () => Promise<void>;
 }) {
+  const { entries, storageError, canRetry, loading, clearing } = snapshot;
   const [confirming, setConfirming] = useState(false);
   // 列表按发生时间倒序；筛选只影响展示，不影响本地保存的内容。
   const visible = entries
@@ -103,8 +120,11 @@ function LogsRoot({
             title="日志"
             back={{ label: "主屏幕", onClick: onHome }}
             right={
-              <Button disabled={entries.length === 0} onClick={() => setConfirming(true)}>
-                清除
+              <Button
+                disabled={loading || clearing || (entries.length === 0 && !storageError)}
+                onClick={() => setConfirming(true)}
+              >
+                {clearing ? "清除中…" : "清除"}
               </Button>
             }
           />
@@ -121,38 +141,26 @@ function LogsRoot({
             应用：{app === null ? "全部" : logAppName(app)}
           </Button>
         </div>
+        {storageError ? (
+          <div className="logs-storage-error" role="status">
+            <p>{storageError}</p>
+            {canRetry ? (
+              <Button disabled={loading || clearing} onClick={() => void onRetry()}>
+                重试保存
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         {visible.length === 0 ? (
           <p className="logs-empty" role="status">
-            {entries.length === 0
-              ? "还没有日志。最近 1000 条会保存在当前浏览器。"
-              : "当前筛选没有日志。"}
+            {loading
+              ? "正在读取日志…"
+              : entries.length === 0
+                ? "还没有日志。最多保留最近 1000 条，受存储容量限制。"
+                : "当前筛选没有日志。"}
           </p>
         ) : (
-          <ul className="logs-list" aria-label="日志列表">
-            {visible.map((entry) => (
-              <li key={entry.id}>
-                <button
-                  type="button"
-                  className={`logs-row ${entry.level === "error" ? "logs-row--error" : ""}`}
-                  onClick={() => onOpen(entry)}
-                >
-                  <span
-                    className={`logs-level-dot logs-level-dot--${entry.level}`}
-                    aria-hidden="true"
-                  />
-                  <span className="logs-copy">
-                    <span className="logs-summary">{entry.message}</span>
-                    <span className="logs-meta">
-                      <span>{formatTime(entry.time)}</span>
-                      <span>{levelName(entry.level)}</span>
-                      <span>{logAppName(entry.app)}</span>
-                      <span>{entry.scope}</span>
-                    </span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <LogsList entries={visible} onOpen={onOpen} />
         )}
       </Page>
       {confirming ? (
@@ -166,7 +174,7 @@ function LogsRoot({
               label: "清除",
               primary: true,
               onClick: () => {
-                onClear();
+                void onClear();
                 setConfirming(false);
               },
             },
@@ -179,13 +187,51 @@ function LogsRoot({
   );
 }
 
+function LogsList({
+  entries,
+  onOpen,
+}: {
+  entries: readonly PhoneLogRow[];
+  onOpen: (entry: PhoneLogRow) => void;
+}) {
+  return (
+    <ul className="logs-list" aria-label="日志列表">
+      {entries.map((entry) => (
+        <li key={entry.id}>
+          <button
+            type="button"
+            className={`logs-row ${entry.level === "error" ? "logs-row--error" : ""}`}
+            onClick={() => onOpen(entry)}
+          >
+            <span className={`logs-level-dot logs-level-dot--${entry.level}`} aria-hidden="true" />
+            <span className="logs-copy">
+              <span className="logs-summary">{entry.message}</span>
+              {entry.status === "unsaved" || entry.status === "unavailable" ? (
+                <span className="logs-meta">
+                  {entry.status === "unsaved" ? "未保存" : "详情不可用"}
+                </span>
+              ) : null}
+              <span className="logs-meta">
+                <span>{formatTime(entry.time)}</span>
+                <span>{levelName(entry.level)}</span>
+                <span>{logAppName(entry.app)}</span>
+                <span>{entry.scope}</span>
+              </span>
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function LogAppFilter({
   entries,
   selected,
   onBack,
   onSelect,
 }: {
-  entries: readonly PhoneLogEntry[];
+  entries: readonly PhoneLogRow[];
   selected: PhoneLogApp | null;
   onBack: () => void;
   onSelect: (app: PhoneLogApp | null) => void;
@@ -212,70 +258,4 @@ function LogAppFilter({
       </GroupedList>
     </Page>
   );
-}
-
-function LogDetail({ entry, onBack }: { entry: PhoneLogEntry; onBack: () => void }) {
-  const [copyState, setCopyState] = useState<string | null>(null);
-  const content = entry.details ?? entry.message;
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopyState("已复制");
-    } catch {
-      setCopyState("复制失败");
-    }
-  }
-  return (
-    <Page
-      navBar={
-        <NavBar
-          title="日志详情"
-          back={{ label: "日志", onClick: onBack }}
-          right={<Button onClick={() => void copy()}>复制</Button>}
-        />
-      }
-    >
-      <GroupedList>
-        <ListCell title="时间" value={formatFullTime(entry.time)} />
-        <ListCell title="级别" value={levelName(entry.level)} />
-        <ListCell title="应用" value={logAppName(entry.app)} />
-        <ListCell title="来源" value={entry.scope} />
-      </GroupedList>
-      <section className="logs-detail" aria-label="日志内容">
-        <h2>内容</h2>
-        <pre>{content}</pre>
-      </section>
-      {copyState ? (
-        <p className="logs-copy-status" role="status">
-          {copyState}
-        </p>
-      ) : null}
-    </Page>
-  );
-}
-
-function logAppName(app: PhoneLogApp): string {
-  return app === "system" ? "系统" : appCatalog[app].name;
-}
-
-function levelName(level: PhoneLogLevel): string {
-  return level === "info" ? "信息" : level === "warn" ? "警告" : "错误";
-}
-
-function formatTime(time: number): string {
-  const date = new Date(time);
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${String(
-    date.getMilliseconds(),
-  ).padStart(3, "0")}`;
-}
-
-function formatFullTime(time: number): string {
-  const date = new Date(time);
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${formatTime(
-    time,
-  )}`;
-}
-
-function pad(value: number): string {
-  return String(value).padStart(2, "0");
 }

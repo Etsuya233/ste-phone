@@ -126,3 +126,13 @@
   font-size: 12px;
   text-align: center;
 }
+:host .logs-storage-error {
+  padding: var(--ios-space-medium) var(--ios-space-large);
+  background: var(--ios-row-surface);
+  color: var(--ios-red);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+:host .logs-storage-error p {
+  margin: 0 0 var(--ios-space-small);
+}

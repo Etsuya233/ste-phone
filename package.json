@@ -23,7 +23,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test --test-concurrency=1 scripts/*.test.ts src/core/storage/*.test.ts src/apps/*/*.test.ts src/infrastructure/ste-memory/*.test.ts src/infrastructure/host/*.test.ts src/frontend/device/*.test.ts",
+    "test": "node --test --test-concurrency=1 scripts/*.test.ts src/core/storage/*.test.ts src/apps/*/*.test.ts src/infrastructure/ste-memory/*.test.ts src/infrastructure/host/*.test.ts src/infrastructure/browser/*.test.ts src/frontend/device/*.test.ts",
     "preview:map-comparison": "node scripts/preview-map-comparison.ts"
   },
   "dependencies": {
@@ -45,6 +45,7 @@
     "esbuild": "0.28.1",
     "eslint": "10.0.0",
     "eslint-config-prettier": "^10.0.0",
+    "fake-indexeddb": "6.2.5",
     "globals": "17.9.0",
     "leaflet": "1.9.4",
     "prettier": "^3.0.0",

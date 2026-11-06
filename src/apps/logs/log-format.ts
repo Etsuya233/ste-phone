@@ -1,4 +1,4 @@
-/** 日志详情会进入 LocalStorage，先转成可序列化文本，避免 Error 与循环引用丢失。 */
+/** 日志详情会进入 IndexedDB，先转成可序列化文本，避免 Error 与循环引用丢失。 */
 export function formatLogDetails(value: unknown): string {
   if (typeof value === "string") {
     return value;

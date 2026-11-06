@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { AssistantMessage, Model } from "@earendil-works/pi-ai";
+import { IDBFactory } from "fake-indexeddb";
+import { createIndexedDbLogStorage } from "../browser/log-storage.ts";
 import { createPhoneLog } from "../../apps/logs/public.ts";
 import { createStAiTransport } from "./ai-transport.ts";
 
@@ -23,16 +25,11 @@ const connection = {
 };
 
 test("one terminal log retains the sent input and complete structured output across persistence", async () => {
-  let stored = "";
-  const storage = {
-    read: () => stored,
-    write: (value: string) => {
-      stored = value;
-    },
-    clear: () => {
-      stored = "";
-    },
-  };
+  const factory = new IDBFactory();
+  const storage = createIndexedDbLogStorage("logs", {
+    factory: () => factory,
+    legacyStorage: () => ({ getItem: () => null, removeItem: () => {} }),
+  });
   const logs = createPhoneLog({ storage });
   let sent: Record<string, unknown> | undefined;
   const stream = createStAiTransport(() => ({}), {
@@ -63,19 +60,24 @@ test("one terminal log retains the sent input and complete structured output acr
   ).result();
 
   assert.equal(result.stopReason, "toolUse");
-  const restored = createPhoneLog({ storage }).getSnapshot();
-  const terminal = JSON.parse(restored.at(-1)!.details!);
+  await logs.retry();
+  const restored = createPhoneLog({ storage });
+  await restored.retry();
+  const details = await Promise.all(
+    restored.getSnapshot().entries.map(({ id }) => restored.getDetails(id)),
+  );
+  const terminal = JSON.parse(details.at(-1)!);
   const { custom_include_headers, ...expectedInput } = sent!;
   assert.ok(custom_include_headers);
   assert.deepEqual(terminal.input, expectedInput);
   assert.deepEqual(terminal.output, result);
-  assert.equal(terminal.requestId, JSON.parse(restored[0]!.details!).requestId);
+  assert.equal(terminal.requestId, JSON.parse(details[0]!).requestId);
   assert.deepEqual(
     terminal.output.content.map((part: { type: string }) => part.type),
     ["thinking", "text", "toolCall"],
   );
   for (const credential of [connection.apiKey, connection.customHeaders["X-Private"]]) {
-    assert.ok(!stored.includes(credential));
+    assert.ok(details.every((content) => !content?.includes(credential)));
   }
 });
 

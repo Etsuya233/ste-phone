@@ -11,7 +11,7 @@ import { createPreviewWechatStickerStorage } from "./preview-wechat-stickers.ts"
 import { createPhone } from "../../src/bootstrap/create-phone.tsx";
 import { mountPhone } from "../../src/frontend/host/mount-phone.tsx";
 import { createPreviewMemory } from "./data-source-fixture.ts";
-import { createLocalStorageLogStorage } from "../../src/infrastructure/browser/log-storage.ts";
+import { createIndexedDbLogStorage } from "../../src/infrastructure/browser/log-storage.ts";
 import { createPhoneLog } from "../../src/apps/logs/public.ts";
 
 import { MemoryDatabaseProvider } from "../../src/infrastructure/ste-memory/memory-database-provider.ts";
@@ -19,7 +19,7 @@ import { MemoryDatabaseProvider } from "../../src/infrastructure/ste-memory/memo
 const options = new URLSearchParams(window.location.search);
 globalThis.STE_MEMORY_API = createPreviewMemory(options.get("data-state"));
 const logs = createPhoneLog({
-  storage: createLocalStorageLogStorage("ste-phone-logs-v1"),
+  storage: createIndexedDbLogStorage("ste-phone-logs-v1"),
 });
 // 预览提供可视化验收数据，与生产日志格式一致，不请求模型。
 if (options.get("logs-test") === "demo") {

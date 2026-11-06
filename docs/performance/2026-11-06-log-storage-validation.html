@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>日志增量持久化验证</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 56rem;
+        margin: 3rem auto;
+        padding: 0 1.25rem;
+        line-height: 1.65;
+      }
+      h1,
+      h2 {
+        line-height: 1.25;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-variant-numeric: tabular-nums;
+      }
+      th,
+      td {
+        text-align: left;
+        border-bottom: 1px solid GrayText;
+        padding: 0.5rem;
+      }
+      .table {
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>日志增量持久化验证</h1>
+    <p>
+      日志写入 IndexedDB 后，历史详情仅在打开对应条目时读取。保留上限为 1000 条、32
+      MiB。一次追加只提交新记录，容量淘汰会同时清理同组摘要与详情。
+    </p>
+
+    <h2>追加耗时与数据量</h2>
+    <p>
+      在 Node.js v24.18.0 中各测 15 次，表中为中位数。旧实现模拟 LocalStorage 字符串写入，新实现使用
+      fake-indexeddb
+      运行生产适配器。「提交」计入同步调用到事务完成的时间，字节数统计每次追加提交的应用数据。此基准不含真实浏览器的磁盘、进程间通信或配额行为。
+    </p>
+    <div class="table">
+      <table>
+        <thead>
+          <tr>
+            <th>历史输入</th>
+            <th>旧同步写入</th>
+            <th>新同步调用</th>
+            <th>新模拟提交</th>
+            <th>旧 / 新追加字节数</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1000 × 10 KiB</td>
+            <td>13.55 ms</td>
+            <td>0.31 ms</td>
+            <td>2.40 ms</td>
+            <td>10,339,101 / 10,364 B</td>
+          </tr>
+          <tr>
+            <td>1000 × 100 KiB</td>
+            <td>141.11 ms</td>
+            <td>0.57 ms</td>
+            <td>1.47 ms</td>
+            <td>102,499,101 / 102,524 B</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>10 KiB 用例的两版均保留 1000 条。100 KiB 用例的新版按 32 MiB 上限保留 327 条。</p>
+
+    <h2>旧格式迁移</h2>
+    <p>
+      读取用户提供的 27,629,385 字节 SillyTavern JSONL，把全部 445 条聊天正文分成 8 组，生成 24 条
+      request、response 和 complete 日志。构造的旧格式 JSON 为 22,891,780
+      字节，用于压力验证，超过常见 LocalStorage 容量。原文件是聊天导出。
+    </p>
+    <div class="table">
+      <table>
+        <thead>
+          <tr>
+            <th>保留预算</th>
+            <th>迁移后保留</th>
+            <th>容量淘汰</th>
+            <th>完整详情 SHA-256</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>32 MiB</td>
+            <td>8 组，24 条</td>
+            <td>0 条</td>
+            <td>24 / 24 一致</td>
+          </tr>
+          <tr>
+            <td>4 MiB</td>
+            <td>1 组，3 条</td>
+            <td>7 组，21 条</td>
+            <td>3 / 3 一致</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      两次验证均在迁移提交后删除旧键。重新打开数据库后摘要和正文一致，模拟恢复残留旧键也没有重复导入。4
+      MiB 验证中，已淘汰详情无法读取，迁移结果报告清理条数。这里用 fake-indexeddb
+      执行生产适配器，聊天原文只由验证脚本从原文件读取。
+    </p>
+    <p>独立预览在 Edge 实机验证了日志写入、刷新恢复、详情读取和级别筛选。</p>
+  </body>
+</html>
