@@ -2,15 +2,18 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type CSSProperties,
 } from "react";
 import type { MapService } from "../map-service.ts";
-import type { MapPoint, MapSnapshot } from "../map.ts";
+import type { MapDocument, MapPoint, MapSnapshot } from "../map.ts";
 import { MapCanvas } from "./map-canvas.tsx";
-import { MapSearch, MapFeatureDetails } from "./map-browser.tsx";
+import { MapSearch } from "./map-browser.tsx";
 import { MapAgentPanel } from "./map-agent-panel.tsx";
+import { Button } from "../../../frontend/foundation/button.tsx";
+import { Icon } from "../../../frontend/foundation/icon.tsx";
 import { useAgentSheet } from "./use-agent-sheet.ts";
 import type { MapModelPreference, ModelConnectionsReader } from "../../settings/public.ts";
 import type { MapModelOptions } from "./map-model-selector.tsx";
@@ -66,21 +69,24 @@ function MapWorkspace({
   active: boolean;
   onHome: () => void;
 }) {
-  const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const sheet = useAgentSheet();
   const selectFeature = useCallback((id: string) => {
     setSelectedId(id);
     setSelectedPoint(null);
+    setDetailsOpen(true);
   }, []);
   const selectPoint = useCallback((point: MapPoint) => {
     setSelectedPoint(point);
     setSelectedId(null);
+    setDetailsOpen(false);
   }, []);
   const clearSelection = useCallback(() => {
     setSelectedId(null);
     setSelectedPoint(null);
+    setDetailsOpen(false);
   }, []);
   const document = state.proposal?.map ?? state.map;
   const selected = document.features.find((feature) => feature.id === selectedId);
@@ -102,11 +108,12 @@ function MapWorkspace({
       data-agent-size={sheet.size}
       style={{ "--map-agent-height": sheet.cssHeight } as CSSProperties}
     >
-      <header className="map-header">
-        <button onClick={onHome}>‹ 主屏幕</button>
-        <h1>{document.title}</h1>
-        <span className="map-revision">{state.proposal ? "预览" : `v${document.revision}`}</span>
-      </header>
+      <MapHeader
+        document={document}
+        proposal={state.proposal !== null}
+        onHome={onHome}
+        onSelect={selectFeature}
+      />
       <div className="map-world">
         <MapCanvas
           document={document}
@@ -119,7 +126,6 @@ function MapWorkspace({
           onSelect={selectFeature}
           onPoint={selectPoint}
         />
-        <MapSearch document={document} query={query} onQuery={setQuery} onSelect={selectFeature} />
         {!document.features.length ? (
           <div className="map-empty">
             <span aria-hidden="true">⌁</span>
@@ -127,9 +133,6 @@ function MapWorkspace({
             <p>描述一座城、一座岛，或从剧情资料创建第一张地图。</p>
           </div>
         ) : null}
-        <div className="map-compass" aria-label="上方为北">
-          N<span>↑</span>
-        </div>
         {pending.length ? (
           <div className="map-pending">
             <span>位置待定</span>
@@ -141,26 +144,82 @@ function MapWorkspace({
           </div>
         ) : null}
         {state.proposal ? <span className="map-preview-badge">修改预览 · 尚未保存</span> : null}
+        {!pending.length && !state.proposal && document.features.length ? (
+          <span className="map-note">示意地图 · 非实际比例</span>
+        ) : null}
       </div>
       <div className="map-agent-spacer" aria-hidden="true" />
-      {selected ? (
-        <MapFeatureDetails
-          feature={selected}
-          document={document}
-          onClose={() => setSelectedId(null)}
-        />
-      ) : null}
       <MapAgentPanel
         service={service}
         state={state}
+        document={document}
         model={model}
         sheet={sheet}
-        selectedId={selected?.id ?? null}
-        selectedName={selected?.name ?? null}
+        selected={selected ?? null}
+        detailsOpen={detailsOpen}
         selectedPoint={selectedPoint}
         onClearPoint={() => setSelectedPoint(null)}
         onClearSelection={clearSelection}
+        onCloseDetails={() => setDetailsOpen(false)}
       />
     </div>
+  );
+}
+
+function MapHeader({
+  document,
+  proposal,
+  onHome,
+  onSelect,
+}: {
+  document: MapDocument;
+  proposal: boolean;
+  onHome: () => void;
+  onSelect: (id: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  const cancel = useCallback(() => {
+    setQuery("");
+    setOpen(false);
+    input.current?.blur();
+  }, []);
+  const choose = useCallback(
+    (id: string) => {
+      onSelect(id);
+      setQuery("");
+      setOpen(false);
+      input.current?.blur();
+    },
+    [onSelect],
+  );
+  return (
+    <header className="ios-nav map-header">
+      <h1 className="map-app-title">{document.title}</h1>
+      <Button className="map-home" onClick={onHome} aria-label="主屏幕">
+        <Icon>
+          <svg viewBox="0 0 12 22">
+            <path d="m10 2-8 9 8 9" />
+          </svg>
+        </Icon>
+        {open ? null : <span>主屏幕</span>}
+      </Button>
+      <MapSearch
+        document={document}
+        query={query}
+        open={open}
+        inputRef={input}
+        onQuery={setQuery}
+        onOpen={() => setOpen(true)}
+        onClose={close}
+        onCancel={cancel}
+        onSelect={choose}
+      />
+      {open ? null : (
+        <span className="map-revision">{proposal ? "预览" : `v${document.revision}`}</span>
+      )}
+    </header>
   );
 }

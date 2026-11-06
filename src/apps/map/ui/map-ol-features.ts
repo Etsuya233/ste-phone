@@ -39,7 +39,10 @@ export function mapPolygon(points: MapPoint[]): Polygon {
   return new Polygon([[...points, points[0]!]]);
 }
 
-export function featureWithStyle(geometry: Polygon | Point | CircleGeometry, style: Style) {
+export function featureWithStyle(
+  geometry: Polygon | Point | CircleGeometry,
+  style: Style | Style[],
+) {
   const feature = new Feature({ geometry });
   feature.setStyle(style);
   return feature;
@@ -79,21 +82,28 @@ export function regionFeatures(document: MapDocument) {
 }
 
 export function placeFeatures(document: MapDocument) {
+  const eventPlaceIds = new Set(document.events.flatMap((event) => event.placeIds));
   const places: Feature[] = [];
   for (const item of document.features) {
     if (item.kind !== "place" || !item.geometry) {
       continue;
     }
-    const point = featureWithStyle(
-      new Point(item.geometry[0]!),
-      new Style({
-        image: new CircleStyle({
-          radius: 6,
-          fill: new Fill({ color: "#427fa3" }),
-          stroke: new Stroke({ color: "#fffdf8", width: 2.5 }),
-        }),
+    const linked = eventPlaceIds.has(item.id);
+    const pin = new Style({
+      image: new CircleStyle({
+        radius: linked ? 6.5 : 5,
+        fill: new Fill({ color: "#427fa3" }),
+        stroke: new Stroke({ color: "#fffdf8", width: 2.2 }),
       }),
-    );
+    });
+    // 有剧情事件的地点加一圈淡环，和普通地点区分；环在点下方绘制。
+    const ring = new Style({
+      image: new CircleStyle({
+        radius: 10,
+        stroke: new Stroke({ color: "#427fa366", width: 1.2 }),
+      }),
+    });
+    const point = featureWithStyle(new Point(item.geometry[0]!), linked ? [ring, pin] : pin);
     point.set("mapId", item.id);
     places.push(point);
   }

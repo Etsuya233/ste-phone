@@ -1,51 +1,113 @@
+import { useEffect, useRef, type RefObject } from "react";
 import type { MapDocument, MapFeature } from "../map.ts";
+import { Button } from "../../../frontend/foundation/button.tsx";
 
 const featureKinds = { place: "地点", region: "区域", road: "道路" };
 
 export function MapSearch({
   document,
   query,
+  open,
+  inputRef,
   onQuery,
+  onOpen,
+  onClose,
+  onCancel,
   onSelect,
 }: {
   document: MapDocument;
   query: string;
+  open: boolean;
+  inputRef: RefObject<HTMLInputElement | null>;
   onQuery: (value: string) => void;
+  onOpen: () => void;
+  onClose: () => void;
+  onCancel: () => void;
   onSelect: (id: string) => void;
 }) {
+  const container = useRef<HTMLDivElement>(null);
   const normalized = query.trim().toLocaleLowerCase();
   const matches = document.features.filter((feature) =>
     [feature.name, ...feature.aliases, feature.description].some((text) =>
       text.toLocaleLowerCase().includes(normalized),
     ),
   );
+  // 点按结果时输入框会先失焦，用指针目标判断是否在搜索区内，避免结果在 click 前被移除。
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const dismiss = (event: PointerEvent) => {
+      // Shadow DOM 外的监听点只能拿到宿主节点，用 composedPath 判断真实目标。
+      const node = container.current;
+      if (node && !event.composedPath().includes(node)) {
+        onClose();
+      }
+    };
+    globalThis.document.addEventListener("pointerdown", dismiss, true);
+    return () => globalThis.document.removeEventListener("pointerdown", dismiss, true);
+  }, [open, onClose]);
   return (
-    <div className="map-search">
-      <div className="map-search-field">
-        <span aria-hidden="true">⌕</span>
+    <div className="map-search" ref={container}>
+      <div className="map-search-field" onClick={() => inputRef.current?.focus()}>
+        <svg className="map-search-icon" viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.4" />
+          <path d="m10.3 10.3 3.4 3.4" />
+        </svg>
         <input
+          ref={inputRef}
+          type="text"
           aria-label="搜索地图"
-          placeholder="搜索地点、区域或道路"
+          placeholder={document.title}
           value={query}
+          autoComplete="off"
+          spellCheck={false}
+          enterKeyHint="search"
+          onFocus={onOpen}
           onChange={(event) => onQuery(event.target.value)}
+          onBlur={(event) => {
+            const next = event.relatedTarget as Node | null;
+            if (next && !container.current?.contains(next)) {
+              onClose();
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing) {
+              return;
+            }
+            if (event.key === "Enter" && normalized) {
+              const first = matches[0];
+              if (first) {
+                event.preventDefault();
+                onSelect(first.id);
+              }
+            } else if (event.key === "Escape") {
+              event.preventDefault();
+              onCancel();
+            }
+          }}
         />
         {query ? (
-          <button onClick={() => onQuery("")} aria-label="清空搜索">
+          <button
+            type="button"
+            className="map-search-clear"
+            aria-label="清空搜索"
+            onClick={() => onQuery("")}
+          >
             ×
           </button>
         ) : null}
       </div>
-      {normalized ? (
+      {open ? (
+        <Button className="map-search-cancel" onClick={onCancel}>
+          取消
+        </Button>
+      ) : null}
+      {open && normalized ? (
         <div className="map-search-results" aria-label="搜索结果">
           {matches.length ? (
             matches.map((feature) => (
-              <button
-                key={feature.id}
-                onClick={() => {
-                  onSelect(feature.id);
-                  onQuery("");
-                }}
-              >
+              <button key={feature.id} type="button" onClick={() => onSelect(feature.id)}>
                 <strong>{feature.name}</strong>
                 <span>
                   {featureKinds[feature.kind]}
@@ -82,7 +144,7 @@ export function MapFeatureDetails({
           </span>
           <h2>{feature.name}</h2>
         </div>
-        <button aria-label="取消选择" onClick={onClose}>
+        <button aria-label="关闭详情" onClick={onClose}>
           ×
         </button>
       </header>
@@ -94,6 +156,9 @@ export function MapFeatureDetails({
         <p className="map-caption">别名：{feature.aliases.join("、")}</p>
       ) : null}
       <p className="map-caption">来源：{feature.source}</p>
+      {feature.kind === "place" ? (
+        <p className="map-caption">带外环的地点关联了剧情事件。</p>
+      ) : null}
       {events.map((event) => (
         <div className="map-event" key={event.id}>
           <strong>{event.title}</strong>

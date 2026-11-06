@@ -72,7 +72,7 @@ export function useOpenLayersMap(input: MapInput) {
       const feature = current.map.forEachFeatureAtPixel(
         event.pixel,
         (candidate, layer) => (current.isSemanticLayer(layer) ? candidate : undefined),
-        { hitTolerance: 5 },
+        { hitTolerance: 12 },
       );
       const id = feature?.get("mapId") as string | undefined;
       if (id) {
