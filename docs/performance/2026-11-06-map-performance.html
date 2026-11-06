@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>地图性能复测：禁用 LittleWhiteBox</title
+  ><style>
+    :root {
+      font-family: system-ui, "Microsoft YaHei", sans-serif;
+      color: #182738;
+      background: #eef2f6;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+    }
+    main {
+      max-width: 1180px;
+      margin: auto;
+      padding: 40px 28px 72px;
+    }
+    header {
+      border-top: 6px solid #234f72;
+      padding-top: 24px;
+    }
+    h1 {
+      font-size: 34px;
+      line-height: 1.3;
+      margin: 12px 0;
+    }
+    h2 {
+      font-size: 24px;
+      margin: 38px 0 15px;
+    }
+    h3 {
+      font-size: 18px;
+      margin: 24px 0 10px;
+    }
+    p,
+    li {
+      line-height: 1.8;
+    }
+    p {
+      margin: 12px 0;
+    }
+    .muted,
+    small {
+      color: #596b7d;
+    }
+    small {
+      display: block;
+      font-size: 12px;
+    }
+    .badge {
+      font-size: 13px;
+      font-weight: 600;
+      color: #234f72;
+    }
+    .card {
+      background: white;
+      border: 1px solid #d6e0e9;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 20px 0;
+    }
+    .lead {
+      background: #e1edf5;
+      border-left: 5px solid #285b81;
+      padding: 18px 24px;
+    }
+    .risk {
+      background: #fff4dc;
+      border-left: 5px solid #b78523;
+      padding: 16px 24px;
+    }
+    .tablewrap {
+      overflow: auto;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14px;
+      background: white;
+    }
+    th,
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #dce4ec;
+      text-align: right;
+      vertical-align: top;
+    }
+    th {
+      background: #e0e9f0;
+    }
+    th:first-child,
+    td:first-child {
+      text-align: left;
+      min-width: 205px;
+    }
+    td {
+      font-variant-numeric: tabular-nums;
+    }
+    code {
+      font-family: Consolas, monospace;
+      font-size: 0.9em;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #172d40;
+      color: #eaf2f8;
+      padding: 18px;
+      border-radius: 8px;
+      line-height: 1.6;
+    }
+    a {
+      color: #165b8d;
+    }
+    .barrow {
+      display: grid;
+      grid-template-columns: 290px 1fr 60px;
+      gap: 12px;
+      align-items: center;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+    .track {
+      height: 14px;
+      background: #e5ebf0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .track i {
+      display: block;
+      height: 100%;
+      background: #326d96;
+    }
+    .barrow b {
+      text-align: right;
+    }
+    .foot {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid #bdcbd8;
+      font-size: 13px;
+    }
+    @media (max-width: 640px) {
+      main {
+        padding: 22px 14px;
+      }
+      h1 {
+        font-size: 27px;
+      }
+      .card {
+        padding: 16px;
+      }
+      .barrow {
+        grid-template-columns: 1fr 65px;
+      }
+      .barrow span {
+        grid-column: 1/-1;
+      }
+    }
+    @media print {
+      body {
+        background: white;
+      }
+      main {
+        max-width: none;
+        padding: 0;
+      }
+      h2,
+      h3 {
+        break-after: avoid;
+      }
+      .card,
+      tr {
+        break-inside: avoid;
+      }
+    }
+  </style>
+  <main>
+    <header>
+      <span class="badge">STE PHONE · 2026-11-06 · 修订版</span>
+      <h1>关闭 LittleWhiteBox 后，地图交互仍有明显卡顿</h1>
+      <p class="muted">
+        用户环境：iPhone 17 / iOS 26，Edge 与 TauriTavern。实际测量：Windows
+        Edge，旧版插件与原聊天；移动视口为390×844、DPR 3。
+      </p>
+    </header>
+    <div class="lead">
+      <strong>本次修正：</strong>手机未使用 LittleWhiteBox，之前发现的周期 iframe
+      重建只能说明桌面测试的干扰，不能据此解释手机重启。禁用并刷新后，地图缩放、AI区域切换、视口高度变化仍有长任务。当前最值得优先优化的是尺寸变化与标签定位产生的重复布局。
+    </div>
+    <h2>禁用后的实测</h2>
+    <p>
+      在扩展管理中取消 LittleWhiteBox，关闭管理窗口后 ST
+      自动刷新，验证其脚本数量为0。重新打开置顶方亦楷聊天及“椿城滨海老城一角”v8。记录仍为同一文档
+      timeOrigin，测试期间未观察到页面重载。刷新后实际渲染101个消息节点、50个顶层
+      iframe；其他扩展继续启用，属于真实宿主测试，未形成纯净插件隔离环境。
+    </p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>场景</th>
+            <th>窗口 s</th>
+            <th>主线程 ms</th>
+            <th>布局 ms</th>
+            <th>样式 ms</th>
+            <th>JS堆 MiB</th>
+            <th>长任务数 / 最大ms</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>地图静置35秒</td>
+            <td>35.06</td>
+            <td>688</td>
+            <td>15</td>
+            <td>0</td>
+            <td>195.0 → 195.3</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>桌面AI面板切换×10</td>
+            <td>8.65</td>
+            <td>3288</td>
+            <td>1441</td>
+            <td>72</td>
+            <td>198.4 → 205.5</td>
+            <td>11 / 559</td>
+          </tr>
+          <tr>
+            <td>移动AI面板切换×10</td>
+            <td>8.89</td>
+            <td>4871</td>
+            <td>2232</td>
+            <td>81</td>
+            <td>188.9 → 191.2</td>
+            <td>18 / 654</td>
+          </tr>
+          <tr>
+            <td>移动AI面板×10：临时关闭高度动画</td>
+            <td>8.18</td>
+            <td>2421</td>
+            <td>1007</td>
+            <td>57</td>
+            <td>192.7 → 195.0</td>
+            <td>9 / 537</td>
+          </tr>
+          <tr>
+            <td>移动地图缩放往返×10</td>
+            <td>18.04</td>
+            <td>12827</td>
+            <td>10153</td>
+            <td>244</td>
+            <td>190.3 → 187.2</td>
+            <td>20 / 771</td>
+          </tr>
+          <tr>
+            <td>移动地图鼠标拖动×4</td>
+            <td>1.12</td>
+            <td>450</td>
+            <td>0</td>
+            <td>14</td>
+            <td>195.1 → 199.4</td>
+            <td>2 / 153</td>
+          </tr>
+          <tr>
+            <td>Command Code只读请求完整窗口</td>
+            <td>21.56</td>
+            <td>3894</td>
+            <td>290</td>
+            <td>77</td>
+            <td>189.5 → 191.6</td>
+            <td>3 / 218</td>
+          </tr>
+          <tr>
+            <td>移动视口高度往返×5</td>
+            <td>11.06</td>
+            <td>10991</td>
+            <td>3042</td>
+            <td>5044</td>
+            <td>193.8 → 189.0</td>
+            <td>24 / 704</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">
+      主线程为 CDP TaskDuration 增量，包含脚本、布局及其他任务，不能当作整机 CPU
+      使用率；JSHeapUsedSize 不包含页面总内存与 GPU。长任务为页面 PerformanceObserver
+      记录的≥50ms任务。数据来自一轮连续测试，含浏览器控制开销与自然GC，尚未做随机顺序多轮统计。拖动为鼠标事件，视口高度往返为520↔844，并未模拟真实
+      iOS 键盘或触控链。
+    </p>
+    <h2>关键发现与优化顺序</h2>
+    <div class="card">
+      <h3>1. 缩放的主要成本集中在布局</h3>
+      <p>
+        十轮放大／缩小共18.04秒，主线程12.83秒，其中布局10.15秒，占主线程约79%。20个长任务为382–771ms。即使去掉
+        LittleWhiteBox，缩放卡顿仍可重复观察；地图几何计算微基准不足以解释这种布局开销。
+      </p>
+      <p>
+        Sol审查定位到：<code>src/apps/map/ui/map-layers.ts:64,125</code> 在 zoomend / moveend /
+        resize 刷新全部图层；<code>map-labels.ts:103</code> 对可见标签执行 openTooltip 与
+        tooltip.update。Leaflet内部还会定位和更新，读取 offsetWidth/offsetHeight
+        后改样式与transform，形成重复读写。函数占比尚未用CPU profile验证。
+      </p>
+      <p>
+        <strong>建议优先：</strong
+        >已打开且未变化的标签跳过重复open/update；同帧合并视口事件，按变化原因更新图层；把标签坐标计算与DOM写入分开，避免resize时重新设置仅随zoom变化的道路样式。先用临时禁用标签更新的单变量实验验证收益，再实施修改。
+      </p>
+    </div>
+    <div class="card">
+      <h3>2. AI面板高度动画会放大交互成本</h3>
+      <p>
+        移动视口切换10轮：主线程4.87秒、布局2.23秒、18个长任务。只临时禁用
+        <code>.map-agent</code>
+        高度动画后，分别为2.42秒、1.01秒、9个长任务；主线程下降约50%，布局下降约55%，最长任务仍有537ms。临时CSS已移除。这组结果支持优化高度动画，但不能保证单靠取消动画解决重启。
+      </p>
+      <p>
+        入口为 <code>src/apps/map/ui/map-agent-panel.css:20</code> 的220ms过渡、<code
+          >use-agent-sheet.ts:67</code
+        >
+        的拖动高度更新，以及 <code>use-leaflet-viewport.ts:21</code> 的ResizeObserver。Leaflet
+        invalidateSize在尺寸变化时可能同步发出moveend与resize，当前监听可重复刷新。
+      </p>
+      <p>
+        <strong>建议：</strong
+        >让AI面板覆盖尺寸固定的地图，或在拖动／过渡期间合并invalidateSize并推迟标签碰撞重算。拖动结束补一次精确更新。仅移除动画已经有收益，重复标签更新仍需单独处理。
+      </p>
+    </div>
+    <div class="card">
+      <h3>3. 高度变化是另一处高成本触发器</h3>
+      <p>
+        五轮高度往返累计11.06秒，主线程10.99秒、布局3.04秒、样式重算5.04秒，最长长任务704ms。快速改变视口尺寸会牵动整个ST宿主，结果不能全算给地图，也不能直接等同iPhone收键盘。
+      </p>
+      <p>
+        <code>src/frontend/device/use-phone-viewport.ts:129</code>
+        的reveal先移除offset，再遍历滚动祖先读取尺寸和getBoundingClientRect，最后写offset；它可能与地图ResizeObserver交错。建议将视口事件、editor
+        ResizeObserver与地图尺寸刷新合并调度，确保同一帧集中读取后集中写入，并单独测试输入框聚焦、收键盘和AI面板拖动。
+      </p>
+    </div>
+    <h2>地图AI测试与独立功能异常</h2>
+    <p>
+      使用现有
+      <strong>Command Code · deepseek/deepseek-v4.1-flash</strong
+      >，从发送前开始记录，直到回复完成后结束。21.56秒采样窗口包括网络等待及完成后的短暂观察，主线程3.89秒，3个长任务，最长218ms。此次请求只读取地图，无保存、提案应用或大量流式文本；不能据此判断生成复杂地图、长AI历史或保存阶段已经通过性能验收。
+    </p>
+    <p>
+      两次只读请求都声称当前地图没有地点与道路，但画面显示已有学校、小区、码头等标签。展开本轮“读取地图”过程已核实参数为
+      <code>{"query":"全部要素"}</code>，工具返回v8、features空数组。<code
+        >src/apps/map/map-tools.ts:114</code
+      >
+      将query按ID、名称或别名关键词筛选，模型把“全部要素”误当全图命令，又把筛选结果为空误解为地图为空。无筛选读取应省略query；建议工具schema明确此约定，并在结果中区分总要素数、匹配数与查询条件。此为独立的工具语义问题，未修改地图要素。
+    </p>
+    <h2>内存结论与桌面混杂因素</h2>
+    <p>
+      禁用并刷新后，本轮JS堆约187–205MiB；35秒空闲195.0→195.3MiB，无长任务。连续交互中有自然回收，未出现上一轮那样持续抬高的趋势。尚无强制GC后的存活对象统计，不能宣称地图没有泄漏。测试前后刷新、消息渲染及运行时长不同，不能将两轮堆差额全部归因于单个插件。
+    </p>
+    <p>
+      上一轮在启用LittleWhiteBox时确认30秒周期内47次历史iframe srcdoc重写，调用链为
+      <code>index.js:1172 → iframe-renderer.js:691 → 674 → 630 → 311</code
+      >；源码存在先创建后裁剪与winMap移除时未清理强引用的风险。它仍值得桌面环境修复，但从本次手机问题的主因列表中移除。此前最高约1567MiB的JS堆属于受干扰的旧序列，不能用于估计地图自身内存。旧原始数据保留在附件，便于审计。
+    </p>
+    <h2>尚未验证的边界</h2>
+    <p>
+      未连接iPhone的CPU、页面进程内存、GPU与崩溃日志，尚无法确认UI重启由内存终止、渲染进程崩溃或其他原因导致。当前证据支持先修复重复布局并做同机前后对照。真机验收应覆盖反复开合键盘、拖动AI面板、地图缩放／平移、复杂地图生成与应用保存、长AI历史，并观察内存是否在稳定状态回落。地图提案保存可能触发整个ST聊天序列化，入口
+      <code>src/infrastructure/host/map-storage.ts:33</code>，本次没有写入地图验证这个峰值。
+    </p>
+    <p>
+      既有独立预览30轮切换无长任务，几何微基准P95低于3.1ms；这些小样例不包含当前宿主、复杂地图的浏览器布局，也无法替代真机结果。当前连接不支持CPU
+      Profiler和强制GC，报告不提供无法测得的函数CPU占比或泄漏速率。
+    </p>
+    <div class="foot">
+      <p>
+        <a href="2026-11-06-map-performance-data.json">完整原始采样与修订数据</a
+        >。本次未修改生产代码；LittleWhiteBox按用户要求保持禁用。临时CSS与观察器已移除，视口恢复。截图及复测脚本保存在本地tmp/map-performance。
+      </p>
+      <p>
+        测试产物1119669字节，SHA-256
+        <code>446b599dcb92ac79b34bef3e41f203a0daa16c1184f35e51326813a9b9fde365</code>。源码审查基点
+        <code>1e14c17e84afa3d577e76c4103a707669fe3ad12</code>；继续以旧产物为准。
+      </p>
+    </div>
+  </main>
+</html>

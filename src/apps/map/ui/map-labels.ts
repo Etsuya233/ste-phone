@@ -99,15 +99,37 @@ export function attachMapLabel(layer: L.Path, feature: MapFeature): void {
   });
 }
 
-/** Reposition the same tooltip instance; zoom and selection never recreate overlay nodes. */
-export function updateMapLabel(layer: L.Path, direction: LabelDirection | undefined): void {
+/** A viewport move may reposition a visible label; unchanged selection needs no DOM work. */
+export function updateMapLabel(
+  layer: L.Path,
+  direction: LabelDirection | undefined,
+  viewportChanged: boolean,
+): void {
   const tooltip = layer.getTooltip()!;
-  tooltip.options.permanent = direction !== undefined;
-  tooltip.options.direction = direction ?? "top";
   if (direction === undefined) {
-    layer.closeTooltip();
-  } else {
+    if (tooltip.options.permanent) {
+      tooltip.options.permanent = false;
+    }
+    if (tooltip.options.direction !== "top") {
+      tooltip.options.direction = "top";
+    }
+    if (tooltip.isOpen()) {
+      layer.closeTooltip();
+    }
+    return;
+  }
+
+  const directionChanged = tooltip.options.direction !== direction;
+  if (!tooltip.options.permanent) {
+    tooltip.options.permanent = true;
+  }
+  if (directionChanged) {
+    tooltip.options.direction = direction;
+  }
+  if (!tooltip.isOpen()) {
     layer.openTooltip();
-    tooltip.update();
+  } else if (viewportChanged || directionChanged) {
+    // Label text is fixed for this drawing; reposition without replacing its DOM content.
+    tooltip.setLatLng(tooltip.getLatLng()!);
   }
 }

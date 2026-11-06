@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>地图第一版优化验收</title
+  ><style>
+    :root {
+      font-family: system-ui, "Microsoft YaHei", sans-serif;
+      color: #182738;
+      background: #eef2f6;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+    }
+    main {
+      max-width: 1180px;
+      margin: auto;
+      padding: 40px 28px 72px;
+    }
+    header {
+      border-top: 6px solid #234f72;
+      padding-top: 24px;
+    }
+    h1 {
+      font-size: 34px;
+      line-height: 1.3;
+      margin: 12px 0;
+    }
+    h2 {
+      font-size: 24px;
+      margin: 38px 0 15px;
+    }
+    h3 {
+      font-size: 18px;
+      margin: 24px 0 10px;
+    }
+    p,
+    li {
+      line-height: 1.8;
+    }
+    p {
+      margin: 12px 0;
+    }
+    .muted,
+    small {
+      color: #596b7d;
+    }
+    small {
+      display: block;
+      font-size: 12px;
+    }
+    .badge {
+      font-size: 13px;
+      font-weight: 600;
+      color: #234f72;
+    }
+    .card {
+      background: white;
+      border: 1px solid #d6e0e9;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 20px 0;
+    }
+    .lead {
+      background: #e1edf5;
+      border-left: 5px solid #285b81;
+      padding: 18px 24px;
+    }
+    .risk {
+      background: #fff4dc;
+      border-left: 5px solid #b78523;
+      padding: 16px 24px;
+    }
+    .tablewrap {
+      overflow: auto;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14px;
+      background: white;
+    }
+    th,
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #dce4ec;
+      text-align: right;
+      vertical-align: top;
+    }
+    th {
+      background: #e0e9f0;
+    }
+    th:first-child,
+    td:first-child {
+      text-align: left;
+      min-width: 205px;
+    }
+    td {
+      font-variant-numeric: tabular-nums;
+    }
+    code {
+      font-family: Consolas, monospace;
+      font-size: 0.9em;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #172d40;
+      color: #eaf2f8;
+      padding: 18px;
+      border-radius: 8px;
+      line-height: 1.6;
+    }
+    a {
+      color: #165b8d;
+    }
+    .barrow {
+      display: grid;
+      grid-template-columns: 290px 1fr 60px;
+      gap: 12px;
+      align-items: center;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+    .track {
+      height: 14px;
+      background: #e5ebf0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .track i {
+      display: block;
+      height: 100%;
+      background: #326d96;
+    }
+    .barrow b {
+      text-align: right;
+    }
+    .foot {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid #bdcbd8;
+      font-size: 13px;
+    }
+    @media (max-width: 640px) {
+      main {
+        padding: 22px 14px;
+      }
+      h1 {
+        font-size: 27px;
+      }
+      .card {
+        padding: 16px;
+      }
+      .barrow {
+        grid-template-columns: 1fr 65px;
+      }
+      .barrow span {
+        grid-column: 1/-1;
+      }
+    }
+    @media print {
+      body {
+        background: white;
+      }
+      main {
+        max-width: none;
+        padding: 0;
+      }
+      h2,
+      h3 {
+        break-after: avoid;
+      }
+      .card,
+      tr {
+        break-inside: avoid;
+      }
+    }
+  </style>
+  <main>
+    <header>
+      <span class="badge">2026-11-06 · 第一版优化</span>
+      <h1>减少地图标签重排与面板高度动画</h1>
+    </header>
+    <div class="lead">
+      本机真实ST已加载试用产物；同一方亦楷聊天、v8地图，LittleWhiteBox保持禁用。地图数据、细节数量、保存协议与全局键盘避让保持原有行为。尚未在iPhone上验证重启频率。
+    </div>
+    <h2>改动与对照</h2>
+    <p>
+      map-labels.ts:103：新显示标签才openTooltip；已显示标签用setLatLng重新定位，避免tooltip.update反复插入内容；隐藏标签恢复top方向，保留hover行为。map-layers.ts:144：同帧合并zoomend/moveend/resize，选择变化立即更新并取消旧帧，卸载取消待执行帧；仅zoom变化时更新道路缩放样式，装饰细节仅显隐状态变化时增删。map-agent-panel.css:20：取消高度过渡，保留跟手拖动及吸附。
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>同场景十轮</th>
+          <th>优化前主线程</th>
+          <th>优化后主线程</th>
+          <th>优化前布局</th>
+          <th>优化后布局</th>
+          <th>最长任务前→后</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>移动AI面板切换</td>
+          <td>4871ms</td>
+          <td>1089ms</td>
+          <td>2232ms</td>
+          <td>375ms</td>
+          <td>654→84ms</td>
+        </tr>
+        <tr>
+          <td>移动地图缩放</td>
+          <td>12827ms</td>
+          <td>1538ms</td>
+          <td>10153ms</td>
+          <td>645ms</td>
+          <td>771→139ms</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      对照为Windows
+      Edge移动视口390×844、DPR3，沿用350ms间隔的点击序列；前后刷新、地图视口中心、运行时状态与产物中的既有Expose差异仍是限制，不能将百分比作为真机保证。第二轮缩放同样较低。主线程为CDP
+      TaskDuration，内存仅JS堆。高度往返仍有约半秒长任务，本版未处理宿主全局视口重排。
+    </p>
+    <h2>完整复测</h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>场景</th>
+            <th>秒</th>
+            <th>主线程ms</th>
+            <th>布局ms</th>
+            <th>JS堆MiB</th>
+            <th>长任务数/最长ms</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>optimized-mobile-toggle10</td>
+            <td>7.42</td>
+            <td>1089</td>
+            <td>375</td>
+            <td>216.5 → 192.7</td>
+            <td>1 / 84</td>
+          </tr>
+          <tr>
+            <td>optimized-mobile-zoom10</td>
+            <td>7.90</td>
+            <td>1538</td>
+            <td>645</td>
+            <td>192.7 → 195.8</td>
+            <td>5 / 139</td>
+          </tr>
+          <tr>
+            <td>optimized-mobile-height5</td>
+            <td>6.02</td>
+            <td>5945</td>
+            <td>1776</td>
+            <td>193.2 → 194.9</td>
+            <td>11 / 591</td>
+          </tr>
+          <tr>
+            <td>optimized-home-map-background-idle35</td>
+            <td>35.10</td>
+            <td>601</td>
+            <td>13</td>
+            <td>196.1 → 196.5</td>
+            <td>0 / 0</td>
+          </tr>
+          <tr>
+            <td>optimized-command-code-full-window</td>
+            <td>31.52</td>
+            <td>2419</td>
+            <td>103</td>
+            <td>196.2 → 202.6</td>
+            <td>5 / 175</td>
+          </tr>
+          <tr>
+            <td>optimized-mobile-zoom10-repeat</td>
+            <td>7.76</td>
+            <td>994</td>
+            <td>543</td>
+            <td>202.6 → 199.0</td>
+            <td>4 / 140</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      idle35为回到主屏后、地图仍挂载的后台空闲窗口。地图平移由DOM鼠标事件回归；原生坐标操作在移动仿真下有坐标偏差，未据此报告真实触控性能。搜索地点与详情、全图、缩放后标签、关闭重开恢复均检查。Command
+      Code只读请求完成，无地图要素写入；AI窗口包括网络等待与完成后的观察，不单独归因为模型渲染。
+    </p>
+    <h2>内存与试用边界</h2>
+    <p>
+      iPhone日志显示TauriTavern同组WebContent约1206.8MiB、生命周期峰值1676.0MiB；本日志没有给该进程标记终止reason，因此不能宣称此次重启根因已确定。本轮JS堆处于约190–217MiB区间，有自然回收，不能与真机整个网页进程内存直接比较。本版优化目标是减少交互时重复布局，未验证内存峰值下降或泄漏修复。
+    </p>
+    <p>
+      typecheck、ESLint、298项现有测试、生产构建、修改文件Prettier与git
+      diff检查通过。没有新增模拟实现的薄测试；Leaflet交互使用真实页面回归。本次修改方法低于60行，生产文件低于350行。未修复地图AI把“全部要素”当关键词的问题。
+    </p>
+    <h2>产物与回退</h2>
+    <p>
+      本机ST安装链接仍指向原map-agent工作区dist，只有三个发布产物更新，源代码在主仓库。旧产物备份在tmp/map-performance/pre-optimization-dist。新包与旧包均在主仓库dist目录，分别为ste-phone-map-optimization-2026-11-06.zip、ste-phone-map-before-optimization-2026-11-06.zip。没有发布远端分支。TauriTavern独立安装需要安装新产物；连接同一本机ST的浏览器刷新后加载。
+    </p>
+    <p>
+      新JS
+      SHA-256：<code>e3c3ff8f6ef49caa81507aee82dc68432cf11c14eaa7bd7042e868d940082d57</code>。版本号仍为0.0.8，按hash区分试用构建。<a
+        href="2026-11-06-map-optimization-data.json"
+        >完整采样数据</a
+      >；<a href="2026-11-06-map-performance.html">优化前诊断报告</a
+      >。浏览器临时视口已恢复，测试观察器已清理。
+    </p>
+  </main>
+</html>

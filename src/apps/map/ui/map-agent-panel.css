@@ -17,11 +17,7 @@
   background: var(--ios-row-surface);
   box-shadow: 0 -3px 18px #344b6412;
   border-radius: 16px 16px 0 0;
-  transition: height 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-:host .map-agent[data-dragging="true"] {
-  transition: none;
+  /* 高度直接落到目标值，避免过渡期间持续触发地图尺寸和标签布局。 */
 }
 
 :host .map-agent[data-size="full"] {
@@ -295,9 +291,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :host .map-agent {
-    transition: none;
-  }
   :host .map-turn-state::before {
     animation: none;
   }

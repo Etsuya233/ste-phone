@@ -21,10 +21,13 @@ export class MapDrawing extends L.LayerGroup {
   readonly #decoration: { details: L.LayerGroup; minimumZoom: number };
   #selectedId: string | null = null;
   #highlightedIds: string[] = [];
+  #lastZoom: number;
+  #refreshFrame: number | null = null;
   constructor(map: L.Map, features: MapFeature[], onSelect: (id: string) => void) {
     super();
     this.#map = map;
     this.#features = features;
+    this.#lastZoom = map.getZoom();
     this.addTo(map);
     this.#drawRegions("terrain");
     this.#drawRegions("district");
@@ -61,8 +64,8 @@ export class MapDrawing extends L.LayerGroup {
         features.find((feature) => feature.id === id)!,
       );
     }
-    map.on("zoomend moveend resize", this.#refreshViewport);
-    this.#refreshViewport();
+    map.on("zoomend moveend resize", this.#scheduleViewportRefresh);
+    this.#refreshViewport(false);
   }
   #drawRegions(layerName: "terrain" | "district" | "building"): void {
     const renderer = mapRenderers(this.#map)[layerName === "building" ? "building" : "surface"];
@@ -101,6 +104,18 @@ export class MapDrawing extends L.LayerGroup {
     }
   }
   updateSelection(selectedId: string | null, highlightedIds: string[]): void {
+    if (
+      this.#selectedId === selectedId &&
+      this.#highlightedIds.length === highlightedIds.length &&
+      this.#highlightedIds.every((id, index) => id === highlightedIds[index])
+    ) {
+      return;
+    }
+    const viewportChanged = this.#refreshFrame !== null;
+    if (this.#refreshFrame !== null) {
+      cancelAnimationFrame(this.#refreshFrame);
+      this.#refreshFrame = null;
+    }
     this.#selectedId = selectedId;
     this.#highlightedIds = highlightedIds;
     for (const feature of this.#features) {
@@ -116,21 +131,36 @@ export class MapDrawing extends L.LayerGroup {
           this.#map.getZoom(),
         ),
       );
+      if (layer instanceof L.CircleMarker) {
+        layer.setRadius(feature.id === selectedId ? 8 : this.#map.getZoom() < -2 ? 4 : 6);
+      }
       if (feature.kind === "region" && cartographicLayer(feature) !== "building") {
         addSurfaceTexture(layer, feature);
       }
     }
-    this.#refreshViewport();
+    this.#refreshViewport(viewportChanged);
   }
-  #refreshViewport = (): void => {
+  /** Leaflet emits moveend and resize for one size change; draw their final state once per frame. */
+  #scheduleViewportRefresh = (): void => {
+    if (this.#refreshFrame !== null) {
+      return;
+    }
+    this.#refreshFrame = requestAnimationFrame(() => {
+      this.#refreshFrame = null;
+      this.#refreshViewport(true);
+    });
+  };
+  #refreshViewport(viewportChanged: boolean): void {
     const zoom = this.#map.getZoom();
+    const zoomChanged = zoom !== this.#lastZoom;
+    this.#lastZoom = zoom;
     const labels = mapLabelPositions(this.#map, this.#features, this.#selectedId);
     for (const feature of this.#features) {
       const layer = this.#paths.get(feature.id);
       if (!layer) {
         continue;
       }
-      if (feature.kind === "road") {
+      if (zoomChanged && feature.kind === "road") {
         layer.setStyle(
           featureStyle(
             feature,
@@ -141,19 +171,25 @@ export class MapDrawing extends L.LayerGroup {
         );
         this.#casings.get(feature.id)?.setStyle(roadStyles(feature, zoom).casing);
       }
-      if (layer instanceof L.CircleMarker) {
+      if (zoomChanged && layer instanceof L.CircleMarker) {
         layer.setRadius(feature.id === this.#selectedId ? 8 : zoom < -2 ? 4 : 6);
       }
-      updateMapLabel(layer, labels.get(feature.id));
+      updateMapLabel(layer, labels.get(feature.id), viewportChanged);
     }
     if (zoom >= this.#decoration.minimumZoom) {
-      this.addLayer(this.#decoration.details);
-    } else {
+      if (!this.hasLayer(this.#decoration.details)) {
+        this.addLayer(this.#decoration.details);
+      }
+    } else if (this.hasLayer(this.#decoration.details)) {
       this.removeLayer(this.#decoration.details);
     }
-  };
+  }
   override onRemove(map: L.Map): this {
-    map.off("zoomend moveend resize", this.#refreshViewport);
+    map.off("zoomend moveend resize", this.#scheduleViewportRefresh);
+    if (this.#refreshFrame !== null) {
+      cancelAnimationFrame(this.#refreshFrame);
+      this.#refreshFrame = null;
+    }
     super.onRemove(map);
     return this;
   }
