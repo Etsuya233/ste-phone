@@ -1,5 +1,6 @@
 import { useEffect, useRef, type RefObject } from "react";
 import type { MapDocument, MapFeature } from "../map.ts";
+import { Button } from "../../../frontend/foundation/button.tsx";
 
 const featureKinds = { place: "地点", region: "区域", road: "道路" };
 
@@ -98,9 +99,9 @@ export function MapSearch({
         ) : null}
       </div>
       {open ? (
-        <button type="button" className="map-search-cancel" onClick={onCancel}>
+        <Button className="map-search-cancel" onClick={onCancel}>
           取消
-        </button>
+        </Button>
       ) : null}
       {open && normalized ? (
         <div className="map-search-results" aria-label="搜索结果">

@@ -8,7 +8,6 @@
   flex-direction: column;
   position: absolute;
   inset: 0;
-  padding-top: var(--status-height);
   color: var(--ios-ink);
   font-family: var(--ios-font);
   background: var(--ios-row-surface);
@@ -33,15 +32,14 @@
   outline: 2px solid var(--ios-blue);
   outline-offset: 2px;
 }
-:host .map-header {
+:host .map-app .map-header {
   position: relative;
   display: flex;
   align-items: center;
-  min-height: var(--nav-height);
   gap: 8px;
-  padding: 0 10px;
+  height: calc(var(--status-height) + var(--nav-height));
+  padding: var(--status-height) 10px 0;
   z-index: 900;
-  background: var(--ios-bar);
 }
 :host .map-app-title {
   position: absolute;
@@ -53,28 +51,11 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
-:host .map-header button {
-  font-size: 14px;
-  white-space: nowrap;
-}
 :host .map-app .map-home {
-  display: flex;
   flex: none;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 6px 0;
 }
-:host .map-app .map-home svg {
-  width: 10px;
-  height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+:host .map-app .map-search-cancel {
+  flex: none;
 }
 :host .map-revision {
   color: #6d6d72;

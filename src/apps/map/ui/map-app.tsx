@@ -12,6 +12,8 @@ import type { MapDocument, MapPoint, MapSnapshot } from "../map.ts";
 import { MapCanvas } from "./map-canvas.tsx";
 import { MapSearch } from "./map-browser.tsx";
 import { MapAgentPanel } from "./map-agent-panel.tsx";
+import { Button } from "../../../frontend/foundation/button.tsx";
+import { Icon } from "../../../frontend/foundation/icon.tsx";
 import { useAgentSheet } from "./use-agent-sheet.ts";
 import type { MapModelPreference, ModelConnectionsReader } from "../../settings/public.ts";
 import type { MapModelOptions } from "./map-model-selector.tsx";
@@ -194,14 +196,16 @@ function MapHeader({
     [onSelect],
   );
   return (
-    <header className="map-header">
+    <header className="ios-nav map-header">
       <h1 className="map-app-title">{document.title}</h1>
-      <button className="map-home" onClick={onHome} aria-label="主屏幕">
-        <svg viewBox="0 0 12 22" aria-hidden="true">
-          <path d="m10 2-8 9 8 9" />
-        </svg>
+      <Button className="map-home" onClick={onHome} aria-label="主屏幕">
+        <Icon>
+          <svg viewBox="0 0 12 22">
+            <path d="m10 2-8 9 8 9" />
+          </svg>
+        </Icon>
         {open ? null : <span>主屏幕</span>}
-      </button>
+      </Button>
       <MapSearch
         document={document}
         query={query}
