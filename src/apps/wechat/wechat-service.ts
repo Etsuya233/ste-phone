@@ -100,7 +100,7 @@ export class WechatService {
         this.#replies.busy ||
         this.#writes.busy ||
         this.#snapshot.barrierSaving,
-      save: (update, signal) => this.#writes.save(update, signal),
+      save: (update, generated) => this.#writes.save(update, generated),
       publishGeneration: (momentGeneration) => this.#publish({ momentGeneration }),
     });
     this.#sourceKey = this.#binding();
@@ -244,7 +244,8 @@ export class WechatService {
       // 在取材前固定本轮指导；生成期间保存的新内容只影响下一轮。
       historyMessageLimit: this.#dependencies.preferences.getHistoryMessageLimit(),
       replyGuidance: this.#snapshot.data.replyGuidance?.[account.scopeId]?.[otherId] ?? "",
-      save: (next, signal) => this.#writes.save(() => this.#dataWithConversation(next), signal),
+      save: (next, generated) =>
+        this.#writes.save(() => this.#dataWithConversation(next), generated),
     });
   }
 
@@ -311,11 +312,11 @@ export class WechatService {
     };
   }
 
-  cancel(): void {
+  cancel(viewChanged = false): void {
     ++this.#operation;
-    this.moments.generation.cancel();
+    this.moments.generation.cancel(viewChanged);
     if (!this.#submission.busy) {
-      this.#replies.cancel();
+      this.#replies.cancel(viewChanged);
     }
   }
   dispose(): void {
@@ -333,7 +334,7 @@ export class WechatService {
     const revision = this.#dependencies.data.getSnapshot().revision;
     if (binding !== this.#sourceKey) {
       this.#sourceKey = binding;
-      this.cancel();
+      this.cancel(true);
       ++this.#preparation;
       this.#publish({
         people: [],
@@ -353,11 +354,12 @@ export class WechatService {
     if (chatId === this.#snapshot.chatId) {
       return;
     }
-    this.cancel();
+    this.cancel(true);
     this.#writes.changedChat();
     ++this.#preparation;
     this.#publish({
       chatId,
+      reply: { status: "idle" },
       data: chatId ? (this.#dependencies.storage.read(chatId) ?? emptyWechat()) : emptyWechat(),
       people: [],
       scopeId: null,

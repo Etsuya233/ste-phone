@@ -8,7 +8,9 @@ import { GroupedList } from "../../../frontend/foundation/grouped-list.tsx";
 export function WechatAccounts({ wechat, state, navigation }: WechatPageProps) {
   return (
     <Page navBar={<NavBar title="切换帐号" back={{ label: "微信", onClick: navigation.pop }} />}>
-      <p className="wechat-notice">选择当前使用的人物。切换将停止当前回复。</p>
+      <p className="wechat-notice">
+        选择当前使用的人物。切换会停止正在生成的回复，保存期间请等待。
+      </p>
       {state.error && (
         <p className="wechat-notice" role="alert">
           {state.error}
@@ -27,7 +29,7 @@ export function WechatAccounts({ wechat, state, navigation }: WechatPageProps) {
               !!state.error ||
               state.reply.status === "sending" ||
               state.reply.status === "saving" ||
-              state.reply.status === "stopping"
+              state.momentGeneration.status === "saving"
             }
             onClick={() =>
               void wechat.selectAccount(person.id).then((saved) => {

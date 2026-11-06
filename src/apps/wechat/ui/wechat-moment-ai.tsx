@@ -118,7 +118,14 @@ export function WechatMomentAiAuthor(
   );
 }
 
-/** 提示在微信内持续可见，不阻断阅读和草稿编辑；停止保存时等待存储撤回确认。 */
+const momentRunningText = {
+  post: "正在生成动态…",
+  image: "正在生成图片…",
+  "image-prompt": "正在完善绘图提示词…",
+  interaction: "正在生成互动…",
+};
+
+/** 生成和保存提示在微信内持续可见，保存期间隐藏停止按钮。 */
 export function MomentGenerationNotice({
   wechat,
   state,
@@ -127,35 +134,24 @@ export function MomentGenerationNotice({
   if (generation.status === "idle") {
     return null;
   }
-  const finished = generation.status === "complete" || generation.status === "error";
   return (
     <div
       className="wechat-moment-generation"
       role={generation.status === "error" ? "alert" : "status"}
     >
       <span>
-        {generation.status === "complete" || generation.status === "error"
+        {"message" in generation
           ? generation.message
-          : generation.status === "stopping"
-            ? "正在停止并确认保存撤回…"
-            : generation.status === "saving"
-              ? "正在保存朋友圈…"
-              : generation.status === "running" && generation.kind === "post"
-                ? "正在生成动态…"
-                : generation.status === "running" && generation.kind === "image"
-                  ? "正在生成图片…"
-                  : generation.status === "running" && generation.kind === "image-prompt"
-                    ? "正在完善绘图提示词…"
-                    : "正在生成互动…"}
+          : generation.status === "saving"
+            ? "正在保存朋友圈…"
+            : momentRunningText[generation.kind]}
       </span>
-      <Button
-        disabled={generation.status === "stopping"}
-        onClick={
-          finished ? wechat.moments.generation.dismiss : () => wechat.moments.generation.cancel()
-        }
-      >
-        {finished ? "好" : generation.status === "stopping" ? "停止中" : "停止"}
-      </Button>
+      {generation.status === "running" && (
+        <Button onClick={() => wechat.moments.generation.cancel()}>停止</Button>
+      )}
+      {(generation.status === "complete" || generation.status === "error") && (
+        <Button onClick={wechat.moments.generation.dismiss}>好</Button>
+      )}
     </div>
   );
 }

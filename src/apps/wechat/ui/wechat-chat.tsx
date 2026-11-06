@@ -34,7 +34,11 @@ export function WechatChat({ ...props }: WechatPageProps & { id: string; active:
         navBar={
           <NavBar
             title={
-              reply?.status === "running" || reply?.status === "saving" ? "用户正在输入..." : name
+              reply?.status === "running"
+                ? "用户正在输入..."
+                : reply?.status === "saving"
+                  ? "正在保存回复…"
+                  : name
             }
             back={{ label: "微信", onClick: navigation.pop }}
             right={
@@ -72,7 +76,7 @@ export function WechatChat({ ...props }: WechatPageProps & { id: string; active:
                   !available ||
                   state.barrierSaving ||
                   state.writeBusy ||
-                  ["running", "saving", "stopping"].includes(state.momentGeneration.status)
+                  ["running", "saving"].includes(state.momentGeneration.status)
                 }
                 onClick={() => void wechat.requestReply(id)}
               >

@@ -46,7 +46,7 @@ export interface WechatData {
 export type ReplyState =
   | { readonly status: "idle" }
   | { readonly status: "sending"; readonly conversationId: string }
-  | { readonly status: "running" | "saving" | "stopping"; readonly conversationId: string }
+  | { readonly status: "running" | "saving"; readonly conversationId: string }
   | {
       readonly status: "error";
       readonly conversationId: string;

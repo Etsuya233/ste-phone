@@ -31,6 +31,9 @@ export function createPreviewWechatStorage(
       if (mode === "save-error" || momentsMode === "save-error") {
         throw new Error("模拟微信保存失败");
       }
+      if (mode === "slow-save" || momentsMode === "slow-save") {
+        await new Promise<void>((resolve) => setTimeout(resolve, 2500));
+      }
       localStorage.setItem(`ste-phone-preview-wechat:${chatId}`, JSON.stringify(data));
     },
   };

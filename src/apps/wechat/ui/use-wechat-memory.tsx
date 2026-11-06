@@ -143,15 +143,13 @@ function memoryLockReason(state: WechatSnapshot): string | null {
       return "消息发送中，暂不可修改";
     case "running":
       return "AI 回复中，可先停止再修改";
-    case "stopping":
-      return "正在停止回复，暂不可修改";
     case "saving":
       return "回复保存中，暂不可修改";
     case "idle":
     case "error":
       break;
   }
-  if (["running", "saving", "stopping"].includes(state.momentGeneration.status)) {
+  if (["running", "saving"].includes(state.momentGeneration.status)) {
     return "朋友圈任务进行中，暂不可修改";
   }
   return state.writeBusy ? "消息保存中，暂不可修改" : null;

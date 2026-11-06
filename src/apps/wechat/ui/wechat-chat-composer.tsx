@@ -20,10 +20,9 @@ export function WechatChatComposer({
   onHeightChange(height: number): void;
 }) {
   const [draft, setDraft] = useState(() => wechat.getDraft(id));
-  const running = state.reply.status === "running" || state.reply.status === "saving";
-  const stopping = state.reply.status === "stopping";
+  const running = state.reply.status === "running";
   const sending = state.reply.status === "sending";
-  const momentsBusy = ["running", "saving", "stopping"].includes(state.momentGeneration.status);
+  const momentsBusy = ["running", "saving"].includes(state.momentGeneration.status);
   const account = state.data.account;
   const replying =
     running &&
@@ -39,7 +38,15 @@ export function WechatChatComposer({
   return (
     <WechatComposer
       value={draft}
-      disabled={!available || running || sending || stopping || momentsBusy || state.barrierSaving}
+      disabled={
+        !available ||
+        running ||
+        sending ||
+        state.writeBusy ||
+        state.reply.status === "saving" ||
+        momentsBusy ||
+        state.barrierSaving
+      }
       replying={replying}
       onStop={() => wechat.cancel()}
       delayed={sendMode === "delayed"}

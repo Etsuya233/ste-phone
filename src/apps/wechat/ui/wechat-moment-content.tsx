@@ -23,9 +23,9 @@ export function momentWritingReason(state: WechatSnapshot, scopeId: string): str
   }
   if (
     state.writeBusy ||
-    ["running", "saving", "stopping"].includes(state.momentGeneration.status) ||
+    ["running", "saving"].includes(state.momentGeneration.status) ||
     state.barrierSaving ||
-    ["sending", "running", "saving", "stopping"].includes(state.reply.status)
+    ["sending", "running", "saving"].includes(state.reply.status)
   ) {
     return "请等待当前生成或保存完成。";
   }

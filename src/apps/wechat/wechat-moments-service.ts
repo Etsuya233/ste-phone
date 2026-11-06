@@ -4,6 +4,7 @@ import type { AiTransport } from "../../core/ai/public.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
 import type { ModelConnectionsReader } from "../settings/public.ts";
 import { WechatMomentsSession, type MomentGenerationState } from "./wechat-moments-session.ts";
+import type { GeneratedWechatWrite } from "./wechat-writes.ts";
 import {
   addMoment,
   addMomentComment,
@@ -30,7 +31,10 @@ interface Dependencies {
   snapshot: () => WechatSnapshot;
   busy: () => boolean;
   publishGeneration(state: MomentGenerationState): void;
-  save: (update: (data: WechatData) => WechatData, signal?: AbortSignal) => Promise<void>;
+  save: (
+    update: (data: WechatData) => WechatData,
+    generated?: GeneratedWechatWrite,
+  ) => Promise<void>;
 }
 
 /** 朋友圈拥有内容操作，实际保存与单聊共用微信写入队列。页面仅提交操作参数。 */
@@ -186,13 +190,13 @@ export class WechatMomentsService {
     if (!item.prompt?.trim()) {
       throw new Error("请先填写并保存绘图 Prompt");
     }
-    await this.generation.imageTask("image", account.scopeId, async (signal, saving) => {
+    await this.generation.imageTask("image", account.scopeId, async (generated) => {
+      const { signal } = generated;
       const images = await this.#dependencies.imageHub.generate({ prompt: item.prompt! });
       signal.throwIfAborted();
       if (!images.length) {
         throw new Error("Image Hub 未返回图片");
       }
-      saving();
       try {
         await this.#dependencies.save(
           (data) =>
@@ -200,10 +204,10 @@ export class WechatMomentsService {
               ...current,
               image: { id: images[0]!.id, imagePath: images[0]!.imagePath },
             })),
-          signal,
+          generated,
         );
       } catch (error) {
-        if (signal.aborted && (error as Error).name === "AbortError") {
+        if (signal.aborted) {
           throw error;
         }
         throw new Error(`图片已保存在图库，关联朋友圈失败：${(error as Error).message}`, {
@@ -219,7 +223,7 @@ export class WechatMomentsService {
     const moment = this.#moment(snapshot.data, account.scopeId, momentId);
     const item = momentImageAt(moment, index);
     const input = momentImagePromptInput(moment, item, snapshot.people, prompt);
-    return this.generation.imageTask("image-prompt", account.scopeId, (signal) =>
+    return this.generation.imageTask("image-prompt", account.scopeId, ({ signal }) =>
       generateRefinedMomentImagePrompt(this.#dependencies, input, signal),
     );
   }
@@ -233,7 +237,7 @@ export class WechatMomentsService {
     if (!item.prompt?.trim()) {
       throw new Error("请先填写绘图 Prompt");
     }
-    return this.generation.imageTask("image", account.scopeId, async (signal) => {
+    return this.generation.imageTask("image", account.scopeId, async ({ signal }) => {
       const images = await this.#dependencies.imageHub.generate({ prompt: item.prompt! });
       signal.throwIfAborted();
       if (!images.length) {
@@ -258,7 +262,7 @@ export class WechatMomentsService {
       this.#dependencies.snapshot().people,
       prompt,
     );
-    return this.generation.imageTask("image-prompt", account.scopeId, (signal) =>
+    return this.generation.imageTask("image-prompt", account.scopeId, ({ signal }) =>
       generateRefinedMomentImagePrompt(this.#dependencies, input, signal),
     );
   }

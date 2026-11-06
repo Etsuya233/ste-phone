@@ -5,10 +5,11 @@ import type { WechatStickerLibrary } from "./wechat-sticker-library.ts";
 import type { ReplyState, WechatConversation } from "./wechat.ts";
 import { pendingWechatMessages } from "./wechat.ts";
 import { createWechatReplies } from "./wechat-reply.ts";
+import type { GeneratedWechatWrite } from "./wechat-writes.ts";
 
 interface ReplyTask {
   controller: AbortController;
-  conversationId: string;
+  detached: boolean;
   committing: boolean;
 }
 
@@ -19,7 +20,7 @@ interface Dependencies {
   stickers: WechatStickerLibrary;
   publish(state: ReplyState): void;
 }
-/** 一次回复拥有固定输入与取消信号；保存阶段完成撤回后才释放写入锁。 */
+/** 一次回复拥有固定输入与取消信号；进入保存后等待原目标确认，再释放任务。 */
 export class WechatReplySession {
   #task: ReplyTask | null = null;
   readonly #dependencies: Dependencies;
@@ -39,7 +40,7 @@ export class WechatReplySession {
     recipient: CharacterProfile;
     replyGuidance: string;
     historyMessageLimit: number;
-    save(conversation: WechatConversation, signal: AbortSignal): Promise<void>;
+    save(conversation: WechatConversation, generated: GeneratedWechatWrite): Promise<void>;
   }): Promise<void> {
     if (this.busy) {
       throw new Error("请等待当前回复完成");
@@ -47,7 +48,7 @@ export class WechatReplySession {
     const { conversation, sender, recipient, save } = input;
     const task: ReplyTask = {
       controller: new AbortController(),
-      conversationId: conversation.id,
+      detached: false,
       committing: false,
     };
     this.#task = task;
@@ -65,8 +66,6 @@ export class WechatReplySession {
         signal,
       });
       signal.throwIfAborted();
-      task.committing = true;
-      this.#dependencies.publish({ status: "saving", conversationId: conversation.id });
       const completed = pendingWechatMessages(conversation, sender.id, true).at(-1)?.id;
       const pendingCompletedThrough = { ...conversation.pendingCompletedThrough };
       if (completed) {
@@ -81,12 +80,19 @@ export class WechatReplySession {
           pendingCompletedThrough,
           messages: [...conversation.messages, ...messages],
         },
-        signal,
+        {
+          signal,
+          onWriting: () => {
+            task.committing = true;
+            this.#dependencies.publish({ status: "saving", conversationId: conversation.id });
+          },
+        },
       );
-      signal.throwIfAborted();
-      this.#dependencies.publish({ status: "idle" });
+      if (!task.detached) {
+        this.#dependencies.publish({ status: "idle" });
+      }
     } catch (error) {
-      if (this.#task === task) {
+      if (this.#task === task && !task.detached) {
         const canceled = signal.aborted && (error as Error).name === "AbortError";
         this.#dependencies.publish(
           canceled
@@ -108,15 +114,18 @@ export class WechatReplySession {
     }
   }
 
-  cancel(): void {
+  cancel(viewChanged = false): void {
     const task = this.#task;
-    task?.controller.abort();
-    // 已发往宿主的保存无法靠中断 HTTP 撤销；存储层确认撤回期间禁止再次写入。
     if (task?.committing) {
-      this.#dependencies.publish({ status: "stopping", conversationId: task.conversationId });
-    } else {
-      this.#task = null;
-      this.#dependencies.publish({ status: "idle" });
+      // 切换聊天或资料只清理旧任务的展示，原目标的写入继续持有任务锁。
+      if (viewChanged) {
+        task.detached = true;
+        this.#dependencies.publish({ status: "idle" });
+      }
+      return;
     }
+    task?.controller.abort();
+    this.#task = null;
+    this.#dependencies.publish({ status: "idle" });
   }
 }

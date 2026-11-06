@@ -65,7 +65,7 @@ function fixture() {
     },
     snapshot: () => snapshot,
     busy: () => writes.busy || generating,
-    save: (update, signal) => writes.save(update, signal),
+    save: (update, generated) => writes.save(update, generated),
   });
   return {
     service,

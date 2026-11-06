@@ -1,6 +1,11 @@
 import type { WechatData, WechatSnapshot } from "./wechat.ts";
 import type { WechatStorage } from "./ports/wechat-storage.ts";
 
+export interface GeneratedWechatWrite {
+  signal: AbortSignal;
+  onWriting(): void;
+}
+
 /** 所有元数据更新共用串行队列，在实际写入时合并最新数据。聊天载入代次与取消代次独立。 */
 export class WechatWrites {
   #queue: Promise<void> = Promise.resolve();
@@ -27,7 +32,10 @@ export class WechatWrites {
   changedChat() {
     ++this.#generation;
   }
-  async save(update: (data: WechatData) => WechatData, signal?: AbortSignal): Promise<void> {
+  async save(
+    update: (data: WechatData) => WechatData,
+    generated?: GeneratedWechatWrite,
+  ): Promise<void> {
     const chatId = this.#snapshot().chatId;
     if (!chatId) {
       throw new Error("请先打开一个 ST 聊天");
@@ -36,14 +44,16 @@ export class WechatWrites {
     ++this.#count;
     this.#publish({ writeBusy: true });
     const writing = this.#queue.then(async () => {
-      signal?.throwIfAborted();
+      generated?.signal.throwIfAborted();
       if (this.#generation !== generation) {
         throw new Error("当前聊天已变化，无法保存微信");
       }
       const account = this.#snapshot().data.account;
       const value = update(this.#snapshot().data);
-      await this.#storage.write(chatId, value, signal);
-      signal?.throwIfAborted();
+      // 在队列等待期间仍可取消。固定目标的请求发出后才进入保存阶段。
+      const writing = this.#storage.write(chatId, value, generated?.signal);
+      generated?.onWriting();
+      await writing;
       if (this.#generation === generation) {
         // 切帐号和停止不改变聊天载入代次；保留期间更新的帐号视角。
         this.#publish({

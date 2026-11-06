@@ -2,6 +2,7 @@ import type { AiTransport } from "../../core/ai/public.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
 import type { ModelConnectionsReader } from "../settings/public.ts";
 import type { WechatData, WechatPerson } from "./wechat.ts";
+import type { GeneratedWechatWrite } from "./wechat-writes.ts";
 import {
   addMomentComment,
   createMomentRecord,
@@ -25,7 +26,7 @@ import {
 export type MomentGenerationState =
   | { readonly status: "idle" }
   | {
-      readonly status: "running" | "saving" | "stopping";
+      readonly status: "running" | "saving";
       readonly kind: "post" | "interaction" | "image" | "image-prompt";
       readonly scopeId: string;
     }
@@ -35,16 +36,17 @@ interface Dependencies {
   data: DataAppPublic;
   transport: AiTransport;
   connections: ModelConnectionsReader;
-  save(update: (data: WechatData) => WechatData, signal?: AbortSignal): Promise<void>;
+  save(update: (data: WechatData) => WechatData, generated: GeneratedWechatWrite): Promise<void>;
   publish(state: MomentGenerationState): void;
 }
 interface Task {
   controller: AbortController;
   input: MomentGenerationInput | { kind: "image" | "image-prompt"; scopeId: string };
   committing: boolean;
+  detached: boolean;
 }
 
-/** 任务固定人物、资料实例与历史输入；取消生成立即释放，取消保存等待原存储完成撤回。 */
+/** 任务固定人物、资料实例与历史输入；取消生成立即释放，保存等待原目标确认。 */
 export class WechatMomentsSession {
   readonly #dependencies: Dependencies;
   #task: Task | null = null;
@@ -69,6 +71,7 @@ export class WechatMomentsSession {
       controller: new AbortController(),
       input: fixed,
       committing: false,
+      detached: false,
     };
     this.#task = task;
     const { signal } = task.controller;
@@ -101,17 +104,22 @@ export class WechatMomentsSession {
       }
       const update = this.#validatedUpdate(fixed, output);
       if (update) {
-        task.committing = true;
-        this.#publishTask(task, "saving");
-        await this.#dependencies.save(update, signal);
-        signal.throwIfAborted();
+        await this.#dependencies.save(update, {
+          signal,
+          onWriting: () => {
+            task.committing = true;
+            this.#publishTask(task, "saving");
+          },
+        });
       }
-      this.#dependencies.publish({
-        status: "complete",
-        message: update ? "互动已保存。" : "本次无人回应。",
-      });
+      if (!task.detached) {
+        this.#dependencies.publish({
+          status: "complete",
+          message: update ? "互动已保存。" : "本次无人回应。",
+        });
+      }
     } catch (error) {
-      if (this.#task === task) {
+      if (this.#task === task && !task.detached) {
         this.#dependencies.publish(
           signal.aborted && (error as Error).name === "AbortError"
             ? { status: "idle" }
@@ -137,7 +145,7 @@ export class WechatMomentsSession {
   async imageTask<T>(
     kind: "image" | "image-prompt",
     scopeId: string,
-    run: (signal: AbortSignal, saving: () => void) => Promise<T>,
+    run: (generated: GeneratedWechatWrite) => Promise<T>,
   ): Promise<T> {
     if (this.busy) {
       throw new Error("请等待当前朋友圈生成完成");
@@ -146,23 +154,28 @@ export class WechatMomentsSession {
       controller: new AbortController(),
       input: { kind, scopeId },
       committing: false,
+      detached: false,
     };
     this.#task = task;
     this.#publishTask(task, "running");
     try {
-      const result = await run(task.controller.signal, () => {
-        task.controller.signal.throwIfAborted();
-        task.committing = true;
-        this.#publishTask(task, "saving");
+      const result = await run({
+        signal: task.controller.signal,
+        onWriting: () => {
+          task.committing = true;
+          this.#publishTask(task, "saving");
+        },
       });
       task.controller.signal.throwIfAborted();
-      this.#dependencies.publish({
-        status: "complete",
-        message: kind === "image" ? "图片已生成。" : "Prompt 已完善。",
-      });
+      if (!task.detached) {
+        this.#dependencies.publish({
+          status: "complete",
+          message: kind === "image" ? "图片已生成。" : "Prompt 已完善。",
+        });
+      }
       return result;
     } catch (error) {
-      if (this.#task === task) {
+      if (this.#task === task && !task.detached) {
         this.#dependencies.publish(
           task.controller.signal.aborted && (error as Error).name === "AbortError"
             ? { status: "idle" }
@@ -215,7 +228,7 @@ export class WechatMomentsSession {
     };
   }
 
-  #publishTask(task: Task, status: "running" | "saving" | "stopping"): void {
+  #publishTask(task: Task, status: "running" | "saving"): void {
     this.#dependencies.publish({ status, kind: task.input.kind, scopeId: task.input.scopeId });
   }
   dismiss = (): void => {
@@ -223,15 +236,18 @@ export class WechatMomentsSession {
       this.#dependencies.publish({ status: "idle" });
     }
   };
-  cancel(): void {
+  cancel(viewChanged = false): void {
     const task = this.#task;
-    task?.controller.abort();
     if (task?.committing) {
-      this.#publishTask(task, "stopping");
-    } else {
-      this.#task = null;
-      this.#dependencies.publish({ status: "idle" });
+      if (viewChanged) {
+        task.detached = true;
+        this.#dependencies.publish({ status: "idle" });
+      }
+      return;
     }
+    task?.controller.abort();
+    this.#task = null;
+    this.#dependencies.publish({ status: "idle" });
   }
 }
 

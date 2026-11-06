@@ -151,7 +151,7 @@ function fixture() {
     storage: {
       read: (id) => saved.get(id) ?? null,
       write: async (id, value, signal) => {
-        const before = saved.get(id);
+        signal?.throwIfAborted();
         if (holdSave) {
           holdSave = false;
           saveStarted?.();
@@ -164,15 +164,6 @@ function fixture() {
         }
         stored = structuredClone(value);
         saved.set(id, stored);
-        if (signal?.aborted) {
-          stored = before ?? null;
-          if (before) {
-            saved.set(id, before);
-          } else {
-            saved.delete(id);
-          }
-          signal.throwIfAborted();
-        }
       },
     },
     connections: {
@@ -180,7 +171,18 @@ function fixture() {
       getConnection: () => connection,
       subscribe: () => () => {},
     },
-    imageHub: { listImages: async () => [], generate: async () => [] },
+    imageHub: {
+      listImages: async () => [],
+      generate: async ({ prompt }) => [
+        {
+          id: "hub-image",
+          imagePath: "/image.png",
+          prompt,
+          startedAt: "2026-11-04T00:00:00Z",
+          savedAt: "2026-11-04T00:00:01Z",
+        },
+      ],
+    },
     transport: createStAiTransport(() => ({}), {
       fetchImpl: async (_, init) => {
         calls++;
@@ -484,7 +486,7 @@ test("cancel discards a late reply, retains pending messages and permits a new b
   f.service.dispose();
 });
 
-test("cancel during reply persistence waits for rollback before releasing the write lock", async () => {
+test("a reply already saving commits despite stop and retains the write lock until confirmation", async () => {
   const f = fixture();
   f.preferences.setSendMode("delayed");
   await f.service.prepare();
@@ -494,16 +496,40 @@ test("cancel during reply persistence waits for rollback before releasing the wr
   const replying = f.service.requestReply("b");
   await started;
   f.service.cancel();
-  assert.equal(f.service.getSnapshot().reply.status, "stopping");
+  assert.equal(f.service.getSnapshot().reply.status, "saving");
   await assert.rejects(f.service.enqueue("b", "过早发送"), /等待/);
   f.releaseSave();
   await replying;
-  assert.equal(f.stored!.conversations[0]!.messages.length, 1);
-  assert.equal(f.service.getConversation("b")!.messages.length, 1);
-  assert.equal(f.service.getSnapshot().reply.status, "idle");
-  await f.service.requestReply("b");
   assert.equal(f.stored!.conversations[0]!.messages.length, 3);
+  assert.equal(f.service.getConversation("b")!.messages.length, 3);
+  assert.deepEqual(pendingWechatMessages(f.service.getConversation("b")!, "a"), []);
+  assert.equal(f.service.getSnapshot().reply.status, "idle");
+  await f.service.enqueue("b", "保存后发送");
   f.service.dispose();
+});
+
+test("switching chats during a reply write isolates the old result and keeps confirmed data", async () => {
+  for (const fail of [false, true]) {
+    const f = fixture();
+    await f.service.prepare();
+    await f.service.selectAccount("a");
+    const started = f.holdNextSave();
+    const reply = f.service.requestReply("b");
+    await started;
+    f.switchChat("another-chat");
+    assert.equal(f.service.getSnapshot().reply.status, "idle");
+    assert.equal(f.service.getSnapshot().writeBusy, true);
+    f.failSave(fail);
+    f.releaseSave();
+    await reply;
+    assert.equal(f.service.getSnapshot().reply.status, "idle");
+    assert.equal(f.service.getSnapshot().writeBusy, false);
+    assert.deepEqual(f.service.getSnapshot().data.conversations, []);
+    f.switchChat("st-chat");
+    await f.service.prepare();
+    assert.equal(f.service.getConversation("b")?.messages.length, fail ? undefined : 2);
+    f.service.dispose();
+  }
 });
 
 test("switching accounts cancels the old reply and retains each sender's pending messages", async () => {
@@ -754,7 +780,35 @@ test("reply completion waits for a guidance write and preserves both changes", a
   f.service.dispose();
 });
 
-test("a guidance save queued behind a canceled reply uses the rolled back conversation", async () => {
+test("a generated reply waiting behind a guidance write can still be canceled", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const modelStarted = f.holdModel();
+  const reply = f.service.requestReply("b");
+  await modelStarted;
+  const saveStarted = f.holdNextSave();
+  const guidance = f.service.saveReplyGuidance("b", "保存指导");
+  await saveStarted;
+  const replyQueued = new Promise<void>((resolve) => {
+    const unsubscribe = f.service.subscribe(() => {
+      unsubscribe();
+      resolve();
+    });
+  });
+  f.releaseModel();
+  await replyQueued;
+  assert.equal(f.service.getSnapshot().reply.status, "running");
+  f.service.cancel();
+  f.releaseSave();
+  await Promise.all([guidance, reply]);
+  assert.equal(f.service.getSnapshot().reply.status, "idle");
+  assert.deepEqual(f.stored!.conversations, []);
+  assert.equal(f.stored!.replyGuidance!.stable!.b, "保存指导");
+  f.service.dispose();
+});
+
+test("a guidance save queued behind a reply keeps the confirmed reply", async () => {
   const f = fixture();
   await f.service.prepare();
   await f.service.selectAccount("a");
@@ -766,7 +820,7 @@ test("a guidance save queued behind a canceled reply uses the rolled back conver
   f.releaseSave();
   await Promise.all([saving, replying]);
   assert.equal(f.stored!.replyGuidance!.stable!.b, "保留新指导");
-  assert.equal(f.stored!.conversations.length, 0);
+  assert.equal(f.stored!.conversations[0]!.messages.length, 2);
   f.service.dispose();
 });
 
@@ -1129,7 +1183,7 @@ test("朋友圈与单聊互斥，指导更新不改变本轮输入，切帐号�
   f.service.dispose();
 });
 
-test("朋友圈互动保存期间停止等待原存储撤回，生成锁随后释放", async () => {
+test("朋友圈互动进入保存后继续提交，确认后释放任务锁", async () => {
   const f = fixture();
   await f.service.prepare();
   await f.service.selectAccount("a");
@@ -1140,11 +1194,52 @@ test("朋友圈互动保存期间停止等待原存储撤回，生成锁随后�
   await started;
   assert.equal(f.service.getSnapshot().momentGeneration.status, "saving");
   f.service.moments.generation.cancel();
-  assert.equal(f.service.getSnapshot().momentGeneration.status, "stopping");
+  assert.equal(f.service.getSnapshot().momentGeneration.status, "saving");
   await assert.rejects(f.service.moments.publish({ text: "冲突", media: [] }), /等待当前/);
   f.releaseSave();
   await generation;
-  assert.equal(f.stored!.moments!.stable![0]!.comments.length, 0);
+  assert.equal(f.stored!.moments!.stable![0]!.comments.length, 1);
+  assert.equal(f.service.getSnapshot().momentGeneration.status, "complete");
+  f.service.dispose();
+});
+
+test("朋友圈配图关联写入期间无法停止，确认后显示已生成图片", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const id = await f.service.moments.publish({
+    text: "",
+    media: [{ type: "image", description: "画", prompt: "天空" }],
+  });
+  const started = f.holdNextSave();
+  const generation = f.service.moments.generateImage(id, 0);
+  await started;
+  assert.equal(f.service.getSnapshot().momentGeneration.status, "saving");
+  f.service.moments.generation.cancel();
+  assert.equal(f.service.getSnapshot().momentGeneration.status, "saving");
+  await assert.rejects(f.service.moments.publish({ text: "冲突", media: [] }), /等待当前/);
+  f.releaseSave();
+  await generation;
+  const image = f.stored!.moments!.stable![0]!.media[0]!;
+  assert.equal(image.type === "image" && image.image?.id, "hub-image");
+  assert.equal(f.service.getSnapshot().momentGeneration.status, "complete");
+  f.service.dispose();
+});
+
+test("更换资料实例后朋友圈互动仍保存到原动态，旧完成提示不进入当前页面", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const id = await f.service.moments.publish({ text: "已有动态", media: [] });
+  f.momentOutput({ comments: [{ authorId: "b", text: "待保存互动", replyTo: null }] });
+  const started = f.holdNextSave();
+  const generation = f.service.moments.generateInteraction(id);
+  await started;
+  f.sourceChanged(true, "new-instance");
+  assert.equal(f.service.getSnapshot().momentGeneration.status, "idle");
+  f.releaseSave();
+  await generation;
+  assert.equal(f.stored!.moments!.stable![0]!.comments.length, 1);
   assert.equal(f.service.getSnapshot().momentGeneration.status, "idle");
   f.service.dispose();
 });
