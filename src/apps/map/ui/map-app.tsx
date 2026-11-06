@@ -10,7 +10,7 @@ import {
 import type { MapService } from "../map-service.ts";
 import type { MapDocument, MapPoint, MapSnapshot } from "../map.ts";
 import { MapCanvas } from "./map-canvas.tsx";
-import { MapSearch, MapFeatureDetails } from "./map-browser.tsx";
+import { MapSearch } from "./map-browser.tsx";
 import { MapAgentPanel } from "./map-agent-panel.tsx";
 import { useAgentSheet } from "./use-agent-sheet.ts";
 import type { MapModelPreference, ModelConnectionsReader } from "../../settings/public.ts";
@@ -69,18 +69,22 @@ function MapWorkspace({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const sheet = useAgentSheet();
   const selectFeature = useCallback((id: string) => {
     setSelectedId(id);
     setSelectedPoint(null);
+    setDetailsOpen(true);
   }, []);
   const selectPoint = useCallback((point: MapPoint) => {
     setSelectedPoint(point);
     setSelectedId(null);
+    setDetailsOpen(false);
   }, []);
   const clearSelection = useCallback(() => {
     setSelectedId(null);
     setSelectedPoint(null);
+    setDetailsOpen(false);
   }, []);
   const document = state.proposal?.map ?? state.map;
   const selected = document.features.find((feature) => feature.id === selectedId);
@@ -138,25 +142,23 @@ function MapWorkspace({
           </div>
         ) : null}
         {state.proposal ? <span className="map-preview-badge">修改预览 · 尚未保存</span> : null}
+        {!pending.length && !state.proposal && document.features.length ? (
+          <span className="map-note">示意地图 · 非实际比例</span>
+        ) : null}
       </div>
       <div className="map-agent-spacer" aria-hidden="true" />
-      {selected ? (
-        <MapFeatureDetails
-          feature={selected}
-          document={document}
-          onClose={() => setSelectedId(null)}
-        />
-      ) : null}
       <MapAgentPanel
         service={service}
         state={state}
+        document={document}
         model={model}
         sheet={sheet}
-        selectedId={selected?.id ?? null}
-        selectedName={selected?.name ?? null}
+        selected={selected ?? null}
+        detailsOpen={detailsOpen}
         selectedPoint={selectedPoint}
         onClearPoint={() => setSelectedPoint(null)}
         onClearSelection={clearSelection}
+        onCloseDetails={() => setDetailsOpen(false)}
       />
     </div>
   );

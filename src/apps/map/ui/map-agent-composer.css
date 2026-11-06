@@ -1,0 +1,142 @@
+:host .map-agent-composer {
+  flex: none;
+  padding: 8px 14px 10px;
+  border-top: 1px solid var(--ios-line);
+  background: var(--ios-row-surface);
+}
+
+:host .map-context {
+  margin-bottom: 6px;
+  color: var(--ios-blue);
+  font-size: 11px;
+}
+
+:host .map-context button {
+  margin-left: 6px;
+  padding: 2px 5px;
+  font-size: 11px;
+}
+
+:host .map-model-selector {
+  position: relative;
+  display: flex;
+  flex: 0 1 auto;
+  width: fit-content;
+  min-width: 0;
+  max-width: 100%;
+}
+
+:host .map-model-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--ios-muted-fill);
+  color: var(--ios-secondary-ink);
+  font-size: 11px;
+}
+
+:host .map-model-chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host .map-model-chip svg {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:host .map-model-selector select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+:host .map-model-selector[data-disabled="true"] {
+  opacity: var(--ios-disabled-opacity);
+}
+
+:host .map-model-selector[data-disabled="true"] select {
+  cursor: default;
+}
+
+:host .map-model-selector select:focus-visible {
+  outline: none;
+}
+
+:host .map-model-selector:has(select:focus-visible) .map-model-chip {
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 1px;
+}
+
+:host .map-composer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 22px;
+  margin-bottom: 6px;
+}
+
+:host .map-composer-field {
+  position: relative;
+}
+
+:host .map-app .map-undo {
+  flex: none;
+  padding: 2px 0;
+  color: var(--ios-secondary-ink);
+  font-size: 11px;
+}
+
+:host .map-agent textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 56px;
+  max-height: 110px;
+  padding: 9px 46px 9px 11px;
+  resize: none;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ios-muted-fill);
+  color: var(--ios-ink);
+  font: 14px/1.5 var(--ios-font);
+}
+
+:host .map-app .map-send {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--ios-blue);
+  color: var(--ios-on-accent);
+}
+
+:host .map-send svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

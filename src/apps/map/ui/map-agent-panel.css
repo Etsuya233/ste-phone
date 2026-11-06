@@ -63,11 +63,44 @@
 }
 
 :host .map-agent-state {
-  overflow: hidden;
-  color: var(--ios-secondary-ink);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: #6d6d72;
   font-size: 11px;
+}
+
+:host .map-agent-state > span {
+  overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+:host .map-agent-state::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ios-green);
+}
+
+:host .map-agent-state[data-status="busy"]::before {
+  background: var(--ios-blue);
+  animation: map-agent-wait 1.1s ease-in-out infinite;
+}
+
+:host .map-agent-state[data-status="pending"]::before {
+  background: #d58b22;
+}
+
+:host .map-agent-state[data-status="error"]::before {
+  background: var(--ios-red);
+}
+
+:host .map-agent-state[data-status="detail"]::before {
+  background: #8a8a8e;
 }
 
 :host .map-agent-header-actions {
@@ -85,8 +118,54 @@
   font-size: 12px;
 }
 
-:host .map-agent-header-actions button:first-child {
+:host .map-agent-header-actions > button:first-child {
   color: var(--ios-blue);
+}
+
+:host .map-app .map-agent-stop {
+  color: var(--ios-red);
+}
+
+:host .map-agent-more {
+  position: relative;
+}
+
+:host .map-app .map-agent-more > button {
+  padding: 5px 8px;
+  font-size: 15px;
+  line-height: 1;
+  color: #6d6d72;
+}
+
+:host .map-agent-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  min-width: 112px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--ios-row-surface);
+  box-shadow: 0 8px 24px #344b6426;
+}
+
+:host .map-agent-menu button {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ios-ink);
+  font-size: 13px;
+  text-align: left;
+}
+
+:host .map-app .map-agent-menu button {
+  color: var(--ios-ink);
+}
+
+:host .map-agent-menu button:hover {
+  background: var(--ios-muted-fill);
 }
 
 :host .map-agent-body {
@@ -95,6 +174,21 @@
   overflow-y: auto;
   padding: 0 14px 8px;
   overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #c7c7cc transparent;
+}
+
+:host .map-agent-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+:host .map-agent-body::-webkit-scrollbar-thumb {
+  border-radius: 2px;
+  background: #c7c7cc;
+}
+
+:host .map-agent-body::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 :host .map-agent[data-size="collapsed"] .map-agent-body,
@@ -165,125 +259,6 @@
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-:host .map-agent-composer {
-  flex: none;
-  padding: 8px 14px 10px;
-  border-top: 1px solid var(--ios-line);
-  background: var(--ios-row-surface);
-}
-
-:host .map-context {
-  margin-bottom: 6px;
-  color: var(--ios-blue);
-  font-size: 11px;
-}
-
-:host .map-context button {
-  margin-left: 6px;
-  padding: 2px 5px;
-  font-size: 11px;
-}
-
-:host .map-model-selector {
-  position: relative;
-  display: flex;
-  width: fit-content;
-  max-width: 100%;
-  margin-bottom: 6px;
-}
-
-:host .map-model-chip {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  max-width: 100%;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--ios-muted-fill);
-  color: var(--ios-secondary-ink);
-  font-size: 11px;
-}
-
-:host .map-model-chip > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-:host .map-model-chip svg {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-:host .map-model-selector select {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-}
-
-:host .map-model-selector[data-disabled="true"] {
-  opacity: var(--ios-disabled-opacity);
-}
-
-:host .map-model-selector[data-disabled="true"] select {
-  cursor: default;
-}
-
-:host .map-model-selector select:focus-visible {
-  outline: none;
-}
-
-:host .map-model-selector:has(select:focus-visible) .map-model-chip {
-  outline: 2px solid var(--ios-blue);
-  outline-offset: 1px;
-}
-
-:host .map-agent textarea {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 56px;
-  max-height: 110px;
-  padding: 9px 11px;
-  resize: vertical;
-  border: 0;
-  border-radius: 10px;
-  background: var(--ios-muted-fill);
-  color: var(--ios-ink);
-  font: 14px/1.5 var(--ios-font);
-}
-
-:host .map-compose-tools {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-top: 7px;
-}
-
-:host .map-compose-tools .map-undo {
-  padding: 5px 6px;
-  color: var(--ios-secondary-ink);
-  font-size: 11px;
-}
-
-:host .map-app .map-primary {
-  color: var(--ios-on-accent);
-  background: var(--ios-blue);
-  padding: 7px 13px;
-  font-size: 13px;
 }
 
 :host .map-proposal {

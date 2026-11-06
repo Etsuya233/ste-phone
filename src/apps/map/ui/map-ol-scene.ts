@@ -124,7 +124,7 @@ export class OpenLayersMapScene {
     this.#selection.addFeatures(
       selectionFeatures(this.#document.features, id, highlightedIds, point),
     );
-    this.#labels.select(id);
+    this.#labels.select(id, highlightedIds);
   }
 
   fitInitial(): void {
@@ -141,7 +141,12 @@ export class OpenLayersMapScene {
     if (!coordinates.length) {
       return false;
     }
-    return this.fitCoordinates(coordinates, [35, 70], [45, 35]);
+    const fitted = this.fitCoordinates(coordinates, [35, 70], [45, 35]);
+    // 全图分辨率作为注记数量基准，放大后逐步放出次级地名。
+    if (fitted) {
+      this.#labels.setBaseResolution(this.view.getResolution() ?? null);
+    }
+    return fitted;
   }
 
   fitQuery(ids: string[]): boolean {

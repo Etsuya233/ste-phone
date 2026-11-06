@@ -143,7 +143,7 @@ export function MapFeatureDetails({
           </span>
           <h2>{feature.name}</h2>
         </div>
-        <button aria-label="取消选择" onClick={onClose}>
+        <button aria-label="关闭详情" onClick={onClose}>
           ×
         </button>
       </header>
@@ -155,6 +155,9 @@ export function MapFeatureDetails({
         <p className="map-caption">别名：{feature.aliases.join("、")}</p>
       ) : null}
       <p className="map-caption">来源：{feature.source}</p>
+      {feature.kind === "place" ? (
+        <p className="map-caption">带外环的地点关联了剧情事件。</p>
+      ) : null}
       {events.map((event) => (
         <div className="map-event" key={event.id}>
           <strong>{event.title}</strong>

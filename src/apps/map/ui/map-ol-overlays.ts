@@ -82,22 +82,30 @@ export function selectionFeatures(
           ? new LineString(item.geometry)
           : mapPolygon(item.geometry);
     const overlay = new Feature({ geometry });
-    overlay.setStyle(
-      new Style({
-        image:
-          item.kind === "place"
-            ? new CircleStyle({
-                radius: item.id === selectedId ? 8 : 6,
-                fill: new Fill({ color }),
-                stroke: new Stroke({ color: "#fffdf8", width: item.id === selectedId ? 3 : 2.5 }),
-              })
-            : undefined,
-        stroke:
-          item.kind === "place"
-            ? undefined
-            : new Stroke({ color, width: item.kind === "road" ? 5 : 2.5 }),
-      }),
-    );
+    if (item.kind === "place") {
+      const pin = new Style({
+        image: new CircleStyle({
+          radius: item.id === selectedId ? 8 : 6,
+          fill: new Fill({ color }),
+          stroke: new Stroke({ color: "#fffdf8", width: item.id === selectedId ? 3 : 2.5 }),
+        }),
+      });
+      // 选中点追加一圈淡蓝光晕，避免只靠填充色表达状态。
+      const halo = new Style({
+        image: new CircleStyle({
+          radius: 14,
+          fill: new Fill({ color: "#387fb11a" }),
+          stroke: new Stroke({ color: "#387fb159", width: 1.2 }),
+        }),
+      });
+      overlay.setStyle(item.id === selectedId ? [halo, pin] : pin);
+    } else {
+      overlay.setStyle(
+        new Style({
+          stroke: new Stroke({ color, width: item.kind === "road" ? 5 : 2.5 }),
+        }),
+      );
+    }
     result.push(overlay);
   }
   if (selectedPoint) {
