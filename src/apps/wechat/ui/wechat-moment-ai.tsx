@@ -13,12 +13,15 @@ export function WechatMomentAiAuthor(
 ) {
   const { wechat, state, navigation, scopeId } = props;
   const [draft, setDraft] = useState<MomentDraft | null>(null);
+  const [authorId, setAuthorId] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const [userDirection, setUserDirection] = useState("");
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
   const running = useRef(false);
   const reason = momentWritingReason(state, scopeId);
+  const disabled = working || !!reason;
+  const author = state.people.find((person) => person.id === authorId);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -58,33 +61,52 @@ export function WechatMomentAiAuthor(
     return <WechatMomentCompose {...props} initialDraft={draft} onPublished={() => {}} />;
   }
   return (
-    <Page navBar={<NavBar title="AI 生成动态" back={{ label: "返回", onClick: back }} />}>
-      <p className="wechat-notice">可先填写本次指引，再点击人物生成草稿，编辑后再发布。</p>
+    <Page
+      navBar={
+        <NavBar
+          title="AI 生成动态"
+          back={{ label: "返回", onClick: back }}
+          right={
+            <Button
+              disabled={disabled || !author}
+              onClick={() => author && void generate(author.id)}
+            >
+              生成草稿
+            </Button>
+          }
+        />
+      }
+    >
+      <p className="wechat-notice">
+        选择一位发布人物，可填写本次指引。点击「生成草稿」后，可编辑再发布。
+      </p>
       <div className="wechat-moment-editor">
         <label className="wechat-moment-label">
           本次用户指引
           <textarea
             rows={3}
             value={userDirection}
-            disabled={working || !!reason}
+            disabled={disabled}
             placeholder="选填，例如分享逛街日常，语气轻松，配两张图片"
             onChange={(event) => setUserDirection(event.target.value)}
           />
         </label>
       </div>
       {reason ? <p className="wechat-notice">{reason}</p> : null}
-      <div className="wechat-rows">
+      <div className="wechat-rows" role="group" aria-label="发布人物">
         {state.people.map((person) => (
-          <button
-            type="button"
-            className="wechat-row"
-            key={person.id}
-            disabled={working || !!reason}
-            onClick={() => void generate(person.id)}
-          >
+          <label className="wechat-moment-participant" key={person.id}>
+            <input
+              type="radio"
+              name="moment-author"
+              aria-label={person.name}
+              checked={author?.id === person.id}
+              disabled={disabled}
+              onChange={() => setAuthorId(person.id)}
+            />
             <PersonAvatar name={person.name} />
             <strong>{person.name}</strong>
-          </button>
+          </label>
         ))}
       </div>
       {error ? (
