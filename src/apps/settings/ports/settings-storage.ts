@@ -3,7 +3,7 @@ import type { ModelConnection } from "../model-connections.ts";
 import type { HomeLayout } from "../../../core/launcher/catalog.ts";
 export type Wallpaper = { kind: "gradient" } | { kind: "image"; path: string };
 export interface PhoneSettings {
-  version: 7;
+  version: 8;
   appearance: AppearanceSnapshot;
   wechatHistoryMessageLimit: number;
   wechatSendMode: WechatSendMode;
@@ -11,9 +11,13 @@ export interface PhoneSettings {
   blur: boolean;
   modelConnections: ModelConnection[];
   defaultModelConnectionId: string | null;
+  mapModelConnectionId: string | null;
   homeLayout: HomeLayout;
 }
-export interface PhoneSettingsV6 extends Omit<PhoneSettings, "version" | "appearance"> {
+export interface PhoneSettingsV7 extends Omit<PhoneSettings, "version" | "mapModelConnectionId"> {
+  version: 7;
+}
+export interface PhoneSettingsV6 extends Omit<PhoneSettingsV7, "version" | "appearance"> {
   version: 6;
 }
 export interface PhoneSettingsV5 extends Omit<
@@ -46,6 +50,7 @@ export interface WallpaperImage {
 export interface SettingsStorage {
   read: () =>
     | PhoneSettings
+    | PhoneSettingsV7
     | PhoneSettingsV6
     | PhoneSettingsV5
     | PhoneSettingsV4

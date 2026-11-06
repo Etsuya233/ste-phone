@@ -1,0 +1,121 @@
+/* Leaflet's vector-only layout, scoped to the phone Shadow DOM. No tile or marker images are loaded. */
+:host .map-canvas .leaflet-pane,
+:host .map-canvas .leaflet-pane > svg,
+:host .map-canvas .leaflet-pane > canvas,
+:host .map-canvas .leaflet-tooltip {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+:host .map-canvas {
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+}
+:host .map-canvas .leaflet-pane {
+  z-index: 400;
+}
+:host .map-canvas .leaflet-overlay-pane {
+  z-index: 400;
+}
+:host .map-canvas .leaflet-tooltip-pane {
+  z-index: 650;
+}
+:host .map-canvas .leaflet-pane > svg {
+  max-width: none;
+  max-height: none;
+}
+:host .map-canvas .leaflet-pane > svg path {
+  pointer-events: none;
+}
+:host .map-canvas .leaflet-pane > svg path.leaflet-interactive {
+  pointer-events: auto;
+  cursor: pointer;
+}
+:host .map-canvas .leaflet-zoom-animated {
+  transform-origin: 0 0;
+}
+:host .map-canvas .leaflet-control {
+  position: relative;
+  z-index: 800;
+  pointer-events: auto;
+}
+:host .map-canvas .leaflet-top,
+:host .map-canvas .leaflet-bottom {
+  position: absolute;
+  z-index: 800;
+  pointer-events: none;
+}
+:host .map-canvas .leaflet-bottom {
+  bottom: 12px;
+}
+:host .map-canvas .leaflet-right {
+  right: 12px;
+}
+:host .map-canvas .leaflet-control-zoom {
+  display: grid;
+  border-radius: 12px;
+  background: var(--ios-row-surface);
+  box-shadow: 0 2px 12px #344b6420;
+  overflow: hidden;
+}
+:host .map-canvas .leaflet-control-zoom a {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--ios-blue);
+  font-size: 22px;
+  text-decoration: none;
+}
+:host .map-canvas .leaflet-control-zoom a + a {
+  border-top: 1px solid var(--ios-line);
+}
+:host .map-canvas .leaflet-disabled {
+  opacity: var(--ios-disabled-opacity);
+}
+:host .map-canvas .leaflet-tooltip {
+  pointer-events: none;
+  white-space: nowrap;
+  user-select: none;
+}
+:host .map-canvas .map-label {
+  color: #454c49;
+  font: 600 11px var(--ios-font);
+  text-shadow:
+    0 1px 2px #fff,
+    1px 0 2px #fff,
+    -1px 0 2px #fff;
+}
+:host .map-canvas .leaflet-tooltip-right.map-label-place {
+  margin-left: 10px;
+}
+:host .map-canvas .leaflet-tooltip-left.map-label-place {
+  margin-left: -10px;
+}
+:host .map-canvas .map-poi {
+  filter: drop-shadow(0 1px 2px #4d584a44);
+}
+:host .map-canvas .map-bridge-shadow {
+  filter: drop-shadow(0 1px 1px #71634544);
+}
+:host .map-canvas .map-label-region {
+  color: #8b9181;
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+:host .map-canvas .map-label-building {
+  font-size: 11px;
+  letter-spacing: 0;
+  color: #776e59;
+}
+:host .map-canvas .map-label-road {
+  font-size: 9px;
+  font-weight: 400;
+  color: #928a76;
+}
+:host .map-canvas .map-label-water {
+  color: #628c9a;
+  font-style: italic;
+  font-weight: 500;
+}

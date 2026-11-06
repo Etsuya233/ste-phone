@@ -58,6 +58,10 @@ test("version 1 migration discards host backgrounds and external URLs while pres
     });
     assert.deepEqual(service.getState(), {
       ...defaultSettings,
+      homeLayout: {
+        ...defaultSettings.homeLayout,
+        grid: defaultSettings.homeLayout.grid.filter((id) => id !== "map"),
+      },
       wallpaper: { kind: "gradient" },
       blur: true,
       modelConnections: [],
@@ -139,6 +143,10 @@ test("version 2 migration preserves wallpaper and starts without connections", (
   });
   assert.deepEqual(service.getState(), {
     ...defaultSettings,
+    homeLayout: {
+      ...defaultSettings.homeLayout,
+      grid: defaultSettings.homeLayout.grid.filter((id) => id !== "map"),
+    },
     wallpaper: { kind: "image", path: image.path },
     blur: true,
   });
@@ -268,7 +276,7 @@ test("v4 settings migrate to delayed sending and the preference survives unrelat
   service.setWallpaper({ kind: "gradient" }, true);
   service.saveModelConnection(connection);
   assert.equal(new PhoneSettingsService(storage).wechatPreferences.getSnapshot(), "immediate");
-  assert.equal(service.getState().version, 7);
+  assert.equal(service.getState().version, 8);
 });
 
 test("history limit defaults to 100, migrates v5 and retains valid shared settings", () => {
@@ -396,4 +404,59 @@ test("v6 settings preserve their content and migrate to the classic phone appear
   });
   assert.equal(service.getState().wechatHistoryMessageLimit, 42);
   assert.equal(service.getState().blur, true);
+});
+
+test("map model migration and selection are independent of the default model", () => {
+  const { mapModelConnectionId, ...prior } = defaultSettings;
+  assert.equal(mapModelConnectionId, null);
+  let stored: ReturnType<SettingsStorage["read"]> = {
+    ...prior,
+    version: 7,
+    modelConnections: [connection, { ...connection, id: "map-only" }],
+    defaultModelConnectionId: connection.id,
+  };
+  const storage: SettingsStorage = {
+    ...library,
+    read: () => stored,
+    save: (settings) => {
+      stored = settings;
+    },
+  };
+  const service = new PhoneSettingsService(storage);
+  assert.equal(stored.version, 8);
+  assert.equal(service.mapModelPreference.getSnapshot(), null);
+  service.mapModelPreference.select("map-only");
+  assert.equal(service.defaultModelConnection().id, connection.id);
+  assert.equal(new PhoneSettingsService(storage).mapModelPreference.getSnapshot(), "map-only");
+  service.deleteModelConnection("map-only");
+  const refreshed = new PhoneSettingsService(storage);
+  assert.equal(refreshed.mapModelPreference.getSnapshot(), "map-only");
+  assert.throws(() => refreshed.mapModelPreference.select("map-only"), /连接不存在/);
+  assert.equal(refreshed.defaultModelConnection().id, connection.id);
+});
+
+test("failed map model selection preserves the previously persisted choice", () => {
+  let fail = false;
+  let stored: PhoneSettings = {
+    ...defaultSettings,
+    modelConnections: [connection, { ...connection, id: "map-only" }],
+    mapModelConnectionId: connection.id,
+  };
+  const service = new PhoneSettingsService({
+    ...library,
+    read: () => stored,
+    save: (settings) => {
+      if (fail) {
+        throw new Error("storage denied");
+      }
+      stored = settings;
+    },
+  });
+  let notifications = 0;
+  service.mapModelPreference.subscribe(() => notifications++);
+  fail = true;
+  assert.throws(() => service.mapModelPreference.select("map-only"), /storage denied/);
+  assert.equal(service.mapModelPreference.getSnapshot(), connection.id);
+  assert.equal(stored.mapModelConnectionId, connection.id);
+  assert.equal(notifications, 0);
 });

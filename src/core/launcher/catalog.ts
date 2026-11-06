@@ -1,5 +1,6 @@
 /** 内置应用目录。安装只改变可用入口，业务数据仍由各应用拥有。 */
 export const appCatalog = {
+  map: { name: "地图", description: "探索故事地点，预览并应用地图修改", removable: true },
   gallery: { name: "图库", description: "浏览 Image Hub 保存的图片", removable: true },
   "image-playground": {
     name: "图乐园",
@@ -41,6 +42,7 @@ export const defaultHomeLayout: HomeLayout = {
     "app-store",
     "gallery",
     "image-playground",
+    "map",
   ],
   dock: ["stopwatch"],
 };

@@ -28,7 +28,7 @@ const v6Defaults = {
 };
 
 export const phoneSettingsMigrationPlan: MigrationPlan<PhoneSettings> = {
-  currentVersion: 7,
+  currentVersion: 8,
   steps: [
     ...[1, 2, 3, 4, 5].map((from) => ({
       from,
@@ -46,6 +46,12 @@ export const phoneSettingsMigrationPlan: MigrationPlan<PhoneSettings> = {
         validateWechatHistoryLimit(settings.wechatHistoryMessageLimit as number);
         return { ...settings, appearance: { deviceModel: "iphone-6s", systemStyle: "classic" } };
       },
+    },
+    {
+      from: 7,
+      to: 8,
+      name: "settings-v7-to-v8",
+      migrate: (value) => ({ ...settingsRecord(value), mapModelConnectionId: null }),
     },
   ],
   validate: validatePhoneSettings,
@@ -76,10 +82,16 @@ function migrateLegacySettings(value: unknown): unknown {
 
 function validatePhoneSettings(value: unknown): asserts value is PhoneSettings {
   const settings = settingsRecord(value);
-  if (settings.version !== 7) {
+  if (settings.version !== 8) {
     throw new Error("不支持的手机设置版本");
   }
-  validateSettingsFields(settings, 7);
+  validateSettingsFields(settings, 8);
+  if (
+    settings.mapModelConnectionId !== null &&
+    (typeof settings.mapModelConnectionId !== "string" || !settings.mapModelConnectionId.trim())
+  ) {
+    throw new Error("地图模型连接设置无效");
+  }
   validateWechatHistoryLimit(settings.wechatHistoryMessageLimit as number);
   const appearance = settingsRecord(settings.appearance);
   if (appearance.deviceModel !== "iphone-6s" && appearance.deviceModel !== "iphone-17") {

@@ -1,0 +1,211 @@
+:host .agent-run {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+:host .map-app .agent-run-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ios-secondary-ink);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+:host .map-app .agent-run-trigger:hover {
+  color: var(--ios-ink);
+}
+
+:host .map-app .agent-run-trigger:focus-visible {
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 2px;
+}
+
+:host .map-app .agent-run[data-status="error"] .agent-run-trigger {
+  color: var(--ios-red);
+}
+
+:host .agent-run-title {
+  flex: none;
+  font-weight: 500;
+}
+
+:host .agent-run-description {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ios-secondary-ink);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host .agent-run-steps {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+  margin: 4px 0 2px 7px;
+  padding-left: 11px;
+  border-left: 1px solid var(--ios-line);
+}
+
+:host .agent-thinking,
+:host .agent-tool {
+  margin: 0;
+}
+
+:host .agent-disclosure {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  padding: 2px 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ios-secondary-ink);
+  font-size: 12px;
+  line-height: 1.4;
+  list-style: none;
+  cursor: pointer;
+}
+
+:host .agent-disclosure::-webkit-details-marker {
+  display: none;
+}
+
+:host .agent-disclosure:hover {
+  color: var(--ios-ink);
+}
+
+:host .agent-disclosure:focus-visible {
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 2px;
+}
+
+:host .agent-tool[data-status="failed"] .agent-disclosure {
+  color: var(--ios-red);
+}
+
+:host .agent-disclosure-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host .agent-step-status {
+  flex: none;
+  color: var(--ios-secondary-ink);
+  font-size: 11px;
+  opacity: 0.72;
+}
+
+:host .agent-icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+:host .agent-icon--spin {
+  animation: agent-spin 900ms linear infinite;
+}
+
+:host .agent-chevron {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-left: 1px;
+  opacity: 0.7;
+  transition: transform 160ms ease;
+}
+
+:host .agent-chevron[data-open="true"] {
+  transform: rotate(90deg);
+}
+
+:host .agent-thinking-body {
+  max-height: 4.5em;
+  overflow-y: auto;
+  margin: 1px 0 3px 6px;
+  padding: 2px 0 2px 10px;
+  border-left: 1px solid var(--ios-line);
+  color: var(--ios-secondary-ink);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+}
+
+:host .agent-tool-body {
+  display: grid;
+  gap: 4px;
+  margin: 1px 0 4px 6px;
+  padding: 2px 0 4px 10px;
+  border-left: 1px solid var(--ios-line);
+}
+
+:host .agent-tool-body .agent-tool-label {
+  color: var(--ios-secondary-ink);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+:host .agent-tool-body pre {
+  max-height: 168px;
+  margin: 0;
+  padding: 7px 8px;
+  overflow: auto;
+  border-radius: 7px;
+  background: var(--ios-muted-fill);
+  color: var(--ios-secondary-ink);
+  font:
+    11px/1.45 ui-monospace,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+}
+
+:host .agent-step-text {
+  margin: 2px 0 4px;
+  color: var(--ios-secondary-ink);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@keyframes agent-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host .agent-icon--spin {
+    animation: none;
+  }
+  :host .agent-chevron {
+    transition: none;
+  }
+}

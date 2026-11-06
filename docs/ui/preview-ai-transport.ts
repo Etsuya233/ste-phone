@@ -1,4 +1,9 @@
-import { createAssistantMessageEventStream, type AssistantMessage } from "@earendil-works/pi-ai";
+import { previewMapReply } from "./preview-map.ts";
+import {
+  createAssistantMessageEventStream,
+  type AssistantMessage,
+  type ToolCall,
+} from "@earendil-works/pi-ai";
 import type { PhoneLog } from "../../src/apps/logs/public.ts";
 import type { AiTransport } from "../../src/core/ai/public.ts";
 import { previewMomentOutput } from "./preview-wechat-moments-ai.ts";
@@ -59,8 +64,61 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
             stream.push({ type: "error", reason: "error", error: output });
             return;
           }
+          let mapReply: string | ToolCall | undefined;
+          if (app === "map") {
+            try {
+              mapReply = previewMapReply(context.messages, mode);
+            } catch (error) {
+              output.stopReason = "error";
+              output.errorMessage = String(error);
+              stream.push({ type: "error", reason: "error", error: output });
+              return;
+            }
+          }
+          let contentIndex = output.content.length;
+          if (app === "map") {
+            const thinking = "先读取当前地图与剧情资料，再按指令修改草稿并检查引用。";
+            output.content.push({ type: "thinking", thinking: "" });
+            stream.push({ type: "thinking_start", contentIndex, partial: output });
+            output.content[contentIndex] = { type: "thinking", thinking };
+            stream.push({
+              type: "thinking_delta",
+              contentIndex,
+              delta: thinking,
+              partial: output,
+            });
+            stream.push({
+              type: "thinking_end",
+              contentIndex,
+              content: thinking,
+              partial: output,
+            });
+            contentIndex++;
+          }
+          if (typeof mapReply === "object") {
+            const toolIndex = output.content.length;
+            output.content.push({ ...mapReply, arguments: {} });
+            stream.push({ type: "toolcall_start", contentIndex: toolIndex, partial: output });
+            output.content[toolIndex] = mapReply;
+            stream.push({
+              type: "toolcall_delta",
+              contentIndex: toolIndex,
+              delta: JSON.stringify(mapReply.arguments),
+              partial: output,
+            });
+            stream.push({
+              type: "toolcall_end",
+              contentIndex: toolIndex,
+              toolCall: mapReply,
+              partial: output,
+            });
+            output.stopReason = "toolUse";
+            stream.push({ type: "done", reason: "toolUse", message: output });
+            return;
+          }
           const text =
-            operation === "朋友圈配图提示词"
+            mapReply ??
+            (operation === "朋友圈配图提示词"
               ? mode === "invalid"
                 ? "模拟非法 JSON"
                 : previewMomentImagePrompt(context.messages)
@@ -95,12 +153,17 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
                             imagePrompt:
                               "小红把蓝色笔记本推给图书馆窗边的小蓝，桌面散落朗读会稿纸，午后阳光柔和，人物神情安心。",
                           })
-                      : `模拟回复：${model.id} 的预览测试完成，未请求真实服务。`;
-          output.content = [{ type: "text", text: "" }];
-          stream.push({ type: "text_start", contentIndex: 0, partial: output });
-          output.content[0] = { type: "text", text };
-          stream.push({ type: "text_delta", contentIndex: 0, delta: text, partial: output });
-          stream.push({ type: "text_end", contentIndex: 0, content: text, partial: output });
+                      : `模拟回复：${model.id} 的预览测试完成，未请求真实服务。`);
+          output.content.push({ type: "text", text: "" });
+          stream.push({ type: "text_start", contentIndex, partial: output });
+          output.content[contentIndex] = { type: "text", text };
+          stream.push({
+            type: "text_delta",
+            contentIndex,
+            delta: text,
+            partial: output,
+          });
+          stream.push({ type: "text_end", contentIndex, content: text, partial: output });
           output.stopReason = mode === "length" ? "length" : "stop";
           logs.info(app, "STE Phone AI", `${operation} 模拟完成`, {
             simulated: true,
@@ -110,7 +173,7 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
           });
           stream.push({ type: "done", reason: output.stopReason, message: output });
         },
-        mode === "slow" ? 15_000 : 600,
+        context.messages.at(-1)?.role === "toolResult" ? 0 : mode === "slow" ? 15_000 : 600,
       );
       options?.signal?.addEventListener("abort", abort, { once: true });
       if (options?.signal?.aborted) {

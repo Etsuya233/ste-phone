@@ -12,7 +12,7 @@ Shadow DOM 内部仍会继承宿主节点的可继承属性。ST 的全局文字
 
 ## Foundation
 
-基础组件位于 `src/frontend/foundation/`，每个组件的 TSX 与 CSS 分文件存放，`foundation.tsx` 仅显式导出，`foundation.css` 汇总样式。页面使用组件提供的视觉，自己的 CSS 只调整布局；颜色、字体、间距、控件尺寸统一读取 `tokens.css`。
+基础组件位于 `src/frontend/foundation/`，每个组件的 TSX 与 CSS 分文件存放，`foundation.tsx` 仅显式导出，`foundation.css` 汇总样式。页面使用组件提供的视觉，自己的 CSS 只调整布局；颜色、字体、间距、控件尺寸统一读取 `tokens.css`。Agent 对话的过程组、思考与工具调用块位于 `src/frontend/agent/`：`AgentRun` 收起整轮过程，内层使用原生 `details` 收起每一步，`agent-activity.css` 统一提供三行思考滚动区及工具参数与结果样式，后续 Agent 页面直接复用。
 
 字体按界面分工：手机外壳使用 Inter 并优先使用 Apple 平台字体；日记界面使用 Noto Serif SC 衬线体，正文与署名使用 LXGW WenKai 手写体。字体由挂载入口通过 Google Fonts 与 jsDelivr 声明，不打包字体文件；字体网络请求不阻塞手机使用，加载失败时回退到 Georgia、楷体或本机衬线字体。资料搜索只展示 Placeholder，并保留 `aria-label`，聚焦时不显示 outline。来源信息使用展开的 `GroupedList` 与静态 `ListCell`，属性名居左、属性值居右。
 
@@ -44,7 +44,7 @@ iPhone 6s 解锁后的实体与软件 Home 共用 280ms 单双击判断，双击
 
 全局壁纸由 `src/apps/settings/settings-service.ts` 的 `PhoneSettingsService` 持有，设置页面只消费注入的服务。外壳通过 `src/apps/settings/public.ts` 的 `WallpaperReader` 订阅含图片 URL 的只读快照；模型消费者通过 `ModelConnectionsReader` 读取无凭据摘要，并显式取得独立连接配置副本。设置页面尚未打开或已退出时，这些读取仍然有效。图库只包含默认渐变和 Phone 上传的图片，三列 9:16 竖向缩略图，不显示文件名、说明或成功提示。「+」选择图片，实际解码通过后上传，成功进入独立全幅预览页；Blur 只修改预览，点「设定」保存并返回图库。导航栈保留图库滚动与页面状态，上传完成时页面退到后台则等待它回到前台再进入预览；离开已卸载的图库不发布迟到响应。
 
-生产接线使用 ST 的公开 `getContext()`、`extensionSettings.ste_phone`、`saveSettingsDebounced()`，图片通过 `POST /api/images/upload` 和 `POST /api/images/list`。固定 `ch_name` / `folder` 为 `ste-phone-wallpapers`，文件名使用 `crypto.getRandomValues()` 生成 128 位唯一值，原文件名和用户路径不进入请求。浏览器实际解码图片，核心服务限定 PNG、JPEG、WebP 与 10 MB；读取/上传失败显示简短错误，读取可重试，默认渐变始终可选。v7 设置保存手机外形、系统风格、所选图片路径、Blur、模型连接、默认连接、微信发送模式、AI 历史消息条数和主屏/Dock 有序应用 ID；v5 及更早版本补默认 100 条 AI 历史窗口，当前 v7 非法条数明确报错；v4 升级添加默认的微信延迟发送；v3 升级添加默认布局与 App Store；v1 旧地址列表与背景选择显式迁移为默认渐变，Blur 保留；v2 保留已有壁纸并补空连接。壁纸和连接使用服务的语义方法更新当前设置，页面不提交全量设置快照。
+生产接线使用 ST 的公开 `getContext()`、`extensionSettings.ste_phone`、`saveSettingsDebounced()`，图片通过 `POST /api/images/upload` 和 `POST /api/images/list`。固定 `ch_name` / `folder` 为 `ste-phone-wallpapers`，文件名使用 `crypto.getRandomValues()` 生成 128 位唯一值，原文件名和用户路径不进入请求。浏览器实际解码图片，核心服务限定 PNG、JPEG、WebP 与 10 MB；读取/上传失败显示简短错误，读取可重试，默认渐变始终可选。v8 设置保存手机外形、系统风格、所选图片路径、Blur、模型连接、默认连接、地图专用连接 ID、微信发送模式、AI 历史消息条数和主屏/Dock 有序应用 ID；v5 及更早版本补默认 100 条 AI 历史窗口，当前非法条数明确报错；v4 升级添加默认的微信延迟发送；v3 升级添加默认布局与 App Store；v1 旧地址列表与背景选择显式迁移为默认渐变，Blur 保留；v2 保留已有壁纸并补空连接。壁纸和连接使用服务的语义方法更新当前设置，页面不提交全量设置快照。
 
 模型连接列表与编辑页使用相同 NavigationStack，TextField 提供带标签的输入及尾部显隐操作。连接以稳定 ID 关联默认选择，支持无默认；整行用原生 radio 选择，左侧显示蓝色勾，右侧圆圈 i 按钮独立进入编辑，不嵌套交互控件。编辑页按草稿显式保存，未保存返回显示页内舍弃确认并滚入可见区域。连接测试由设置模块接收 `AiTransport` 创建，页面提交当前草稿；模块持有 Pi Agent、提示词、输出限制和 60 秒超时策略。Core 在 `src/core/ai/public.ts` 声明绑定连接快照的 `createStream` 契约，`src/infrastructure/host/ai-transport.ts` 通过宿主 Custom 代理发送请求并转换 Pi 文本事件；每次调用独立，不读取 ST 当前模型或生成参数。当前仅支持文本，工具和思考内容明确报错。修改请求字段、页内返回与卸载取消当前测试，Home、Expose 预览及关闭手机保留运行。迟到结果只由发起它的控制器接收，后台不抢焦点或导航；确认和配置错误仅当前页聚焦。生产请求的 CSRF 等宿主头与上游自定义头分开处理，错误信息脱敏且不输出完整请求。独立预览注入 `docs/ui/preview-ai-transport.ts` 的可控模拟传输，复用相同 Agent 与连接测试流程，不请求真实模型服务。
 

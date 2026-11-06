@@ -1,7 +1,7 @@
 {
   "name": "ste-phone",
   "private": true,
-  "version": "0.0.7",
+  "version": "0.0.8",
   "stePhone": {
     "minimumMemoryVersion": "0.2.6"
   },
@@ -29,12 +29,15 @@
     "@earendil-works/pi-agent-core": "0.83.0",
     "@earendil-works/pi-ai": "0.83.0",
     "jszip": "3.10.1",
+    "leaflet": "1.9.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "typebox": "1.3.7"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@sqlite.org/sqlite-wasm": "3.54.1-build1",
+    "@types/leaflet": "1.9.21",
     "@types/node": "^24.0.0",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",

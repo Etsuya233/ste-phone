@@ -10,6 +10,21 @@ import { Icon } from "../foundation/icon.tsx";
 export function AppIcon({ app }: { app: AppId }) {
   const maskId = `app-icon-mask-${useId().replace(/:/g, "")}`;
 
+  if (app === "map") {
+    return (
+      <Icon appearance="app" className="map-app-icon">
+        <svg viewBox="0 0 60 60">
+          <path className="map-icon-land" d="m7 13 15-4 16 6 15-5v37l-15 5-16-6-15 4Z" />
+          <path className="map-icon-road" d="m7 34 15-5 16 6 15-5M22 9v37M38 15v37" />
+          <path
+            className="map-icon-pin"
+            d="M30 12a9 9 0 0 0-9 9c0 7 9 16 9 16s9-9 9-16a9 9 0 0 0-9-9Z"
+          />
+          <circle className="map-icon-dot" cx="30" cy="21" r="3" />
+        </svg>
+      </Icon>
+    );
+  }
   if (app === "gallery") {
     return (
       <Icon appearance="app" className="gallery-app-icon">

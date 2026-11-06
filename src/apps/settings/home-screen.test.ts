@@ -39,11 +39,15 @@ test("v3 migration adds the store and preserves wallpaper and model credentials"
   const service = new PhoneSettingsService(storage);
   assert.deepEqual(service.getState(), {
     ...legacy,
-    version: 7,
+    version: 8,
+    mapModelConnectionId: null,
     appearance: { deviceModel: "iphone-6s", systemStyle: "classic" },
     wechatHistoryMessageLimit: 100,
     wechatSendMode: "delayed",
-    homeLayout: defaultSettings.homeLayout,
+    homeLayout: {
+      ...defaultSettings.homeLayout,
+      grid: defaultSettings.homeLayout.grid.filter((id) => id !== "map"),
+    },
   });
   assert.deepEqual(storage.read(), service.getState());
   assert.equal(service.modelConnections.getConnection("model").apiKey, "secret");
@@ -92,6 +96,7 @@ test("moving between home and dock, uninstalling and reinstalling survive a new 
       "app-store",
       "gallery",
       "image-playground",
+      "map",
       "database",
     ],
     dock: ["settings"],
@@ -144,4 +149,21 @@ test("diary remains installed by default and can be reinstalled from the store",
   home.install("diary");
   assert.equal(home.getSnapshot().grid.at(-1), "diary");
   assert.deepEqual(new PhoneSettingsService(storage).homeScreen.getSnapshot(), home.getSnapshot());
+});
+
+test("existing layouts can install map without changing other installed apps", () => {
+  const previous = {
+    ...defaultSettings,
+    homeLayout: {
+      grid: ["diary", "settings", "data-source", "app-store"] as const,
+      dock: ["stopwatch"] as const,
+    },
+  };
+  const service = new PhoneSettingsService(storageWith(previous));
+  assert.deepEqual(service.homeScreen.getSnapshot(), previous.homeLayout);
+  service.homeScreen.install("map");
+  const layout = service.homeScreen.getSnapshot();
+  assert.deepEqual(layout.grid, [...previous.homeLayout.grid, "map"]);
+  service.homeScreen.uninstall("map");
+  assert.deepEqual(service.homeScreen.getSnapshot(), previous.homeLayout);
 });

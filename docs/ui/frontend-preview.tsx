@@ -1,3 +1,6 @@
+import { createMapConversationStorage } from "../../src/infrastructure/host/map-conversation-storage.ts";
+import { PhoneSettingsService } from "../../src/apps/settings/settings-service.ts";
+import { createPreviewMapStorage } from "./preview-map.ts";
 import { createPreviewImageHub } from "./preview-image-hub.ts";
 import { createPreviewSettingsStorage } from "./preview-wallpapers.ts";
 import { createPreviewAiTransport } from "./preview-ai-transport.ts";
@@ -43,11 +46,27 @@ if (options.get("logs-test") === "demo") {
     cause: { status: 401, statusText: "Unauthorized" },
   });
 }
+const settingsStorage = await createPreviewSettingsStorage();
+// 地图入口提供模拟连接，全部请求仍由 preview-ai-transport 截获。
+if (options.get("map") === "1") {
+  const settings = new PhoneSettingsService(settingsStorage);
+  if (settings.modelConnections.getSnapshot().connections.length === 0) {
+    settings.saveModelConnection({
+      id: "preview-map",
+      name: "地图模拟",
+      model: "preview-map",
+      baseUrl: "https://preview.invalid/v1",
+      apiKey: "",
+      customHeaders: {},
+    });
+  }
+}
 const phone = createPhone({
   imageHub: createPreviewImageHub(options.get("image-test")),
-  settingsStorage: await createPreviewSettingsStorage(),
+  settingsStorage,
   aiTransport: createPreviewAiTransport(
-    options.get("moments-test") ??
+    options.get("map-test") ??
+      options.get("moments-test") ??
       options.get("wechat-test") ??
       options.get("diary-test") ??
       options.get("model-test"),
@@ -55,6 +74,11 @@ const phone = createPhone({
   ),
   chat: createPreviewChatContext(),
   dataProvider: new MemoryDatabaseProvider(),
+  mapConversations: createMapConversationStorage(
+    localStorage,
+    "ste-phone-preview-map-conversation-v1:",
+  ),
+  mapStorage: createPreviewMapStorage(options.get("map-test")),
   diaryStorage: createPreviewDiaryStorage(options.get("diary-test")),
   wechatStorage: createPreviewWechatStorage(
     options.get("wechat-test"),
@@ -69,27 +93,29 @@ mountPhone({
   homeScreen: phone.homeScreen,
   appearance: phone.appearance,
   initialApp:
-    options.get("gallery") === "1"
-      ? "gallery"
-      : options.get("image-playground") === "1"
-        ? "image-playground"
-        : options.get("wechat") === "1"
-          ? "wechat"
-          : options.get("diary") === "1"
-            ? "diary"
-            : options.get("app-store") === "1"
-              ? "app-store"
-              : options.get("settings") === "1"
-                ? "settings"
-                : options.get("database") === "1"
-                  ? "database"
-                  : options.get("data-source") === "1"
-                    ? "data-source"
-                    : options.get("logs") === "1"
-                      ? "logs"
-                      : options.get("foundation") === "1"
-                        ? "foundation"
-                        : "home",
+    options.get("map") === "1"
+      ? "map"
+      : options.get("gallery") === "1"
+        ? "gallery"
+        : options.get("image-playground") === "1"
+          ? "image-playground"
+          : options.get("wechat") === "1"
+            ? "wechat"
+            : options.get("diary") === "1"
+              ? "diary"
+              : options.get("app-store") === "1"
+                ? "app-store"
+                : options.get("settings") === "1"
+                  ? "settings"
+                  : options.get("database") === "1"
+                    ? "database"
+                    : options.get("data-source") === "1"
+                      ? "data-source"
+                      : options.get("logs") === "1"
+                        ? "logs"
+                        : options.get("foundation") === "1"
+                          ? "foundation"
+                          : "home",
   responsive: options.get("responsive") === "1",
   draggable: options.get("draggable") === "1",
 });
