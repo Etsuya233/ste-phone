@@ -1332,3 +1332,74 @@ test("草稿完善Prompt返回编辑值且不发布，非法输出与取消保�
   assert.equal(draft.media[0]!.prompt, "原Prompt");
   f.service.dispose();
 });
+
+test("撤回只允许本人，保留原内容且下一轮只收到撤回提示", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "不可发送的原文");
+  await f.service.enqueue("b", "继续发送");
+  const [original, pending] = f.service.getConversation("b")!.messages;
+  await f.service.selectAccount("b");
+  await f.service.editMessage("a", original!.id, "recall");
+  assert.match(f.service.getSnapshot().operationError!, /只能撤回自己/);
+  assert.equal(f.service.getConversation("a")!.messages[0]!.recalled, undefined);
+
+  f.service.dismissOperationError();
+  await f.service.selectAccount("a");
+  await f.service.editMessage("b", original!.id, "recall");
+  assert.deepEqual(f.stored!.conversations[0]!.messages[0], { ...original, recalled: true });
+  assert.deepEqual(pendingWechatMessages(f.service.getConversation("b")!, "a"), [pending]);
+  await f.service.requestReply("b");
+  const payload = latestPayload(f.prompt);
+  assert.deepEqual(
+    payload.本轮输入.map((message: { text: string }) => message.text),
+    ["继续发送"],
+  );
+  assert.equal(payload.当前微信历史[0].type, "recalled");
+  assert.match(f.prompt, /消息已撤回/);
+  assert.doesNotMatch(f.prompt, /不可发送的原文/);
+  f.service.dispose();
+});
+
+test("删除从共享历史移除消息并原位保留屏障和双方队列", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "删除的待回复消息");
+  const target = f.service.getConversation("b")!.messages[0]!;
+  const before = await f.service.memory.insert("b", null);
+  await f.service.memory.setEnabled("b", before!, false);
+  const after = await f.service.memory.insert("b", target.id);
+  await f.service.enqueue("b", "甲的剩余队列");
+  await f.service.selectAccount("b");
+  await f.service.enqueue("a", "乙的队列");
+
+  f.failSave(true);
+  await f.service.editMessage("a", target.id, "delete");
+  assert.equal(f.service.getConversation("a")!.messages[0]!.id, target.id);
+  assert.match(f.service.getSnapshot().operationError!, /删除消息失败.*磁盘失败/);
+
+  f.failSave(false);
+  f.service.dismissOperationError();
+  await f.service.editMessage("a", target.id, "delete");
+  const restored = f.restore();
+  await restored.prepare();
+  const next = restored.getConversation("a")!;
+  assert.deepEqual(
+    next.messages.map((message) => message.content.text),
+    ["甲的剩余队列", "乙的队列"],
+  );
+  assert.deepEqual(pendingWechatMessages(next, "a"), [next.messages[0]]);
+  assert.deepEqual(pendingWechatMessages(next, "b"), [next.messages[1]]);
+  assert.deepEqual(next.memoryBarriers, [
+    { id: before, afterMessageId: null, enabled: false },
+    { id: after, afterMessageId: null, enabled: true },
+  ]);
+  await restored.selectAccount("a");
+  assert.deepEqual(restored.getConversation("b"), next);
+  restored.dispose();
+  f.service.dispose();
+});

@@ -11,7 +11,6 @@ export function wechatMemoryBoundaries(conversation: WechatConversation) {
     throw new Error("微信记忆屏障数据须为数组");
   }
   const ids = new Set<string>();
-  const positions = new Set<number>();
   return barriers
     .map((barrier: WechatMemoryBarrier) => {
       if (
@@ -31,11 +30,10 @@ export function wechatMemoryBoundaries(conversation: WechatConversation) {
         throw new Error("微信记忆屏障对应的消息不存在");
       }
       const position = anchor + 1;
-      if (ids.has(barrier.id) || positions.has(position)) {
-        throw new Error("微信记忆屏障 ID 或位置重复");
+      if (ids.has(barrier.id)) {
+        throw new Error("微信记忆屏障 ID 重复");
       }
       ids.add(barrier.id);
-      positions.add(position);
       return { barrier, position };
     })
     .toSorted((a, b) => a.position - b.position);

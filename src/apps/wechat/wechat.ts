@@ -16,6 +16,7 @@ export interface WechatMessage {
   readonly senderId: string;
   readonly content: TextContent;
   readonly createdAt: string;
+  readonly recalled?: true;
   readonly reply?: { readonly batchId: string; readonly triggerMessageId?: string };
 }
 export interface WechatMemoryBarrier {
@@ -30,11 +31,11 @@ export interface WechatConversation {
   /** 待回复边界按发言人物保存，切帐号后仍能恢复原视角的待回复消息。 */
   readonly pendingReplies?: Readonly<Record<string, string>>;
   /** 完成截止包含屏障明确跳过的旧队列，与 AI 实际阅读的触发消息分别记录。 */
-  readonly pendingCompletedThrough?: Readonly<Record<string, string>>;
+  readonly pendingCompletedThrough?: Readonly<Record<string, string | null>>;
   readonly memoryBarriers?: readonly WechatMemoryBarrier[];
 }
 export interface WechatData {
-  readonly version: 2;
+  readonly version: 3;
   readonly account: WechatPerson | null;
   readonly conversations: readonly WechatConversation[];
   /** 旧 v1 数据未填写指导；按稳定空间、稳定人物身份保存，所有微信帐号共享。 */
@@ -67,7 +68,7 @@ export interface WechatSnapshot {
   readonly barrierSaving: boolean;
   readonly operationError: string | null;
 }
-export const emptyWechat = (): WechatData => ({ version: 2, account: null, conversations: [] });
+export const emptyWechat = (): WechatData => ({ version: 3, account: null, conversations: [] });
 export const conversationId = (scopeId: string, a: string, b: string) =>
   JSON.stringify([scopeId, ...[a, b].sort()]);
 
@@ -93,17 +94,25 @@ export function pendingWechatMessages(
     if (start < 0) {
       throw new Error("微信待回复消息边界不存在");
     }
-    return conversation.messages.slice(start).filter((message) => message.senderId === senderId);
+    return conversation.messages
+      .slice(start)
+      .filter((message) => message.senderId === senderId && !message.recalled);
   }
   const completed = conversation.pendingCompletedThrough?.[senderId];
   if (completed !== undefined) {
-    const position = conversation.messages.findIndex((message) => message.id === completed);
-    if (position < 0 || conversation.messages[position]!.senderId !== senderId) {
+    const position =
+      completed === null
+        ? -1
+        : conversation.messages.findIndex((message) => message.id === completed);
+    if (
+      completed !== null &&
+      (position < 0 || conversation.messages[position]!.senderId !== senderId)
+    ) {
       throw new Error("微信队列完成截止位置无效");
     }
     return conversation.messages
       .slice(position + 1)
-      .filter((message) => message.senderId === senderId && !message.reply);
+      .filter((message) => message.senderId === senderId && !message.reply && !message.recalled);
   }
   const replied = conversation.messages.findLast(
     (message) => message.senderId !== senderId && message.reply?.triggerMessageId !== undefined,
@@ -116,7 +125,7 @@ export function pendingWechatMessages(
   }
   return conversation.messages
     .slice(boundary + 1)
-    .filter((message) => message.senderId === senderId && !message.reply);
+    .filter((message) => message.senderId === senderId && !message.reply && !message.recalled);
 }
 
 /** 首条待回复消息决定本轮边界，后续文字与表情沿用该边界。 */

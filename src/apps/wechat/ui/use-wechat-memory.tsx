@@ -2,6 +2,7 @@ import { useLayoutEffect, useState } from "react";
 import type { RefObject } from "react";
 import { wechatMemoryBoundaries } from "../wechat-memory.ts";
 import { pendingWechatMessages } from "../wechat.ts";
+import type { WechatMessageEdit } from "../wechat-message-edit.ts";
 import type { WechatConversation, WechatSnapshot } from "../wechat.ts";
 import type { WechatPageProps } from "./wechat-page.tsx";
 
@@ -21,7 +22,13 @@ export function useWechatMemory({
   conversation: WechatConversation | undefined;
   end: RefObject<HTMLDivElement | null>;
 }) {
-  const [menu, setMenu] = useState<MemoryMenu | null>(null);
+  const [selection, setMenu] = useState<MemoryMenu | null>(null);
+  // 保存期间仍可阅读旧消息，提交后关闭已失去目标的菜单。
+  const menu =
+    (selection?.type === "message" || selection?.type === "confirm-delete") &&
+    !conversation?.messages.some((message) => message.id === selection.id)
+      ? null
+      : selection;
   const [position, setPosition] = useState<{ top: number; target?: string } | null>(null);
   let boundaries: ReturnType<typeof wechatMemoryBoundaries> = [];
   let effective: ReturnType<typeof wechatMemoryBoundaries>[number] | undefined;
@@ -84,6 +91,13 @@ export function useWechatMemory({
     await wechat.memory.delete(id, barrierId);
     setPosition({ top, target: "chat-menu" });
   }
+  async function editMessage(messageId: string, action: WechatMessageEdit) {
+    const top = container()?.scrollTop ?? 0;
+    await wechat.editMessage(id, messageId, action);
+    if (action === "delete") {
+      setPosition({ top, target: "chat-menu" });
+    }
+  }
   return {
     boundaries,
     effectiveId: effective?.barrier.id,
@@ -92,13 +106,15 @@ export function useWechatMemory({
     lockReason,
     menuOpen: !!menu,
     openChat: () => setMenu({ type: "chat" }),
-    openMessage: (index: number) => setMenu({ type: "message", index }),
+    openMessage: (messageId: string) => setMenu({ type: "message", id: messageId }),
     openBarrier: (barrierId: string, position: number) =>
       setMenu({ type: "barrier", id: barrierId, position }),
     toggle,
     sheet: menu ? (
       <WechatMemoryMenu
+        key={menu.type}
         menu={menu}
+        accountId={state.data.account?.id}
         conversation={conversation}
         effective={effective}
         active={active}
@@ -109,6 +125,8 @@ export function useWechatMemory({
         onInsert={(after) => void insert(after)}
         onToggle={(barrierId, enabled) => void toggle(barrierId, enabled)}
         onDelete={(barrierId) => void remove(barrierId)}
+        onEdit={(messageId, action) => void editMessage(messageId, action)}
+        onConfirmDelete={(messageId) => setMenu({ type: "confirm-delete", id: messageId })}
         onDismiss={() => setMenu(null)}
       />
     ) : null,
@@ -132,6 +150,9 @@ function memoryLockReason(state: WechatSnapshot): string | null {
     case "idle":
     case "error":
       break;
+  }
+  if (["running", "saving", "stopping"].includes(state.momentGeneration.status)) {
+    return "朋友圈任务进行中，暂不可修改";
   }
   return state.writeBusy ? "消息保存中，暂不可修改" : null;
 }

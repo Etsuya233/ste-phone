@@ -140,7 +140,7 @@ function WechatConversations({
                     {formatWechatTime(last.createdAt, now, true)}
                   </time>
                 </span>
-                <small>{last.content.text}</small>
+                <small>{last.recalled ? "消息已撤回" : last.content.text}</small>
               </span>
             </button>
           );

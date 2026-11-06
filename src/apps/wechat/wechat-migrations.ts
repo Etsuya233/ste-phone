@@ -4,7 +4,7 @@ import { wechatMemoryBoundaries } from "./wechat-memory.ts";
 import type { WechatConversation, WechatData } from "./wechat.ts";
 
 const wechatMigrations: MigrationPlan<WechatData> = {
-  currentVersion: 2,
+  currentVersion: 3,
   steps: [
     {
       from: 1,
@@ -17,6 +17,7 @@ const wechatMigrations: MigrationPlan<WechatData> = {
         return data;
       },
     },
+    { from: 2, to: 3, name: "message-recall", migrate: object },
   ],
   validate: validateWechatData,
 };
@@ -29,7 +30,7 @@ export function readWechatData(value: unknown): WechatData {
 /** 当前结构只接受媒体数组；历史字段转换仅允许在 v1 → v2 中执行。 */
 export function validateWechatData(value: unknown): asserts value is WechatData {
   const data = object(value);
-  if (data.version !== 2 || !Array.isArray(data.conversations)) {
+  if (data.version !== 3 || !Array.isArray(data.conversations)) {
     throw new Error("微信数据版本或会话列表无效");
   }
   if (data.account !== null) {
@@ -90,6 +91,9 @@ function validateConversation(conversation: Record<string, unknown>): void {
     ) {
       throw new Error("微信消息内容或时间无效");
     }
+    if (message.recalled !== undefined && message.recalled !== true) {
+      throw new Error("微信消息撤回状态无效");
+    }
     if (message.reply !== undefined) {
       const reply = object(message.reply);
       nonempty(reply.batchId);
@@ -103,7 +107,7 @@ function validateConversation(conversation: Record<string, unknown>): void {
     messages.set(message.id, message.senderId);
   }
   validatePendingBoundaries(conversation.pendingReplies, peopleIds, messages);
-  validatePendingBoundaries(conversation.pendingCompletedThrough, peopleIds, messages);
+  validatePendingBoundaries(conversation.pendingCompletedThrough, peopleIds, messages, true);
   // 与生成取材复用屏障锚点、位置和开关约束，避免两个边界各自解释同一份数据。
   wechatMemoryBoundaries(conversation as unknown as WechatConversation);
 }
@@ -112,15 +116,16 @@ function validatePendingBoundaries(
   value: unknown,
   people: ReadonlySet<string>,
   messages: ReadonlyMap<string, string>,
+  allowStart = false,
 ): void {
   if (value === undefined) {
     return;
   }
   for (const [senderId, messageId] of Object.entries(object(value))) {
     if (
-      typeof messageId !== "string" ||
       !people.has(senderId) ||
-      messages.get(messageId) !== senderId
+      (!(allowStart && messageId === null) &&
+        (typeof messageId !== "string" || messages.get(messageId) !== senderId))
     ) {
       throw new Error("微信待回复或完成截止位置无效");
     }

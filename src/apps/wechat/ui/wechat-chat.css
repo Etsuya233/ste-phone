@@ -75,6 +75,13 @@
   background: white;
   color: #079f4e;
 }
+:host .wechat-message-recall {
+  margin: 0;
+  text-align: center;
+  font-size: var(--ios-caption-size);
+  color: var(--ios-secondary-ink);
+}
+
 :host .wechat-message-time {
   align-self: center;
   color: var(--ios-secondary-ink);

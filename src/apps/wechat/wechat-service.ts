@@ -13,6 +13,7 @@ import {
 } from "./wechat.ts";
 import { WechatReplySession } from "./wechat-reply-session.ts";
 import { readWechatRoster } from "./wechat-context.ts";
+import { editWechatMessage, type WechatMessageEdit } from "./wechat-message-edit.ts";
 import { WechatMemoryEditor } from "./wechat-memory-editor.ts";
 import { WechatWrites } from "./wechat-writes.ts";
 import { WechatSubmission } from "./wechat-submission.ts";
@@ -86,12 +87,7 @@ export class WechatService {
     });
     this.memory = new WechatMemoryEditor({
       conversation: (id) => this.#conversationForSending(id),
-      busy: () =>
-        this.#submission.busy ||
-        this.#replies.busy ||
-        this.moments.generation.busy ||
-        this.#writes.busy ||
-        this.#snapshot.barrierSaving,
+      busy: () => this.#chatEditBusy(),
       chatName: () => this.#dependencies.chat.getSnapshot()!.name,
       publish: (patch) => this.#publish(patch),
       save: (update) => this.#writes.save(update),
@@ -234,13 +230,7 @@ export class WechatService {
   }
 
   async requestReply(otherId: string): Promise<void> {
-    if (
-      this.#submission.busy ||
-      this.#replies.busy ||
-      this.moments.generation.busy ||
-      this.#writes.busy ||
-      this.#snapshot.barrierSaving
-    ) {
+    if (this.#chatEditBusy()) {
       throw new Error("请等待当前消息处理完成");
     }
     const conversation = this.#conversationForSending(otherId);
@@ -256,6 +246,38 @@ export class WechatService {
       replyGuidance: this.#snapshot.data.replyGuidance?.[account.scopeId]?.[otherId] ?? "",
       save: (next, signal) => this.#writes.save(() => this.#dataWithConversation(next), signal),
     });
+  }
+
+  async editMessage(otherId: string, messageId: string, action: WechatMessageEdit): Promise<void> {
+    const chatName = this.#dependencies.chat.getSnapshot()?.name;
+    const label = action === "recall" ? "撤回" : "删除";
+    try {
+      if (this.#chatEditBusy()) {
+        throw new Error("请等待当前消息处理完成，生成中可先停止");
+      }
+      const conversation = this.#conversationForSending(otherId);
+      const next = editWechatMessage(
+        conversation,
+        this.#snapshot.data.account!.id,
+        messageId,
+        action,
+      );
+      await this.#writes.save(() => this.#dataWithConversation(next));
+    } catch (error) {
+      this.#publish({
+        operationError: `${chatName ?? "微信"}：${label}消息失败，${(error as Error).message}`,
+      });
+    }
+  }
+
+  #chatEditBusy(): boolean {
+    return (
+      this.#submission.busy ||
+      this.#replies.busy ||
+      this.moments.generation.busy ||
+      this.#writes.busy ||
+      this.#snapshot.barrierSaving
+    );
   }
 
   #conversationForSending(otherId: string): WechatConversation {

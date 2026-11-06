@@ -58,7 +58,7 @@ test("微信 v1 所有已发布媒体结构统一升级，保留其他微信字�
   };
   const original = structuredClone(legacy);
   const loaded = readWechatData(legacy);
-  assert.equal(loaded.version, 2);
+  assert.equal(loaded.version, 3);
   assert.deepEqual(legacy, original);
   assert.deepEqual(loaded.conversations, legacy.conversations);
   assert.deepEqual(loaded.account, author);
@@ -83,7 +83,7 @@ test("微信 v1 所有已发布媒体结构统一升级，保留其他微信字�
   assert.deepEqual(readWechatData(loaded), loaded);
 });
 
-test("当前 v2 严格校验，不再转换旧媒体；非法版本与损坏微信字段明确失败", () => {
+test("当前 v3 严格校验，不再转换旧媒体；非法版本与损坏微信字段明确失败", () => {
   const moment = { id: "moment", author, text: "正文", createdAt, comments: [] };
   for (const media of [
     { type: "none" },
@@ -96,7 +96,7 @@ test("当前 v2 严格校验，不再转换旧媒体；非法版本与损坏微�
   }
   for (const data of [
     { account: null, conversations: [] },
-    { ...emptyWechat(), version: 3 },
+    { ...emptyWechat(), version: 4 },
     { ...emptyWechat(), version: "2" },
     { ...emptyWechat(), account: {} },
     { ...emptyWechat(), conversations: {} },
@@ -134,7 +134,7 @@ test("当前 v2 严格校验，不再转换旧媒体；非法版本与损坏微�
   assert.deepEqual(broken, original);
 });
 
-test("预览读取复用迁移链且不写盘，正常保存才持久化 v2", async () => {
+test("预览读取复用迁移链且不写盘，正常保存才持久化 v3", async () => {
   const values = new Map<string, string>();
   const savedDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   let writes = 0;
@@ -154,12 +154,12 @@ test("预览读取复用迁移链且不写盘，正常保存才持久化 v2", as
     values.set(key, original);
     const storage = createPreviewWechatStorage(null);
     const loaded = storage.read("chat")!;
-    assert.equal(loaded.version, 2);
+    assert.equal(loaded.version, 3);
     assert.equal(writes, 0);
     assert.equal(values.get(key), original);
     await storage.write("chat", loaded);
     assert.equal(writes, 1);
-    assert.equal(JSON.parse(values.get(key)!).version, 2);
+    assert.equal(JSON.parse(values.get(key)!).version, 3);
     assert.deepEqual(storage.read("chat"), loaded);
   } finally {
     if (savedDescriptor) {

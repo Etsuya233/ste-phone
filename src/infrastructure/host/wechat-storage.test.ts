@@ -295,7 +295,7 @@ test("legacy moments migrate on read and persist on explicit save for single and
       ],
     );
     assert.deepEqual(context.chatMetadata, original);
-    assert.equal(loaded.version, 2);
+    assert.equal(loaded.version, 3);
     await storage.write("a", loaded);
     assert.deepEqual(storage.read("a"), loaded);
     assert.deepEqual((context.chatMetadata.ste_phone as Record<string, unknown>).diary, {
