@@ -1403,3 +1403,40 @@ test("删除从共享历史移除消息并原位保留屏障和双方队列", as
   restored.dispose();
   f.service.dispose();
 });
+
+test("取消撤回恢复未完成的队列位置，已完成的消息只回到历史", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.enqueue("b", "可恢复的消息");
+  const original = f.service.getConversation("b")!.messages[0]!;
+  await f.service.editMessage("b", original.id, "recall");
+  await f.service.enqueue("b", "随后入队的消息");
+  await f.service.selectAccount("b");
+  await f.service.editMessage("a", original.id, "restore");
+  assert.match(f.service.getSnapshot().operationError!, /只能撤回自己/);
+  assert.equal(f.service.getConversation("a")!.messages[0]!.recalled, true);
+
+  f.service.dismissOperationError();
+  await f.service.selectAccount("a");
+  await f.service.editMessage("b", original.id, "restore");
+  assert.equal(f.stored!.conversations[0]!.messages[0]!.recalled, undefined);
+  assert.deepEqual(
+    pendingWechatMessages(f.service.getConversation("b")!, "a").map(
+      (message) => message.content.text,
+    ),
+    ["可恢复的消息", "随后入队的消息"],
+  );
+
+  await f.service.editMessage("b", original.id, "recall");
+  const later = f.service.getConversation("b")!.messages[1]!;
+  await f.service.editMessage("b", later.id, "delete");
+  await f.service.requestReply("b");
+  await f.service.editMessage("b", original.id, "restore");
+  assert.deepEqual(pendingWechatMessages(f.service.getConversation("b")!, "a"), []);
+  await f.service.requestReply("b");
+  assert.deepEqual(latestPayload(f.prompt).本轮输入, []);
+  assert.equal(latestPayload(f.prompt).当前微信历史[0].text, "可恢复的消息");
+  f.service.dispose();
+});

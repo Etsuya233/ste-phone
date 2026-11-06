@@ -67,7 +67,7 @@ export class WechatReplySession {
       signal.throwIfAborted();
       task.committing = true;
       this.#dependencies.publish({ status: "saving", conversationId: conversation.id });
-      const completed = pendingWechatMessages(conversation, sender.id).at(-1)?.id;
+      const completed = pendingWechatMessages(conversation, sender.id, true).at(-1)?.id;
       const pendingCompletedThrough = { ...conversation.pendingCompletedThrough };
       if (completed) {
         pendingCompletedThrough[sender.id] = completed;

@@ -87,7 +87,9 @@ export function createWechatMessage(senderId: string, content: TextContent): Wec
 export function pendingWechatMessages(
   conversation: WechatConversation,
   senderId: string,
+  includeRecalled = false,
 ): readonly WechatMessage[] {
+  // 写入队列边界时保留撤回消息的位置，取消撤回可恢复尚未完成的输入。
   const explicit = conversation.pendingReplies?.[senderId];
   if (explicit) {
     const start = conversation.messages.findIndex((message) => message.id === explicit);
@@ -96,7 +98,7 @@ export function pendingWechatMessages(
     }
     return conversation.messages
       .slice(start)
-      .filter((message) => message.senderId === senderId && !message.recalled);
+      .filter((message) => message.senderId === senderId && (includeRecalled || !message.recalled));
   }
   const completed = conversation.pendingCompletedThrough?.[senderId];
   if (completed !== undefined) {
@@ -112,7 +114,10 @@ export function pendingWechatMessages(
     }
     return conversation.messages
       .slice(position + 1)
-      .filter((message) => message.senderId === senderId && !message.reply && !message.recalled);
+      .filter(
+        (message) =>
+          message.senderId === senderId && !message.reply && (includeRecalled || !message.recalled),
+      );
   }
   const replied = conversation.messages.findLast(
     (message) => message.senderId !== senderId && message.reply?.triggerMessageId !== undefined,
@@ -125,7 +130,10 @@ export function pendingWechatMessages(
   }
   return conversation.messages
     .slice(boundary + 1)
-    .filter((message) => message.senderId === senderId && !message.reply && !message.recalled);
+    .filter(
+      (message) =>
+        message.senderId === senderId && !message.reply && (includeRecalled || !message.recalled),
+    );
 }
 
 /** 首条待回复消息决定本轮边界，后续文字与表情沿用该边界。 */
@@ -133,7 +141,7 @@ export function appendWechatMessage(
   conversation: WechatConversation,
   message: WechatMessage,
 ): WechatConversation {
-  const pending = pendingWechatMessages(conversation, message.senderId);
+  const pending = pendingWechatMessages(conversation, message.senderId, true);
   return {
     ...conversation,
     messages: [...conversation.messages, message],

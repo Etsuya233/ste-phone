@@ -1,6 +1,6 @@
 import { pendingWechatMessages, type WechatConversation } from "./wechat.ts";
 
-export type WechatMessageEdit = "recall" | "delete";
+export type WechatMessageEdit = "recall" | "restore" | "delete";
 
 export function editWechatMessage(
   conversation: WechatConversation,
@@ -13,13 +13,17 @@ export function editWechatMessage(
     throw new Error("微信消息不存在");
   }
   const target = conversation.messages[index]!;
-  if (action === "recall") {
-    if (target.senderId !== accountId || target.recalled) {
-      throw new Error("只能撤回自己尚未撤回的消息");
+  if (action !== "delete") {
+    if (target.senderId !== accountId) {
+      throw new Error("只能撤回自己的消息或取消撤回");
+    }
+    const recalled = action === "recall" ? true : undefined;
+    if (target.recalled === recalled) {
+      throw new Error(recalled ? "这条消息已撤回" : "这条消息尚未撤回");
     }
     return {
       ...conversation,
-      messages: conversation.messages.with(index, { ...target, recalled: true }),
+      messages: conversation.messages.with(index, { ...target, recalled }),
     };
   }
 
@@ -34,7 +38,7 @@ export function editWechatMessage(
   const pendingCompletedThrough = { ...conversation.pendingCompletedThrough };
   // 先按原历史求待回复范围。旧聊天的范围可能由即将删除的 AI 回复推导。
   for (const { id } of conversation.people) {
-    const first = pendingWechatMessages(conversation, id).find(
+    const first = pendingWechatMessages(conversation, id, true).find(
       (message) => message.id !== messageId,
     );
     if (pendingReplies[id] && first) {

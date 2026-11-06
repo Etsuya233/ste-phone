@@ -81,8 +81,14 @@ export function WechatMemoryMenu({
     const index = messages.findIndex((message) => message.id === menu.id);
     const message = messages[index]!;
     actions = [
-      ...(message.senderId === accountId && !message.recalled
-        ? [{ label: "撤回消息", disabled, onClick: () => onEdit(message.id, "recall") }]
+      ...(message.senderId === accountId
+        ? [
+            {
+              label: message.recalled ? "取消撤回" : "撤回消息",
+              disabled,
+              onClick: () => onEdit(message.id, message.recalled ? "restore" : "recall"),
+            },
+          ]
         : []),
       {
         label: "删除消息",

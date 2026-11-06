@@ -75,6 +75,9 @@
   background: white;
   color: #079f4e;
 }
+:host .wechat-message--recalled .wechat-message-bubble {
+  opacity: 0.5;
+}
 :host .wechat-message-recall {
   margin: 0;
   text-align: center;

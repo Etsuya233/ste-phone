@@ -250,7 +250,7 @@ export class WechatService {
 
   async editMessage(otherId: string, messageId: string, action: WechatMessageEdit): Promise<void> {
     const chatName = this.#dependencies.chat.getSnapshot()?.name;
-    const label = action === "recall" ? "撤回" : "删除";
+    const labels = { recall: "撤回消息", restore: "取消撤回", delete: "删除消息" };
     try {
       if (this.#chatEditBusy()) {
         throw new Error("请等待当前消息处理完成，生成中可先停止");
@@ -265,7 +265,7 @@ export class WechatService {
       await this.#writes.save(() => this.#dataWithConversation(next));
     } catch (error) {
       this.#publish({
-        operationError: `${chatName ?? "微信"}：${label}消息失败，${(error as Error).message}`,
+        operationError: `${chatName ?? "微信"}：${labels[action]}失败，${(error as Error).message}`,
       });
     }
   }

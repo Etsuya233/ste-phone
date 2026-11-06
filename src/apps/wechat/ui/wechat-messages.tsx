@@ -64,7 +64,9 @@ export function WechatMessages({
             {message.recalled && (
               <p className="wechat-message-recall">{mine ? "你" : sender}撤回了一条消息</p>
             )}
-            <div className={`wechat-message ${mine ? "wechat-message--mine" : ""}`}>
+            <div
+              className={`wechat-message ${mine ? "wechat-message--mine" : ""}${message.recalled ? " wechat-message--recalled" : ""}`}
+            >
               <PersonAvatar name={sender} />
               <WechatMessageBubble index={index} onMenu={() => memory.openMessage(message.id)}>
                 {sticker ? (
