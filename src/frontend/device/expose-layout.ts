@@ -47,7 +47,7 @@ export function createExposeLayout(
     scale,
     width,
     height,
-    left: modern ? screen.width * 0.18 : (screen.width - width) / 2,
+    left: (screen.width - width) / 2,
     top: modern
       ? Math.max(screen.status + 52, (screen.height - screen.bottom - height) / 2 + 20)
       : Math.max(72, (screen.height - screen.bottom - height - 118) / 2),
@@ -85,7 +85,8 @@ export function placeExposeCard(
         Math.min(0, position + 1) * layout.screenWidth * 0.065;
   return {
     left: layout.left + offset,
-    top: layout.top + layout.height * (1 - factor),
+    // Keep the deck's vertical center fixed so rear cards inset at both edges.
+    top: layout.top + (layout.height * (1 - factor)) / 2,
     width: layout.width * factor,
     height: layout.height * factor,
     scale: layout.scale * factor,

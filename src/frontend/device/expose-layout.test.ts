@@ -32,6 +32,32 @@ test("modern cards overlap in history order and drag continuously into the selec
   assert.deepEqual(dragged, settled);
 });
 
+test("modern selected cards stay horizontally centered on both devices and short screens", () => {
+  for (const screen of [
+    { width: 402, height: 874, bottom: 34, status: 62 },
+    { width: 375, height: 667, bottom: 0, status: 20 },
+    { width: 320, height: 568, bottom: 44, status: 62 },
+  ]) {
+    const layout = createExposeLayout(screen, "ios26");
+    const selected = placeExposeCard(layout, 0, 0, 0);
+    assert.ok(Math.abs(selected.left + selected.width / 2 - screen.width / 2) < 0.001);
+  }
+});
+
+test("modern rear cards inset both vertical edges as their depth increases", () => {
+  const layout = createExposeLayout({ width: 402, height: 874, bottom: 34, status: 62 }, "ios26");
+  const selected = placeExposeCard(layout, 0, 0, 0);
+  let previous = selected;
+  // Include fractional depth: dragging must preserve the same vertical center as settled cards.
+  for (const depth of [0.5, 1, 2, 3]) {
+    const rear = placeExposeCard(layout, 0, 0, -depth * layout.stride);
+    assert.ok(rear.top > previous.top);
+    assert.ok(rear.top + rear.height < previous.top + previous.height);
+    assert.ok(Math.abs(rear.top + rear.height / 2 - selected.top - selected.height / 2) < 0.001);
+    previous = rear;
+  }
+});
+
 test("modern previews and their headers fit short screens with either device's safe area", () => {
   for (const screen of [
     { width: 320, height: 568, bottom: 44, status: 62 },

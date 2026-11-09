@@ -12,8 +12,14 @@
   backdrop-filter: blur(18px) saturate(0.85);
 }
 :host [data-system-style="ios26"] .app-layer--preview {
-  border-radius: 48px;
+  --expose-card-radius: 48px;
+  border-radius: var(--expose-card-radius);
   box-shadow: 0 12px 40px #0003;
+}
+:host [data-system-style="ios26"] .app-layer--preview .app-content {
+  /* Chromium can let nested backdrop layers escape overflow's rounded clip at fractional scales.
+     Clip the content explicitly; the outer card still owns its uncut shadow. */
+  clip-path: inset(0 round var(--expose-card-radius));
 }
 :host [data-system-style="ios26"] .app-layer--preview .app-preview-status {
   display: none;
