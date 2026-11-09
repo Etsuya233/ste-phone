@@ -58,6 +58,21 @@ test("modern rear cards inset both vertical edges as their depth increases", () 
   }
 });
 
+test("modern nearest rear cards keep their left corners and headers inside the display", () => {
+  for (const screen of [
+    { width: 402, height: 874, bottom: 34, status: 62 },
+    { width: 375, height: 667, bottom: 0, status: 20 },
+    { width: 320, height: 568, bottom: 44, status: 62 },
+  ]) {
+    const layout = createExposeLayout(screen, "ios26");
+    const selected = placeExposeCard(layout, 0, 0, 0);
+    const rear = placeExposeCard(layout, 1, 0, 0);
+    assert.ok(rear.left > 0, "The nearest rear card's rounded left edge must remain on screen");
+    assert.ok(rear.left < selected.left, "The selected card must leave the rear card visible");
+    assert.ok(rear.left + rear.width > selected.left, "Cards must still overlap");
+  }
+});
+
 test("modern previews and their headers fit short screens with either device's safe area", () => {
   for (const screen of [
     { width: 320, height: 568, bottom: 44, status: 62 },

@@ -15,7 +15,6 @@ export interface ExposeLayout {
   top: number;
   stride: number;
   direction: 1 | -1;
-  screenWidth: number;
 }
 
 export function exposeSwipeSteps(layout: ExposeLayout, distance: number, velocity: number): number {
@@ -53,7 +52,6 @@ export function createExposeLayout(
       : Math.max(72, (screen.height - screen.bottom - height - 118) / 2),
     stride: modern ? screen.width * 0.62 : width + 28,
     direction: modern ? -1 : 1,
-    screenWidth: screen.width,
   };
 }
 
@@ -77,12 +75,13 @@ export function placeExposeCard(
   const position = (index - selectedIndex) * layout.direction + dragX / layout.stride;
   const depth = Math.min(3, Math.max(0, -position));
   const factor = 1 - depth * 0.025;
-  // Older cards gather on the left; newer cards pass in front from the right.
+  // Keep the nearest rear card inside the centered card's left gutter, including its corners
+  // and header icon. Deeper history gathers toward the screen edge; newer cards enter from right.
   const offset =
     position >= 0
       ? position * layout.stride
-      : Math.max(-1, position) * layout.screenWidth * 0.18 +
-        Math.min(0, position + 1) * layout.screenWidth * 0.065;
+      : Math.max(-1, position) * layout.left * 0.75 +
+        Math.min(0, position + 1) * layout.left * 0.25;
   return {
     left: layout.left + offset,
     // Keep the deck's vertical center fixed so rear cards inset at both edges.
