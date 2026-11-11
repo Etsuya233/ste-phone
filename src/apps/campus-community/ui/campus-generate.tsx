@@ -23,7 +23,7 @@ export function CampusGeneratePage(props: CampusPageProps & { postId: string | n
       {completed ? (
         <div className="campus-feedback">
           <p role="status">{postId === null ? "新帖子已保存。" : "本批互动已保存。"}</p>
-          <Button onClick={navigation.pop}>{postId === null ? "查看广场" : "返回帖子"}</Button>
+          <Button onClick={navigation.pop}>{postId === null ? "查看首页" : "返回帖子"}</Button>
         </div>
       ) : null}
       <form

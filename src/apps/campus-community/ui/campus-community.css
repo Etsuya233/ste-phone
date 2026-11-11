@@ -1,12 +1,12 @@
 :host .campus-page {
-  --campus-ink: #20352f;
-  --campus-accent: #146555;
-  --campus-paper: #f3f7ef;
-  --campus-rule: #d5e0d7;
-  --campus-note: #e4efe2;
+  --campus-ink: #0f1419;
+  --campus-accent: #1d9bf0;
+  --campus-paper: #ffffff;
+  --campus-rule: #eff3f4;
+  --campus-note: #e8f5fd;
   --ios-blue: var(--campus-accent);
   --ios-surface: var(--campus-paper);
-  --ios-footer-surface: #f3f7eff5;
+  --ios-footer-surface: #fffffff5;
   color: var(--campus-ink);
 }
 
@@ -16,7 +16,7 @@
   justify-content: space-between;
   gap: 8px;
   padding: 22px 16px 12px;
-  border-bottom: 3px double var(--campus-accent);
+  border-bottom: 1px solid var(--campus-rule);
 }
 
 :host .campus-feed-header h2 {
@@ -87,7 +87,7 @@
   place-items: center;
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: 50%;
   object-fit: cover;
   background: var(--campus-note);
   color: var(--campus-accent);

@@ -4,11 +4,11 @@ import { CampusPage, type CampusPageProps } from "./campus-page.tsx";
 import { CampusPostCard } from "./campus-post-card.tsx";
 import { CampusProfile } from "./campus-profiles.tsx";
 
-const tabs = ["广场", "关注", "我"] as const;
+const tabs = ["首页", "关注", "我"] as const;
 
 export function CampusHome(props: CampusPageProps) {
   const { state, navigation, onHome } = props;
-  const [tab, setTab] = useState<(typeof tabs)[number]>("广场");
+  const [tab, setTab] = useState<(typeof tabs)[number]>("首页");
   const account = state.data.accounts.find((item) => item.id === state.data.activeAccountId);
   const writable = state.scopeKey !== null && state.phase === "idle";
   const posts =
@@ -18,7 +18,7 @@ export function CampusHome(props: CampusPageProps) {
   return (
     <CampusPage
       {...props}
-      title="校园社区"
+      title="Twitter"
       home
       back={onHome}
       right={
@@ -30,7 +30,7 @@ export function CampusHome(props: CampusPageProps) {
         </Button>
       }
       footer={
-        <nav className="campus-tab-bar" aria-label="校园社区">
+        <nav className="campus-tab-bar" aria-label="Twitter">
           {tabs.map((label) => (
             <Button
               key={label}
@@ -49,7 +49,7 @@ export function CampusHome(props: CampusPageProps) {
         <>
           <div className="campus-feed-header">
             <h2>{tab}</h2>
-            {tab === "广场" ? (
+            {tab === "首页" ? (
               <Button
                 disabled={!writable}
                 onClick={() => navigation.push({ page: "generate", postId: null })}
@@ -68,7 +68,7 @@ export function CampusHome(props: CampusPageProps) {
           ) : null}
           {!posts.length ? (
             <p className="campus-section">
-              {tab === "关注" ? "关注的账号还没有发帖。" : "广场还没有帖子。"}
+              {tab === "关注" ? "关注的账号还没有发帖。" : "首页还没有帖子。"}
             </p>
           ) : null}
           {posts.toReversed().map((post) => (

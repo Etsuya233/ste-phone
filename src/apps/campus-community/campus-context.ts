@@ -25,11 +25,11 @@ export async function readCampusAuthors(
       return null;
     }
     if (page.truncated) {
-      throw new Error("校园社区人物资料查询被截断");
+      throw new Error("Twitter人物资料查询被截断");
     }
     for (const [id, name] of page.rows) {
       if (typeof id !== "string" || typeof name !== "string") {
-        throw new Error("校园社区人物资料字段无效");
+        throw new Error("Twitter人物资料字段无效");
       }
       authors.push({ id, name });
     }

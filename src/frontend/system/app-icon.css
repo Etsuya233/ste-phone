@@ -163,7 +163,7 @@
 }
 
 :host .campus-app-icon {
-  background: linear-gradient(#537b6d, #31544a);
-  color: #fff8df;
+  background: #1d9bf0;
+  color: #fff;
   fill: currentColor;
 }

@@ -65,16 +65,7 @@ export function AppIcon({ app }: { app: AppId }) {
     return (
       <Icon appearance="app" className="campus-app-icon">
         <svg viewBox="0 0 60 60">
-          <path
-            d="M13 14h34v24H26l-9 8v-8h-4z"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="4"
-            strokeLinejoin="round"
-          />
-          <circle cx="22" cy="26" r="2" />
-          <circle cx="30" cy="26" r="2" />
-          <circle cx="38" cy="26" r="2" />
+          <path d="M51 17a17 17 0 0 1-5 1.4 8.7 8.7 0 0 0 3.8-4.8 17.4 17.4 0 0 1-5.5 2.1 8.6 8.6 0 0 0-14.7 7.8A24.5 24.5 0 0 1 12 14.5a8.6 8.6 0 0 0 2.7 11.5 8.5 8.5 0 0 1-3.9-1.1v.1a8.6 8.6 0 0 0 6.9 8.4 8.6 8.6 0 0 1-3.9.2 8.6 8.6 0 0 0 8 6 17.3 17.3 0 0 1-12.7 3.6 24.4 24.4 0 0 0 37.6-20.6v-1.1A17.4 17.4 0 0 0 51 17Z" />
         </svg>
       </Icon>
     );

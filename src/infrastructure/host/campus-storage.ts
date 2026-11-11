@@ -21,7 +21,7 @@ function readSpaces(metadata: Record<string, unknown>): StoredCampus["spaces"] {
     Array.isArray(campus.spaces) ||
     typeof campus.spaces !== "object"
   ) {
-    throw new Error("校园社区存储格式无效");
+    throw new Error("Twitter存储格式无效");
   }
   return campus.spaces;
 }
@@ -40,7 +40,7 @@ export function createStCampusStorage(
 ): CampusStorage {
   function current(chatId: string): StDiaryContext {
     if (chat.getSnapshot()?.id !== chatId) {
-      throw new Error("校园社区所属聊天已变化");
+      throw new Error("Twitter所属聊天已变化");
     }
     return getContext();
   }
@@ -62,7 +62,7 @@ export function createStCampusStorage(
       const group = context.groupId != null;
       const character = group ? null : context.characters[Number(context.characterId)];
       if (!group && !character) {
-        throw new Error("校园社区所属聊天缺少角色资料");
+        throw new Error("Twitter所属聊天缺少角色资料");
       }
       const body = JSON.stringify(
         character
@@ -81,7 +81,7 @@ export function createStCampusStorage(
         body,
       });
       if (!response.ok) {
-        throw new Error(`校园社区保存失败（HTTP ${response.status}）`);
+        throw new Error(`Twitter保存失败（HTTP ${response.status}）`);
       }
       target.ste_phone = updateMetadata(target, space, saved);
       if (chat.getSnapshot()?.id === chatId) {

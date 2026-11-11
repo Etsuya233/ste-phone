@@ -1,7 +1,7 @@
 import { CAMPUS_MAX_IMAGES, type CampusData } from "./campus-domain.ts";
 
 function invalid(field: string): never {
-  throw new Error(`校园社区存储格式无效：${field}`);
+  throw new Error(`Twitter存储格式无效：${field}`);
 }
 
 function record(value: unknown, field: string): Record<string, unknown> {

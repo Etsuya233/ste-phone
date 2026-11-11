@@ -23,7 +23,7 @@ export async function generateCampusBatch(
   const output = await requestCampusOutput({
     transport: deps.transport,
     connection,
-    operation: request.postId ? "校园社区互动" : "校园社区发帖",
+    operation: request.postId ? "Twitter互动" : "Twitter发帖",
     prompt: JSON.stringify(context),
     systemPrompt: campusSystemPrompt(request, context.targetPost),
     signal,
@@ -75,19 +75,19 @@ async function requestCampusOutput(input: {
   });
   input.signal.throwIfAborted();
   if (unexpectedTool) {
-    throw new Error("校园社区模型返回了未注册的工具调用");
+    throw new Error("Twitter模型返回了未注册的工具调用");
   }
   if (timedOut) {
-    throw new Error("校园社区生成超时");
+    throw new Error("Twitter生成超时");
   }
   if (reply?.role !== "assistant") {
-    throw new Error("模型未返回校园社区内容");
+    throw new Error("模型未返回Twitter内容");
   }
   if (reply.stopReason !== "stop") {
     const message =
       reply.stopReason === "length"
-        ? "校园社区生成达到输出上限，整批未保存"
-        : reply.errorMessage || "校园社区模型请求未完成";
+        ? "Twitter生成达到输出上限，整批未保存"
+        : reply.errorMessage || "Twitter模型请求未完成";
     throw new Error(message, { cause: reply.diagnostics });
   }
   return reply.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("");

@@ -8,8 +8,8 @@ export const appCatalog = {
     removable: true,
   },
   "campus-community": {
-    name: "校园社区",
-    description: "浏览校园帖子，切换人物账号参与讨论",
+    name: "Twitter",
+    description: "浏览动态，切换人物账号参与讨论",
     removable: true,
   },
   wechat: { name: "微信", description: "切换人物帐号，与故事中的好友聊天", removable: true },

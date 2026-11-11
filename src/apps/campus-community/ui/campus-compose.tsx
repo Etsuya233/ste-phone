@@ -66,7 +66,7 @@ export function CampusComposePage(props: CampusPageProps) {
             value={text}
             disabled={busy}
             onChange={(event) => setText(event.target.value)}
-            placeholder="想和校园里的大家说点什么？"
+            placeholder="有什么新鲜事？"
           />
         </label>
         {images.map(({ key, value }, index) => (

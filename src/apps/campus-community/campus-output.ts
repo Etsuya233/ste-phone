@@ -10,28 +10,28 @@ import { campusWindow, type CampusPromptTarget } from "./campus-prompt.ts";
 
 function fields(value: unknown, names: readonly string[]): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new Error("校园社区模型输出应为 JSON 对象");
+    throw new Error("Twitter模型输出应为 JSON 对象");
   }
   const record = value as Record<string, unknown>;
   if (
     Object.keys(record).length !== names.length ||
     names.some((name) => !Object.hasOwn(record, name))
   ) {
-    throw new Error("校园社区模型输出字段无效");
+    throw new Error("Twitter模型输出字段无效");
   }
   return record;
 }
 
 function list(value: unknown, max: number, label: string): unknown[] {
   if (!Array.isArray(value) || value.length > max) {
-    throw new Error(`校园社区${label}应为数组，最多 ${max} 项`);
+    throw new Error(`Twitter${label}应为数组，最多 ${max} 项`);
   }
   return value;
 }
 
 function string(value: unknown, label: string, empty = false): string {
   if (typeof value !== "string" || (!empty && !value.trim())) {
-    throw new Error(`校园社区${label}无效`);
+    throw new Error(`Twitter${label}无效`);
   }
   return value.trim();
 }
@@ -55,7 +55,7 @@ function parsePeople(raw: unknown, batchId: string, allowed: Set<string>, automa
       allowed.has(key) ||
       newAccountIds.has(key)
     ) {
-      throw new Error("校园社区新路人的引用无效或重复");
+      throw new Error("Twitter新路人的引用无效或重复");
     }
     const personId = `${batchId}:person:${index}`;
     const id = `${batchId}:account:${index}`;
@@ -79,12 +79,12 @@ function parsePeople(raw: unknown, batchId: string, allowed: Set<string>, automa
 function parsePosts(raw: unknown, batchId: string, author: (value: unknown) => string) {
   const proposed = list(raw, campusWindow.postsPerBatch, "生成帖子");
   if (!proposed.length) {
-    throw new Error("校园社区模型未返回帖子");
+    throw new Error("Twitter模型未返回帖子");
   }
   return proposed.map((entry, index) => {
     const post = fields(entry, ["authorId", "text", "images", "popular"]);
     if (typeof post.popular !== "boolean") {
-      throw new Error("校园社区热度类型无效");
+      throw new Error("Twitter热度类型无效");
     }
     const text = string(post.text, "帖子正文", true);
     const images = list(post.images, CAMPUS_MAX_IMAGES, "帖子图片").map((entry) => {
@@ -95,7 +95,7 @@ function parsePosts(raw: unknown, batchId: string, author: (value: unknown) => s
       };
     });
     if (!text && !images.length) {
-      throw new Error("校园社区帖子正文和图片不能全部为空");
+      throw new Error("Twitter帖子正文和图片不能全部为空");
     }
     return createCampusPost({
       id: `${batchId}:post:${index}`,
@@ -118,7 +118,7 @@ function parseReply(
   if (typeof raw === "object" && raw !== null && Object.hasOwn(raw, "commentId")) {
     const { commentId } = fields(raw, ["commentId"]);
     if (typeof commentId !== "string" || !existing.has(commentId)) {
-      throw new Error("校园社区回复指向未提供或已删除的评论");
+      throw new Error("Twitter回复指向未提供或已删除的评论");
     }
     return commentId;
   }
@@ -129,7 +129,7 @@ function parseReply(
     batchIndex < 0 ||
     batchIndex >= prior.length
   ) {
-    throw new Error("校园社区批内回复只能指向前序评论");
+    throw new Error("Twitter批内回复只能指向前序评论");
   }
   return prior[batchIndex]!.id;
 }
@@ -153,7 +153,7 @@ function parseInteraction(
     });
   }
   if (!Array.isArray(value.likes)) {
-    throw new Error("校园社区点赞应为数组");
+    throw new Error("Twitter点赞应为数组");
   }
   const likes = [...new Set(value.likes.map(author))];
   return { postId: target.id, comments, likes };
@@ -171,7 +171,7 @@ export function parseCampusBatch(
   try {
     json = JSON.parse(output);
   } catch (cause) {
-    throw new Error("校园社区模型输出不是有效的 JSON", { cause });
+    throw new Error("Twitter模型输出不是有效的 JSON", { cause });
   }
   const value = fields(json, target ? ["people", "likes", "comments"] : ["people", "posts"]);
   const allowed = new Set(candidateIds);
@@ -179,14 +179,14 @@ export function parseCampusBatch(
   const used = new Set<string>();
   function author(raw: unknown): string {
     if (typeof raw !== "string") {
-      throw new Error("校园社区发言或点赞账号无效");
+      throw new Error("Twitter发言或点赞账号无效");
     }
     if (allowed.has(raw)) {
       return raw;
     }
     const newId = newAccountIds.get(raw);
     if (!newId) {
-      throw new Error("校园社区使用了不在本批候选范围内的账号");
+      throw new Error("Twitter使用了不在本批候选范围内的账号");
     }
     used.add(newId);
     return newId;
@@ -194,7 +194,7 @@ export function parseCampusBatch(
   const posts = target ? [] : parsePosts(value.posts, id, author);
   const interaction = target ? parseInteraction(value, target, id, author) : undefined;
   if (accounts.some(({ id }) => !used.has(id))) {
-    throw new Error("校园社区模型创建了未参与本批的路人");
+    throw new Error("Twitter模型创建了未参与本批的路人");
   }
   return { id, accounts, people, posts, ...(interaction ? { interaction } : {}) };
 }
