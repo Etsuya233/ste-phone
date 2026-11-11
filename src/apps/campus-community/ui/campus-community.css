@@ -1,0 +1,287 @@
+:host .campus-page {
+  --campus-ink: #20352f;
+  --campus-accent: #146555;
+  --campus-paper: #f3f7ef;
+  --campus-rule: #d5e0d7;
+  --campus-note: #e4efe2;
+  --ios-blue: var(--campus-accent);
+  --ios-surface: var(--campus-paper);
+  --ios-footer-surface: #f3f7eff5;
+  color: var(--campus-ink);
+}
+
+:host .campus-feed-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 22px 16px 12px;
+  border-bottom: 3px double var(--campus-accent);
+}
+
+:host .campus-feed-header h2 {
+  margin: 0;
+  font: 750 32px/1.1 var(--ios-font);
+  letter-spacing: -0.05em;
+}
+
+:host .campus-feed-header button {
+  font-size: 14px;
+}
+
+:host .campus-tab-bar,
+:host .campus-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+:host .campus-tab-bar {
+  justify-content: space-around;
+  min-height: 50px;
+  border-top: 1px solid var(--campus-rule);
+}
+
+:host .campus-tab-bar button[aria-current="page"] {
+  font-weight: 750;
+  text-decoration: underline 2px;
+  text-underline-offset: 5px;
+}
+
+:host .campus-card {
+  padding: 15px 16px 10px;
+  border-bottom: 1px solid var(--campus-rule);
+  background: var(--ios-row-surface);
+}
+
+:host .campus-card p,
+:host .campus-comment p,
+:host .campus-profile p {
+  margin: 8px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+:host .campus-card time,
+:host .campus-meta {
+  font-size: var(--ios-caption-size);
+  color: var(--ios-secondary-ink);
+}
+
+:host .campus-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+:host .campus-avatar {
+  display: grid;
+  flex: 0 0 36px;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--campus-note);
+  color: var(--campus-accent);
+  font-weight: 750;
+}
+
+:host .campus-photos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 10px 0;
+}
+
+:host .campus-photos button {
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  background: var(--campus-note);
+  color: var(--campus-accent);
+  aspect-ratio: 1;
+}
+
+:host .campus-photos img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+:host .campus-photos span {
+  display: -webkit-box;
+  padding: 8px;
+  overflow: hidden;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+:host .campus-form,
+:host .campus-profile,
+:host .campus-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+:host .campus-form label {
+  display: grid;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+:host .campus-form :is(input:not([type="checkbox"]), textarea, select),
+:host .campus-reply input {
+  min-width: 0;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--campus-rule);
+  border-radius: 6px;
+  color: var(--campus-ink);
+  background: var(--ios-row-surface);
+  font: inherit;
+}
+
+:host .campus-form textarea {
+  resize: vertical;
+}
+
+:host .campus-form h2,
+:host .campus-section h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+:host .campus-feedback {
+  padding: 8px 16px;
+  background: var(--campus-note);
+  font-size: 14px;
+}
+
+:host .campus-feedback p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+:host .campus-feedback [role="alert"] {
+  color: #9a2920;
+}
+
+:host .campus-comments,
+:host .campus-thread {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+:host .campus-comment {
+  border-top: 1px solid var(--campus-rule);
+  padding-block: 10px;
+}
+
+:host .campus-thread {
+  padding-left: 12px;
+  border-left: 2px solid var(--campus-rule);
+}
+
+:host .campus-reply {
+  display: grid;
+  gap: 0;
+  padding: 0 12px;
+}
+
+:host .campus-reply .ios-button {
+  min-height: 28px;
+}
+
+:host .campus-reply .campus-row input {
+  flex: 1;
+}
+
+:host .campus-image-preview {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+}
+
+:host .campus-page .campus-actions {
+  flex-wrap: wrap;
+}
+
+:host .campus-post-text {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+:host .campus-image-fields {
+  display: grid;
+  gap: 8px;
+}
+
+:host .campus-form fieldset {
+  min-width: 0;
+  border: 1px solid var(--campus-rule);
+  border-radius: 6px;
+}
+
+:host .campus-form p,
+:host .campus-section > p {
+  margin: 0;
+}
+
+:host .campus-manage-row {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--campus-rule);
+}
+
+:host .campus-manage-row p {
+  margin: 6px 0 0;
+}
+
+:host .campus-reply {
+  padding-top: 5px;
+}
+
+:host .campus-reply input {
+  min-height: 36px;
+}
+
+:host .campus-page .ios-nav-side--right .ios-button {
+  white-space: nowrap;
+}
+
+:host .campus-reply .campus-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host .campus-reply .ios-button {
+  flex-shrink: 0;
+}
+
+:host figure.campus-profile {
+  margin: 0;
+}

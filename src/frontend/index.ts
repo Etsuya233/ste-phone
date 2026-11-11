@@ -8,6 +8,7 @@ import { createPhone } from "../bootstrap/create-phone.tsx";
 import { createStChatContext } from "../infrastructure/host/chat-context.ts";
 import { mountPhone } from "./host/mount-phone.tsx";
 import { MemoryDatabaseProvider } from "../infrastructure/ste-memory/memory-database-provider.ts";
+import { createStCampusStorage } from "../infrastructure/host/campus-storage.ts";
 import { createStDiaryStorage } from "../infrastructure/host/diary-storage.ts";
 import { createStWechatStorage } from "../infrastructure/host/wechat-storage.ts";
 import { createStWechatStickerStorage } from "../infrastructure/host/wechat-stickers.ts";
@@ -45,6 +46,7 @@ const phone = createPhone({
   chat,
   mapConversations: createMapConversationStorage(localStorage, "ste-phone-map-conversation-v1:"),
   mapStorage: createStMapStorage(() => window.SillyTavern.getContext(), chat),
+  campusStorage: createStCampusStorage(() => window.SillyTavern.getContext(), chat),
   diaryStorage: createStDiaryStorage(() => window.SillyTavern.getContext(), chat),
   wechatStorage: createStWechatStorage(() => window.SillyTavern.getContext(), chat),
   wechatStickerStorage: createStWechatStickerStorage(() => window.SillyTavern.getContext()),

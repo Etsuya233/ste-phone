@@ -47,7 +47,7 @@ test("v3 migration adds the store and preserves wallpaper and model credentials"
     homeLayout: {
       ...defaultSettings.homeLayout,
       grid: defaultSettings.homeLayout.grid.filter(
-        (id) => id !== "map" && id !== "voice-playground",
+        (id) => id !== "map" && id !== "voice-playground" && id !== "campus-community",
       ),
     },
   });
@@ -100,6 +100,7 @@ test("moving between home and dock, uninstalling and reinstalling survive a new 
       "image-playground",
       "map",
       "voice-playground",
+      "campus-community",
       "database",
     ],
     dock: ["settings"],

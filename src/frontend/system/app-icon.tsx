@@ -61,6 +61,24 @@ export function AppIcon({ app }: { app: AppId }) {
       </Icon>
     );
   }
+  if (app === "campus-community") {
+    return (
+      <Icon appearance="app" className="campus-app-icon">
+        <svg viewBox="0 0 60 60">
+          <path
+            d="M13 14h34v24H26l-9 8v-8h-4z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="4"
+            strokeLinejoin="round"
+          />
+          <circle cx="22" cy="26" r="2" />
+          <circle cx="30" cy="26" r="2" />
+          <circle cx="38" cy="26" r="2" />
+        </svg>
+      </Icon>
+    );
+  }
   if (app === "wechat") {
     return (
       <Icon appearance="app" className="wechat-app-icon">

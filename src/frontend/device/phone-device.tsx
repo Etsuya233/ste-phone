@@ -253,6 +253,10 @@ export function PhoneDevice({
     if (transition || quittingApp) {
       return;
     }
+    if (apps[app].onQuitRequested?.() === false) {
+      openApp(app);
+      return;
+    }
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
       const removed = session.recent.indexOf(app);
       apps[app].onQuit?.();
@@ -348,6 +352,10 @@ export function PhoneDevice({
               editing={editingHome}
               onEditingChange={setEditingHome}
               onUninstall={(app) => {
+                if (session.recent.includes(app) && apps[app].onQuitRequested?.() === false) {
+                  openApp(app);
+                  return;
+                }
                 homeScreen.uninstall(app);
                 if (session.recent.includes(app)) {
                   apps[app].onQuit?.();

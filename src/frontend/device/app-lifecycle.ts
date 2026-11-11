@@ -15,5 +15,6 @@ export interface AppDefinition {
     visibility: AppVisibility;
   }): ReactNode;
   onVisibilityChange?(visibility: AppVisibility): void;
+  onQuitRequested?(): boolean;
   onQuit?(): void;
 }

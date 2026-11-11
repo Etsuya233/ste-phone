@@ -7,6 +7,11 @@ export const appCatalog = {
     description: "描述画面，通过 Image Hub 生成图片",
     removable: true,
   },
+  "campus-community": {
+    name: "校园社区",
+    description: "浏览校园帖子，切换人物账号参与讨论",
+    removable: true,
+  },
   wechat: { name: "微信", description: "切换人物帐号，与故事中的好友聊天", removable: true },
   "voice-playground": { name: "声乐园", description: "为台词配音，试听不同音色", removable: true },
   diary: { name: "日记", description: "以人物的视角记录故事与回忆", removable: true },
@@ -45,6 +50,7 @@ export const defaultHomeLayout: HomeLayout = {
     "image-playground",
     "map",
     "voice-playground",
+    "campus-community",
   ],
   dock: ["stopwatch"],
 };

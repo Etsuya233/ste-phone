@@ -5,6 +5,7 @@ import { createPreviewImageHub } from "./preview-image-hub.ts";
 import { createPreviewSettingsStorage } from "./preview-wallpapers.ts";
 import { createPreviewAiTransport } from "./preview-ai-transport.ts";
 import { createPreviewChatContext } from "./preview-chat-context.ts";
+import { createPreviewCampusStorage } from "./preview-campus.ts";
 import { createPreviewDiaryStorage } from "./preview-diary-storage.ts";
 import { createPreviewWechatStorage } from "./preview-wechat-storage.ts";
 import { createPreviewWechatStickerStorage } from "./preview-wechat-stickers.ts";
@@ -59,17 +60,23 @@ if (options.get("voice-playground") === "1") {
   }
 }
 // 地图入口提供模拟连接，全部请求仍由 preview-ai-transport 截获。
-if (options.get("map") === "1") {
+const campusPreview = options.get("campus-community") === "1";
+if (options.get("map") === "1" || campusPreview) {
   const settings = new PhoneSettingsService(settingsStorage);
   if (settings.modelConnections.getSnapshot().connections.length === 0) {
     settings.saveModelConnection({
-      id: "preview-map",
-      name: "地图模拟",
-      model: "preview-map",
+      id: "preview-model",
+      name: "预览模拟",
+      model: "preview-model",
       baseUrl: "https://preview.invalid/v1",
       apiKey: "",
       customHeaders: {},
     });
+  }
+  if (campusPreview && !settings.modelConnections.getSnapshot().defaultModelConnectionId) {
+    settings.selectDefaultModelConnection(
+      settings.modelConnections.getSnapshot().connections[0]!.id,
+    );
   }
 }
 const phone = createPhone({
@@ -77,7 +84,8 @@ const phone = createPhone({
   imageHub: createPreviewImageHub(options.get("image-test")),
   settingsStorage,
   aiTransport: createPreviewAiTransport(
-    options.get("map-test") ??
+    options.get("campus-test") ??
+      options.get("map-test") ??
       options.get("moments-test") ??
       options.get("wechat-test") ??
       options.get("diary-test") ??
@@ -91,6 +99,7 @@ const phone = createPhone({
     "ste-phone-preview-map-conversation-v1:",
   ),
   mapStorage: createPreviewMapStorage(options.get("map-test")),
+  campusStorage: createPreviewCampusStorage(options.get("campus-test")),
   diaryStorage: createPreviewDiaryStorage(options.get("diary-test")),
   wechatStorage: createPreviewWechatStorage(
     options.get("wechat-test"),
@@ -99,13 +108,22 @@ const phone = createPhone({
   wechatStickerStorage: await createPreviewWechatStickerStorage(),
   logs,
 });
+if (campusPreview) {
+  // A stored desktop layout can predate the shortcut. Install before mounting so
+  // Home and Expose can reopen the same app through the regular launcher.
+  const { grid, dock } = phone.homeScreen.getSnapshot();
+  if (!grid.includes("campus-community") && !dock.includes("campus-community")) {
+    phone.homeScreen.install("campus-community");
+  }
+}
 mountPhone({
   apps: phone.apps,
   wallpaper: phone.wallpaper,
   homeScreen: phone.homeScreen,
   appearance: phone.appearance,
-  initialApp:
-    options.get("voice-playground") === "1"
+  initialApp: campusPreview
+    ? "campus-community"
+    : options.get("voice-playground") === "1"
       ? "voice-playground"
       : options.get("map") === "1"
         ? "map"

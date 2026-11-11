@@ -161,3 +161,9 @@
 :host .map-app-icon .map-icon-dot {
   fill: #fff;
 }
+
+:host .campus-app-icon {
+  background: linear-gradient(#537b6d, #31544a);
+  color: #fff8df;
+  fill: currentColor;
+}

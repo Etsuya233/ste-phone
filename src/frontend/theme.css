@@ -15,6 +15,7 @@
 
 @import "../apps/settings/ui/settings-app.css";
 @import "../apps/diary/ui/diary-app.css";
+@import "../apps/campus-community/ui/campus-community.css";
 @import "../apps/app-store/ui/app-store.css";
 @import "../apps/wechat/ui/wechat-app.css";
 @import "../apps/wechat/ui/wechat-stickers.css";

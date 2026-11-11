@@ -1,3 +1,4 @@
+import { previewCampusOutput } from "./preview-campus.ts";
 import { previewMapReply } from "./preview-map.ts";
 import {
   createAssistantMessageEventStream,
@@ -116,7 +117,20 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
             stream.push({ type: "done", reason: "toolUse", message: output });
             return;
           }
+          const campusMessage = context.messages.at(-1);
+          const campusReply =
+            app === "campus-community" && campusMessage?.role === "user"
+              ? previewCampusOutput(
+                  typeof campusMessage.content === "string"
+                    ? campusMessage.content
+                    : campusMessage.content
+                        .flatMap((part) => (part.type === "text" ? [part.text] : []))
+                        .join(""),
+                  mode,
+                )
+              : undefined;
           const text =
+            campusReply ??
             mapReply ??
             (operation === "朋友圈配图提示词"
               ? mode === "invalid"

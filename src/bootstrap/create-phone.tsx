@@ -1,3 +1,6 @@
+import { CampusService } from "../apps/campus-community/campus-service.ts";
+import type { CampusStorage } from "../apps/campus-community/campus-domain.ts";
+import { CampusApp } from "../apps/campus-community/ui/campus-app.tsx";
 import { MapService } from "../apps/map/map-service.ts";
 import { MapApp } from "../apps/map/ui/map-app.tsx";
 import type { MapConversationStorage, MapStorage } from "../apps/map/map.ts";
@@ -60,6 +63,7 @@ export function createPhone(dependencies: {
   aiTransport: AiTransport;
   chat: ChatContext;
   diaryStorage: DiaryStorage;
+  campusStorage: CampusStorage;
   mapStorage: MapStorage;
   mapConversations: MapConversationStorage;
   wechatStorage: WechatStorage;
@@ -75,6 +79,14 @@ export function createPhone(dependencies: {
   const diary = new DiaryService({
     imageHub: dependencies.imageHub,
     storage: dependencies.diaryStorage,
+    data,
+    chat: dependencies.chat,
+    connections: settings.modelConnections,
+    transport: dependencies.aiTransport,
+  });
+  const campus = new CampusService({
+    imageHub: dependencies.imageHub,
+    storage: dependencies.campusStorage,
     data,
     chat: dependencies.chat,
     connections: settings.modelConnections,
@@ -152,6 +164,19 @@ export function createPhone(dependencies: {
         />
       ),
       onQuit: () => wechat.cancel(),
+    },
+    "campus-community": {
+      render: ({ active, onHome }) => (
+        <CampusApp service={campus} active={active} onHome={onHome} />
+      ),
+      onQuitRequested: () => {
+        if (!campus.canQuit()) {
+          return false;
+        }
+        campus.stop();
+        return true;
+      },
+      onQuit: () => campus.quit(),
     },
     diary: {
       render: ({ active, onHome }) => (
