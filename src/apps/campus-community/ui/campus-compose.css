@@ -1,0 +1,244 @@
+:host .campus-compose {
+  gap: 14px;
+}
+
+:host .campus-compose-author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--campus-muted);
+  font-size: 13px;
+}
+
+:host .campus-compose-media {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+:host .campus-compose-tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  background: var(--campus-panel);
+  color: var(--campus-muted);
+  text-align: center;
+  font-size: 12px;
+}
+
+:host .campus-compose-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+:host .campus-compose-tile > span {
+  display: -webkit-box;
+  padding: 6px;
+  overflow: hidden;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+
+:host .campus-compose-tile--editing {
+  outline: 2px solid var(--campus-accent);
+  outline-offset: -2px;
+}
+
+:host .campus-compose-tile--missing {
+  background: #fff1f0;
+}
+
+:host .campus-compose-index,
+:host .campus-compose-missing {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+:host .campus-compose-index {
+  bottom: 4px;
+  left: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: #0009;
+}
+
+:host .campus-compose-missing {
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  background: var(--ios-red);
+}
+
+:host .campus-compose-add {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px dashed var(--ios-line);
+  border-radius: 8px;
+  background: var(--campus-paper);
+  color: var(--campus-muted);
+}
+
+:host .campus-compose-add svg {
+  width: 24px;
+  height: 24px;
+}
+
+:host .campus-compose-tile:disabled,
+:host .campus-compose-add:disabled {
+  opacity: var(--ios-disabled-opacity);
+}
+
+:host .campus-compose-editor {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--campus-line);
+  border-radius: 12px;
+  background: var(--campus-paper);
+}
+
+:host .campus-compose-editor .campus-meta {
+  margin: 0;
+}
+
+:host .campus-compose-move {
+  flex-wrap: wrap;
+}
+
+:host .campus-generate-target {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--campus-panel);
+}
+
+:host .campus-generate-target-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+:host .campus-generate-target-head .campus-meta {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+:host .campus-generate-target p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+:host .campus-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--campus-panel);
+}
+
+:host .campus-mode-switch .ios-button {
+  min-height: 34px;
+  border-radius: 8px;
+  color: var(--campus-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+:host .campus-mode-switch .ios-button[aria-pressed="true"] {
+  background: var(--campus-paper);
+  color: var(--campus-ink);
+  box-shadow: 0 1px 3px #0002;
+}
+
+:host .campus-candidate-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--campus-muted);
+}
+
+:host .campus-candidate-groups {
+  display: grid;
+  gap: 12px;
+}
+
+:host .campus-candidate-group {
+  display: grid;
+}
+
+:host .campus-candidate-group h3 {
+  margin: 0 0 2px;
+  color: var(--campus-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+:host .campus-candidate {
+  display: grid;
+  grid-template-columns: 20px 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--campus-line);
+}
+
+:host .campus-candidate input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--campus-accent);
+}
+
+:host .campus-candidate > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+:host .campus-candidate strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+:host .campus-candidate small {
+  overflow: hidden;
+  color: var(--campus-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host .campus-generate-submit {
+  min-height: 44px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 650;
+}

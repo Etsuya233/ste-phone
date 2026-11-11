@@ -1,131 +1,22 @@
 :host .campus-page {
   --campus-ink: #0f1419;
+  --campus-muted: #536471;
   --campus-accent: #1d9bf0;
   --campus-paper: #ffffff;
-  --campus-rule: #eff3f4;
+  --campus-panel: #f7f9f9;
+  --campus-line: #eff3f4;
   --campus-note: #e8f5fd;
+  --campus-like: #f91880;
   --ios-blue: var(--campus-accent);
   --ios-surface: var(--campus-paper);
   --ios-footer-surface: #fffffff5;
   color: var(--campus-ink);
 }
 
-:host .campus-feed-header {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 22px 16px 12px;
-  border-bottom: 1px solid var(--campus-rule);
-}
-
-:host .campus-feed-header h2 {
-  margin: 0;
-  font: 750 32px/1.1 var(--ios-font);
-  letter-spacing: -0.05em;
-}
-
-:host .campus-feed-header button {
-  font-size: 14px;
-}
-
-:host .campus-tab-bar,
 :host .campus-row {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-:host .campus-tab-bar {
-  justify-content: space-around;
-  min-height: 50px;
-  border-top: 1px solid var(--campus-rule);
-}
-
-:host .campus-tab-bar button[aria-current="page"] {
-  font-weight: 750;
-  text-decoration: underline 2px;
-  text-underline-offset: 5px;
-}
-
-:host .campus-card {
-  padding: 15px 16px 10px;
-  border-bottom: 1px solid var(--campus-rule);
-  background: var(--ios-row-surface);
-}
-
-:host .campus-card p,
-:host .campus-comment p,
-:host .campus-profile p {
-  margin: 8px 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-:host .campus-card time,
-:host .campus-meta {
-  font-size: var(--ios-caption-size);
-  color: var(--ios-secondary-ink);
-}
-
-:host .campus-account {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-:host .campus-avatar {
-  display: grid;
-  flex: 0 0 36px;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: var(--campus-note);
-  color: var(--campus-accent);
-  font-weight: 750;
-}
-
-:host .campus-photos {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
-  margin: 10px 0;
-}
-
-:host .campus-photos button {
-  padding: 0;
-  overflow: hidden;
-  border: 0;
-  border-radius: 6px;
-  background: var(--campus-note);
-  color: var(--campus-accent);
-  aspect-ratio: 1;
-}
-
-:host .campus-photos img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-:host .campus-photos span {
-  display: -webkit-box;
-  padding: 8px;
-  overflow: hidden;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow-wrap: anywhere;
-  font-size: 12px;
 }
 
 :host .campus-form,
@@ -144,14 +35,16 @@
 }
 
 :host .campus-form :is(input:not([type="checkbox"]), textarea, select),
-:host .campus-reply input {
+:host .campus-reply input,
+:host .campus-candidate-search,
+:host .campus-search-input {
   min-width: 0;
   width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--campus-rule);
-  border-radius: 6px;
+  padding: 9px 10px;
+  border: 1px solid var(--campus-line);
+  border-radius: 8px;
   color: var(--campus-ink);
-  background: var(--ios-row-surface);
+  background: var(--campus-paper);
   font: inherit;
 }
 
@@ -165,10 +58,146 @@
   font-size: 16px;
 }
 
-:host .campus-feedback {
-  padding: 8px 16px;
-  background: var(--campus-note);
+:host .campus-form p,
+:host .campus-section > p {
+  margin: 0;
+}
+
+:host .campus-meta {
+  font-size: var(--ios-caption-size);
+  color: var(--campus-muted);
+}
+
+:host .campus-hint {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--campus-panel);
+  font-size: 12px;
+  color: var(--campus-muted);
+}
+
+:host .campus-welcome {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding: 20px 16px;
+}
+
+:host .campus-welcome h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+:host .campus-welcome p {
+  margin: 0;
+  color: var(--campus-muted);
   font-size: 14px;
+}
+
+:host .campus-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--campus-panel);
+  color: var(--campus-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+:host .campus-avatar {
+  --campus-avatar-hue: 205;
+  display: grid;
+  flex: 0 0 40px;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: hsl(var(--campus-avatar-hue) 72% 92%);
+  color: hsl(var(--campus-avatar-hue) 58% 30%);
+  font-weight: 750;
+  overflow: hidden;
+}
+
+:host img.campus-avatar {
+  background: var(--campus-panel);
+}
+
+:host .campus-avatar--small {
+  flex-basis: 28px;
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+
+:host .campus-avatar--large {
+  flex-basis: 64px;
+  width: 64px;
+  height: 64px;
+  font-size: 24px;
+}
+
+:host .campus-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+:host .campus-account-name {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: 700 15px/1.3 var(--ios-font);
+  overflow-wrap: anywhere;
+}
+
+:host .campus-account-name:active,
+:host .campus-account:active {
+  opacity: var(--ios-pressed-opacity);
+}
+
+:host .campus-button-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+}
+
+:host .campus-button-icon svg,
+:host .campus-tab-icon svg,
+:host .campus-action svg {
+  width: 100%;
+  height: 100%;
+}
+
+:host .campus-nav-publish {
+  min-height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+:host .campus-feedback {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--campus-line);
+  background: var(--campus-note);
+  font-size: 13px;
 }
 
 :host .campus-feedback p {
@@ -180,58 +209,32 @@
   color: #9a2920;
 }
 
-:host .campus-comments,
-:host .campus-thread {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+:host .campus-feedback-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-:host .campus-comment {
-  border-top: 1px solid var(--campus-rule);
-  padding-block: 10px;
-}
-
-:host .campus-thread {
-  padding-left: 12px;
-  border-left: 2px solid var(--campus-rule);
-}
-
-:host .campus-reply {
-  display: grid;
-  gap: 0;
-  padding: 0 12px;
-}
-
-:host .campus-reply .ios-button {
+:host .campus-feedback-row .ios-button {
+  flex-shrink: 0;
   min-height: 28px;
+  padding: 0 6px;
+  font-size: 13px;
 }
 
-:host .campus-reply .campus-row input {
-  flex: 1;
+:host .campus-form .campus-feedback {
+  position: static;
+  border: 1px solid var(--campus-line);
+  border-radius: 10px;
 }
 
 :host .campus-image-preview {
   display: block;
   width: 100%;
-  max-height: 360px;
+  max-height: 380px;
   object-fit: contain;
-}
-
-:host .campus-page .campus-actions {
-  flex-wrap: wrap;
-}
-
-:host .campus-post-text {
-  display: block;
-  width: 100%;
-  margin: 8px 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  background: var(--campus-panel);
 }
 
 :host .campus-image-fields {
@@ -239,49 +242,17 @@
   gap: 8px;
 }
 
-:host .campus-form fieldset {
-  min-width: 0;
-  border: 1px solid var(--campus-rule);
-  border-radius: 6px;
-}
-
-:host .campus-form p,
-:host .campus-section > p {
-  margin: 0;
-}
-
-:host .campus-manage-row {
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--campus-rule);
-}
-
-:host .campus-manage-row p {
-  margin: 6px 0 0;
-}
-
-:host .campus-reply {
-  padding-top: 5px;
-}
-
-:host .campus-reply input {
-  min-height: 36px;
-}
-
-:host .campus-page .ios-nav-side--right .ios-button {
-  white-space: nowrap;
-}
-
-:host .campus-reply .campus-meta {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-:host .campus-reply .ios-button {
-  flex-shrink: 0;
+:host .campus-image-fields label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 650;
 }
 
 :host figure.campus-profile {
   margin: 0;
+}
+
+:host .campus-actions {
+  flex-wrap: wrap;
 }

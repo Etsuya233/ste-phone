@@ -130,6 +130,9 @@ function readComments(value: unknown, accounts: Set<string>): void {
     if (typeof comment.deleted !== "boolean") {
       invalid("评论删除状态");
     }
+    if (comment.createdAt !== undefined) {
+      count(comment.createdAt, "评论时间");
+    }
     if (comment.deleted) {
       if (typeof comment.text !== "string") {
         invalid("已删除评论正文");

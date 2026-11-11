@@ -85,7 +85,12 @@ function editPost(
         ...post,
         comments: [
           ...post.comments,
-          { ...comment, authorId: requireActiveAccount(data).id, deleted: false },
+          {
+            ...comment,
+            authorId: requireActiveAccount(data).id,
+            deleted: false,
+            createdAt: comment.createdAt ?? Date.now(),
+          },
         ],
       };
     }

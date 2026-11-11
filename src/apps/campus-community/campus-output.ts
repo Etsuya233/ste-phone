@@ -150,6 +150,7 @@ function parseInteraction(
       text: string(comment.text, "评论正文"),
       replyTo: parseReply(comment.replyTo, comments, existing),
       deleted: false,
+      createdAt: Date.now(),
     });
   }
   if (!Array.isArray(value.likes)) {

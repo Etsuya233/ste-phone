@@ -75,6 +75,7 @@ test("删除已有楼内回复的评论保留回复及稳定目标", () => {
   const post = readCampusData(data).posts[0]!;
   assert.equal(post.comments[0]!.deleted, true);
   assert.equal(post.comments[0]!.text, "");
+  assert.equal(typeof post.comments[0]!.createdAt, "number");
   assert.equal(post.comments[1]!.replyTo, "first");
   assert.equal(post.comments.filter(({ deleted }) => !deleted).length, 1);
   assert.equal(post.backgroundComments, 1000);

@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
+import { Alert } from "../../../frontend/foundation/alert.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { createCampusId, type CampusAccount } from "../campus-domain.ts";
+import { AccountAvatar } from "./campus-avatar.tsx";
+import { CampusAvatarPicker } from "./campus-avatar-picker.tsx";
 import { CampusPage, type CampusPageProps } from "./campus-page.tsx";
 
 interface AccountDraft {
@@ -33,14 +36,35 @@ export function CampusAccountEditor(props: CampusPageProps & { accountId?: strin
   );
   const [personProfile, setPersonProfile] = useState(person?.profile ?? "");
   const [personDisabled, setPersonDisabled] = useState(person?.disabled ?? false);
-  const [ownership, setOwnership] = useState(
+  const [initialOwnership] = useState(() =>
     state.authors.length ? `memory:${state.authors[0]!.id}` : "new-person",
   );
+  const [ownership, setOwnership] = useState(initialOwnership);
   const [saved, setSaved] = useState(false);
+  const [discard, setDiscard] = useState(false);
+  const [avatarPicker, setAvatarPicker] = useState(false);
   const newPerson = !account && ownership === "new-person";
   const publicAccount = account ? account.owner.kind === "public" : ownership === "public";
   const valid = Boolean(draft.nickname.trim() && (!(person || newPerson) || personProfile.trim()));
   const busy = saved || state.phase !== "idle";
+  const initial = account ?? {
+    nickname: "",
+    avatar: "",
+    bio: "",
+    style: "",
+    privateIdentity: false,
+    disabled: false,
+  };
+  const dirty =
+    draft.nickname !== initial.nickname ||
+    draft.avatar !== initial.avatar ||
+    draft.bio !== initial.bio ||
+    draft.style !== initial.style ||
+    draft.privateIdentity !== initial.privateIdentity ||
+    draft.disabled !== initial.disabled ||
+    personProfile !== (person?.profile ?? "") ||
+    personDisabled !== (person?.disabled ?? false) ||
+    (!account && ownership !== initialOwnership);
 
   useEffect(() => {
     if (saved && navigation.current) {
@@ -87,53 +111,101 @@ export function CampusAccountEditor(props: CampusPageProps & { accountId?: strin
     );
   }
 
+  function back() {
+    if (saved) {
+      navigation.pop();
+      return;
+    }
+    if (dirty) {
+      setDiscard(true);
+    } else {
+      navigation.pop();
+    }
+  }
+
   return (
-    <CampusPage {...props} title={account ? "编辑账号" : "新建账号"} back={navigation.pop}>
-      <form
-        className="campus-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void save();
-        }}
-      >
-        {!account ? (
-          <OwnershipField state={state} ownership={ownership} onChange={setOwnership} />
-        ) : null}
-        {person || newPerson ? (
-          <label>
-            路人人设
-            <textarea
-              value={personProfile}
-              onChange={(event) => setPersonProfile(event.target.value)}
-              placeholder="年级、社团、兴趣或说话习惯"
-              rows={3}
-              required
+    <>
+      <div inert={discard}>
+        <CampusPage {...props} title={account ? "编辑账号" : "新建账号"} back={back}>
+          <form
+            className="campus-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void save();
+            }}
+          >
+            {!account ? (
+              <OwnershipField state={state} ownership={ownership} onChange={setOwnership} />
+            ) : null}
+            {person || newPerson ? (
+              <label>
+                路人人设
+                <textarea
+                  value={personProfile}
+                  onChange={(event) => setPersonProfile(event.target.value)}
+                  placeholder="年级、社团、兴趣或说话习惯"
+                  rows={3}
+                  required
+                />
+              </label>
+            ) : null}
+            <AccountFields
+              draft={draft}
+              onChange={setDraft}
+              publicAccount={publicAccount}
+              existing={Boolean(account)}
+              onPickAvatar={() => setAvatarPicker(true)}
             />
-          </label>
-        ) : null}
-        <AccountFields
-          draft={draft}
-          onChange={setDraft}
-          publicAccount={publicAccount}
-          existing={Boolean(account)}
-        />
-        {person ? (
-          <label>
-            <span>
-              <input
-                type="checkbox"
-                checked={personDisabled}
-                onChange={(event) => setPersonDisabled(event.target.checked)}
-              />{" "}
-              停止该路人的所有账号参与新互动
-            </span>
-          </label>
-        ) : null}
-        <Button type="submit" variant="filled" disabled={busy || !valid}>
-          {account ? "保存资料" : "创建账号"}
-        </Button>
-      </form>
-    </CampusPage>
+            {avatarPicker ? (
+              <CampusAvatarPicker
+                hub={service.imageHub}
+                selected={draft.avatar}
+                onSelect={(path) => {
+                  setDraft({ ...draft, avatar: path });
+                  setAvatarPicker(false);
+                }}
+                onClose={() => setAvatarPicker(false)}
+              />
+            ) : null}
+            {person ? (
+              <label>
+                <span>
+                  <input
+                    type="checkbox"
+                    checked={personDisabled}
+                    onChange={(event) => setPersonDisabled(event.target.checked)}
+                  />{" "}
+                  停止该路人的所有账号参与新互动
+                </span>
+              </label>
+            ) : null}
+            <Button type="submit" variant="filled" disabled={busy || !valid}>
+              {account ? "保存资料" : "创建账号"}
+            </Button>
+          </form>
+        </CampusPage>
+      </div>
+      {discard ? (
+        <Alert
+          title="舍弃账号修改？"
+          active={navigation.current}
+          onDismiss={() => setDiscard(false)}
+          actions={[
+            { label: "继续编辑", onClick: () => setDiscard(false) },
+            {
+              label: "舍弃",
+              primary: true,
+              onClick: () => {
+                setDiscard(false);
+                navigation.pop();
+              },
+            },
+          ]}
+        >
+          尚未保存的账号资料会丢失。
+        </Alert>
+      ) : null}
+    </>
   );
 }
 
@@ -182,11 +254,13 @@ function AccountFields({
   onChange,
   publicAccount,
   existing,
+  onPickAvatar,
 }: {
   draft: AccountDraft;
   onChange: (value: AccountDraft) => void;
   publicAccount: boolean;
   existing: boolean;
+  onPickAvatar: () => void;
 }) {
   return (
     <>
@@ -198,13 +272,30 @@ function AccountFields({
           required
         />
       </label>
-      <label>
-        头像地址
-        <input
-          value={draft.avatar}
-          onChange={(event) => onChange({ ...draft, avatar: event.target.value })}
-        />
-      </label>
+      <div className="campus-avatar-field">
+        <span>头像</span>
+        <div className="campus-row">
+          <AccountAvatar
+            account={{
+              id: "draft",
+              owner: { kind: "public" },
+              nickname: draft.nickname || "?",
+              avatar: draft.avatar,
+              bio: "",
+              style: "",
+              disabled: false,
+              following: [],
+              privateIdentity: false,
+            }}
+          />
+          <Button onClick={onPickAvatar}>从图库选择</Button>
+          {draft.avatar ? (
+            <Button variant="danger" onClick={() => onChange({ ...draft, avatar: "" })}>
+              清除
+            </Button>
+          ) : null}
+        </div>
+      </div>
       <label>
         公开简介
         <textarea

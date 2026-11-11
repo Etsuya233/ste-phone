@@ -1,0 +1,192 @@
+:host .campus-discussion {
+  gap: 6px;
+}
+
+:host .campus-comments-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--campus-line);
+}
+
+:host .campus-comments-heading h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+:host .campus-comments,
+:host .campus-thread {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+:host .campus-comment-thread {
+  border-bottom: 1px solid var(--campus-line);
+}
+
+:host .campus-comment {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 0;
+}
+
+:host .campus-comment + .campus-comment {
+  border-top: 1px solid var(--campus-line);
+}
+
+:host .campus-comment-body {
+  min-width: 0;
+}
+
+:host .campus-comment-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+:host .campus-comment-heading .campus-account-name {
+  font-size: 14px;
+}
+
+:host .campus-comment p {
+  margin: 4px 0;
+  font-size: 15px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+:host .campus-comment .campus-meta {
+  margin: 2px 0;
+  font-size: 12px;
+}
+
+:host .campus-comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+:host .campus-comment-action {
+  min-height: 28px;
+  padding: 0;
+  color: var(--campus-accent);
+  font-size: 13px;
+}
+
+:host .campus-comment-delete {
+  color: var(--campus-muted);
+}
+
+:host .campus-comment--highlight {
+  animation: campus-comment-highlight 2.4s ease-out;
+  scroll-margin-top: calc(var(--status-height) + var(--nav-height) + 56px);
+}
+
+@keyframes campus-comment-highlight {
+  from {
+    background: var(--campus-note);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+:host .campus-thread {
+  margin: 0 0 6px 38px;
+  border-left: 2px solid var(--campus-line);
+  padding-left: 10px;
+}
+
+:host .campus-thread > li + li {
+  border-top: 1px solid var(--campus-line);
+}
+
+:host .campus-thread .campus-comment {
+  grid-template-columns: 24px minmax(0, 1fr);
+}
+
+:host .campus-thread .campus-avatar {
+  width: 24px;
+  height: 24px;
+  flex-basis: 24px;
+  font-size: 10px;
+}
+
+:host .campus-reply {
+  display: grid;
+  gap: 0;
+  padding: 5px 12px 0;
+}
+
+:host .campus-reply-target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--campus-muted);
+  font-size: 12px;
+}
+
+:host .campus-reply-target .ios-button {
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+
+:host .campus-reply .campus-row input {
+  flex: 1;
+  min-height: 36px;
+}
+
+:host .campus-reply .ios-button {
+  flex-shrink: 0;
+  min-height: 36px;
+  font-size: 14px;
+}
+
+:host .campus-image-viewer {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 16px;
+}
+
+:host .campus-image-viewer figcaption {
+  display: grid;
+  gap: 4px;
+  color: var(--campus-ink);
+  font-size: 15px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+:host .campus-image-viewer figcaption small {
+  color: var(--campus-muted);
+  font-size: 12px;
+}
+
+:host .campus-image-placeholder {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--campus-panel);
+  color: var(--campus-muted);
+  text-align: center;
+}
+
+:host .campus-image-nav {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16px 16px;
+}

@@ -32,6 +32,8 @@ export interface CampusComment {
   text: string;
   replyTo: string | null;
   deleted: boolean;
+  /** 旧数据没有该字段；新评论用于显示本地发送时间。 */
+  createdAt?: number;
 }
 
 export interface CampusPost {

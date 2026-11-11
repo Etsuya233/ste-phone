@@ -1,100 +1,89 @@
 import { Button } from "../../../frontend/foundation/button.tsx";
-import type { CampusAccount, CampusPost } from "../campus-domain.ts";
+import type { CampusPost } from "../campus-domain.ts";
+import { formatCampusCount, formatCampusFullTime, formatCampusTime } from "../campus-display.ts";
+import { AccountAvatar, AccountName } from "./campus-avatar.tsx";
+import { CommentIcon, HeartIcon } from "./campus-icons.tsx";
+import { CampusMedia } from "./campus-media.tsx";
 import type { CampusPageProps } from "./campus-page.tsx";
-
-export function AccountAvatar({ account }: { account: CampusAccount }) {
-  return account.avatar ? (
-    <img className="campus-avatar" src={account.avatar} alt="" loading="lazy" />
-  ) : (
-    <span className="campus-avatar" aria-hidden="true">
-      {Array.from(account.nickname)[0]}
-    </span>
-  );
-}
-
-export function AccountLink({ account, onClick }: { account: CampusAccount; onClick: () => void }) {
-  return (
-    <button type="button" className="campus-account" onClick={onClick}>
-      <AccountAvatar account={account} />
-      <span>{account.nickname}</span>
-    </button>
-  );
-}
 
 export function CampusPostCard({
   service,
   state,
   navigation,
   post,
+  now,
   detail = false,
-}: Omit<CampusPageProps, "onHome"> & { post: CampusPost; detail?: boolean }) {
+  highlight = false,
+}: Omit<CampusPageProps, "onHome" | "active"> & {
+  post: CampusPost;
+  now: Date;
+  detail?: boolean;
+  highlight?: boolean;
+}) {
   const author = state.data.accounts.find((account) => account.id === post.authorId)!;
   const current = state.data.activeAccountId;
   const liked = current !== null && post.likes.includes(current);
   const openPost = () => navigation.push({ page: "post", postId: post.id });
+  const openImage = (index: number) => navigation.push({ page: "image", postId: post.id, index });
   const date = new Date(post.createdAt);
   const commentCount =
     post.backgroundComments + post.comments.filter((item) => !item.deleted).length;
+  const likeCount = post.backgroundLikes + post.likes.length;
+  const fullTime = formatCampusFullTime(post.createdAt);
 
   return (
-    <article className="campus-card">
-      <div className="campus-row">
-        <AccountLink
-          account={author}
-          onClick={() => navigation.push({ page: "profile", accountId: author.id })}
-        />
-        <time dateTime={date.toISOString()}>
-          {date.toLocaleString("zh-CN", {
-            month: "numeric",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </time>
-      </div>
-      {post.text ? (
-        detail ? (
-          <p>{post.text}</p>
-        ) : (
-          <button className="campus-post-text" type="button" onClick={openPost}>
-            {post.text}
-          </button>
-        )
-      ) : null}
-      {post.images.length ? (
-        <div className="campus-photos">
-          {post.images.map((image, index) => (
-            <button
-              key={index}
-              type="button"
-              aria-label={`查看第 ${index + 1} 张配图`}
-              onClick={() => navigation.push({ page: "image", postId: post.id, index })}
-            >
-              {image.image ? (
-                <img src={image.image.path} alt={image.description} loading="lazy" />
-              ) : (
-                <span>{image.description || image.prompt}</span>
-              )}
-            </button>
-          ))}
+    <article
+      className={`campus-card${detail ? " campus-card--detail" : ""}${highlight ? " campus-card--highlight" : ""}`}
+      data-post-id={post.id}
+    >
+      <AccountAvatar account={author} />
+      <div className="campus-card-body">
+        <div className="campus-card-heading">
+          <AccountName
+            account={author}
+            onClick={() => navigation.push({ page: "profile", accountId: author.id })}
+          />
+          <time dateTime={date.toISOString()} title={fullTime}>
+            {detail ? fullTime : formatCampusTime(post.createdAt, now)}
+          </time>
         </div>
-      ) : null}
-      <div className="campus-row">
-        <Button
-          aria-pressed={liked}
-          aria-label={`${liked ? "取消点赞" : "点赞"}，${(post.backgroundLikes + post.likes.length).toLocaleString("zh-CN")} 个赞`}
-          disabled={!current || state.phase !== "idle"}
-          onClick={() => void service.command({ type: "like", postId: post.id })}
-        >
-          {liked ? "♥" : "♡"} {(post.backgroundLikes + post.likes.length).toLocaleString("zh-CN")}
-        </Button>
-        {detail ? (
-          <span className="campus-meta">{commentCount.toLocaleString("zh-CN")} 条评论</span>
-        ) : (
-          <Button onClick={openPost}>
-            {commentCount.toLocaleString("zh-CN")} 条评论 · 查看详情
+        {post.text ? (
+          detail ? (
+            <p className="campus-card-text">{post.text}</p>
+          ) : (
+            <button className="campus-post-text" type="button" onClick={openPost}>
+              {post.text}
+            </button>
+          )
+        ) : null}
+        <CampusMedia post={post} detail={detail} onOpen={openImage} />
+        <div className="campus-card-actions">
+          {detail ? (
+            <span className="campus-action campus-action--static">
+              <CommentIcon />
+              <span>{formatCampusCount(commentCount)}</span>
+            </span>
+          ) : (
+            <Button
+              className="campus-action"
+              aria-label={`查看 ${commentCount.toLocaleString("zh-CN")} 条评论`}
+              onClick={openPost}
+            >
+              <CommentIcon />
+              <span>{formatCampusCount(commentCount)}</span>
+            </Button>
+          )}
+          <Button
+            className={`campus-action campus-like${liked ? " campus-like--on" : ""}`}
+            aria-pressed={liked}
+            aria-label={`${liked ? "取消点赞" : "点赞"}，${likeCount.toLocaleString("zh-CN")} 个赞`}
+            disabled={!current || state.phase !== "idle"}
+            onClick={() => void service.command({ type: "like", postId: post.id })}
+          >
+            <HeartIcon filled={liked} />
+            <span>{formatCampusCount(likeCount)}</span>
           </Button>
-        )}
+        </div>
       </div>
     </article>
   );

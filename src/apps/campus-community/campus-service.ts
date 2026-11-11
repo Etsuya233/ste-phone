@@ -15,6 +15,7 @@ import {
 import { applyCampusCommand, type CampusCommand } from "./campus-commands.ts";
 import { campusSpace, readCampusAuthors, type CampusAuthor } from "./campus-context.ts";
 import { generateCampusBatch } from "./campus-generation.ts";
+import { createCampusAccounts } from "./campus-accounts.ts";
 
 interface CampusDependencies {
   storage: CampusStorage;
@@ -39,14 +40,26 @@ type CampusTask =
   | { phase: "saving"; scope: CampusScope; batch: CampusBatch }
   | { phase: "unsaved"; scope: CampusScope; batch: CampusBatch; error: string };
 
+/** 最近一次保存的定位信息只服务当前会话的界面，不进入持久数据。 */
+export interface CampusSavedBatch {
+  batchId: string;
+  kind: "generated" | "published" | "commented";
+  postIds: string[];
+  commentIds: string[];
+  targetPostId: string | null;
+}
+
 interface CampusSnapshot {
   data: CampusData;
   authors: CampusAuthor[];
+  authorsReady: boolean;
   scopeKey: string | null;
   phase: "idle" | CampusTask["phase"];
   error: string | null;
   canRetry: boolean;
   completedBatchId: string | null;
+  lastSaved: CampusSavedBatch | null;
+  revealedBatchId: string | null;
 }
 
 export class CampusService {
@@ -63,11 +76,14 @@ export class CampusService {
   #snapshot: CampusSnapshot = {
     data: emptyCampus(),
     authors: [],
+    authorsReady: false,
     scopeKey: null,
     phase: "idle",
     error: null,
     canRetry: false,
     completedBatchId: null,
+    lastSaved: null,
+    revealedBatchId: null,
   };
 
   constructor(dependencies: CampusDependencies) {
@@ -103,9 +119,12 @@ export class CampusService {
     this.#publish({
       data: emptyCampus(),
       authors: [],
+      authorsReady: false,
       scopeKey: null,
       error: null,
       completedBatchId: null,
+      lastSaved: null,
+      revealedBatchId: null,
     });
   }
 
@@ -156,6 +175,7 @@ export class CampusService {
       return;
     }
     this.#binding = binding;
+    this.#publish({ authorsReady: false });
     // Recheck the stable space on revision changes while keeping same-instance history visible.
     const refresh = ++this.#revision;
     this.#scopeVerified = false;
@@ -168,10 +188,16 @@ export class CampusService {
         scopeKey: null,
         error: null,
         completedBatchId: null,
+        lastSaved: null,
+        revealedBatchId: null,
       });
     }
     if (!chatId || !context.available || !context.chatIdentity || !context.scopeId) {
-      this.#publish({ error: context.message ?? "当前聊天没有可用的 Memory 资料空间" });
+      this.#publish({
+        error: context.message ?? "当前聊天没有可用的 Memory 资料空间",
+        lastSaved: null,
+        revealedBatchId: null,
+      });
       return;
     }
     void this.#loadScope(
@@ -208,6 +234,8 @@ export class CampusService {
           scopeKey: null,
           error: null,
           completedBatchId: null,
+          lastSaved: null,
+          revealedBatchId: null,
         });
         const saved = storage.read(chatId, space) ?? emptyCampus();
         this.#scope = scope;
@@ -224,7 +252,7 @@ export class CampusService {
       }
       const authors = await readCampusAuthors(data, query, () => revision === this.#revision);
       if (authors && revision === this.#revision) {
-        this.#publish({ authors });
+        this.#publish({ authors, authorsReady: true });
       }
     } catch (error) {
       if (revision === this.#revision) {
@@ -310,7 +338,18 @@ export class CampusService {
       const data = appendCampusBatch(current, batch);
       await this.#dependencies.storage.write(scope.chatId, scope.space, data);
       this.#task = null;
-      this.#publish(this.#savedScope(scope) ? { data, completedBatchId: batch.id } : {});
+      const saved: CampusSavedBatch = {
+        batchId: batch.id,
+        kind: "generated",
+        postIds: batch.posts.map(({ id }) => id),
+        commentIds: batch.interaction?.comments.map(({ id }) => id) ?? [],
+        targetPostId: batch.interaction?.postId ?? null,
+      };
+      this.#publish(
+        this.#savedScope(scope)
+          ? { data, completedBatchId: batch.id, lastSaved: saved, revealedBatchId: null }
+          : {},
+      );
     } catch (error) {
       this.#task = { phase: "unsaved", scope, batch, error: (error as Error).message };
       this.#publish();
@@ -337,11 +376,79 @@ export class CampusService {
     this.#publish({ error: null });
   }
 
-  command(command: CampusCommand): Promise<boolean> {
-    if (this.#task) {
-      return Promise.resolve(false);
+  dismissError(): void {
+    if (!this.#task && this.#snapshot.error) {
+      this.#publish({ error: null });
     }
-    return this.#writeEdit((data) => applyCampusCommand(data, command));
+  }
+
+  clearSaved(): void {
+    if (this.#snapshot.lastSaved) {
+      this.#publish({ lastSaved: null, revealedBatchId: null });
+    }
+  }
+
+  markSavedRevealed(batchId: string): void {
+    if (
+      this.#snapshot.lastSaved?.batchId === batchId &&
+      this.#snapshot.revealedBatchId !== batchId
+    ) {
+      this.#publish({ revealedBatchId: batchId });
+    }
+  }
+
+  async command(
+    command: CampusCommand | { type: "create-accounts"; authorIds: string[]; scopeKey: string },
+  ): Promise<boolean> {
+    if (this.#task) {
+      return false;
+    }
+    const saved = await this.#writeEdit((data) => {
+      if (command.type !== "create-accounts") {
+        return applyCampusCommand(data, command);
+      }
+      // 页面选择属于发起时的空间；人物刷新完成前不能用旧名单提交。
+      if (command.scopeKey !== this.#snapshot.scopeKey || !this.#snapshot.authorsReady) {
+        throw new Error("人物资料正在更新或范围已变化，请重新选择");
+      }
+      return createCampusAccounts(data, this.#snapshot.authors, command.authorIds);
+    });
+    if (!saved) {
+      return false;
+    }
+    if (
+      command.type === "publish" &&
+      this.#snapshot.data.posts.some(({ id }) => id === command.post.id)
+    ) {
+      this.#publish({
+        lastSaved: {
+          batchId: `manual:${command.post.id}`,
+          kind: "published",
+          postIds: [command.post.id],
+          commentIds: [],
+          targetPostId: null,
+        },
+        revealedBatchId: null,
+      });
+    }
+    if (
+      command.type === "comment" &&
+      this.#snapshot.data.posts
+        .find(({ id }) => id === command.postId)
+        ?.comments.some(({ id }) => id === command.comment.id)
+    ) {
+      this.#publish({
+        lastSaved: {
+          batchId: `manual:${command.comment.id}`,
+          kind: "commented",
+          postIds: [],
+          commentIds: [command.comment.id],
+          targetPostId: command.postId,
+        },
+        revealedBatchId: null,
+      });
+    }
+    return true;
   }
 
   switchAccount(id: string): Promise<boolean> {
@@ -372,6 +479,9 @@ export class CampusService {
     this.#publish({ error: null });
     try {
       const data = update(current);
+      if (data === current) {
+        return true;
+      }
       await this.#dependencies.storage.write(scope.chatId, scope.space, data);
       if (this.#savedScope(scope)) {
         this.#publish({ data });

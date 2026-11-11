@@ -1,32 +1,19 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ActionSheet } from "../../../frontend/foundation/action-sheet.tsx";
 import { Alert } from "../../../frontend/foundation/alert.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
-import { createCampusId, type CampusComment, type CampusPost } from "../campus-domain.ts";
+import { createCampusId, type CampusPost } from "../campus-domain.ts";
+import { formatCampusCount } from "../campus-display.ts";
+import { CampusComments } from "./campus-comments.tsx";
+import { MoreIcon, SparkleIcon } from "./campus-icons.tsx";
 import { CampusPage, type CampusPageProps } from "./campus-page.tsx";
-import { AccountLink, CampusPostCard } from "./campus-post-card.tsx";
-
-function groupComments(comments: CampusComment[]) {
-  const threads: { root: CampusComment; replies: CampusComment[] }[] = [];
-  const byCommentId = new Map<string, (typeof threads)[number]>();
-  // Every reply points to an earlier saved comment. Deleted comments keep their IDs and position.
-  for (const comment of comments) {
-    if (comment.replyTo === null) {
-      const thread = { root: comment, replies: [] };
-      threads.push(thread);
-      byCommentId.set(comment.id, thread);
-    } else {
-      const thread = byCommentId.get(comment.replyTo)!;
-      thread.replies.push(comment);
-      byCommentId.set(comment.id, thread);
-    }
-  }
-  return threads.filter(
-    ({ root, replies }) => !root.deleted || replies.some(({ deleted }) => !deleted),
-  );
-}
+import { CampusPostCard } from "./campus-post-card.tsx";
+import { CampusReplyForm } from "./campus-reply-form.tsx";
+import { useCampusClock } from "./use-campus-clock.ts";
 
 export function CampusPostPage(props: CampusPageProps & { postId: string }) {
   const post = props.state.data.posts.find(({ id }) => id === props.postId);
+  const now = useCampusClock(props.active);
   if (!post) {
     return (
       <CampusPage {...props} title="帖子" back={props.navigation.pop}>
@@ -34,15 +21,18 @@ export function CampusPostPage(props: CampusPageProps & { postId: string }) {
       </CampusPage>
     );
   }
-  return <CampusDiscussion key={props.state.data.activeAccountId} {...props} post={post} />;
+  return <CampusDiscussion {...props} post={post} now={now} />;
 }
 
-function CampusDiscussion(props: CampusPageProps & { post: CampusPost }) {
-  const { service, state, navigation, post } = props;
+function CampusDiscussion(props: CampusPageProps & { post: CampusPost; now: Date }) {
+  const { service, state, navigation, post, now } = props;
   const [target, setTarget] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ kind: "post" } | { kind: "comment"; id: string } | null>(
     null,
   );
+  const [menu, setMenu] = useState(false);
+  const [highlight, setHighlight] = useState<string | null>(null);
+  const comments = useRef<HTMLElement>(null);
   const replyInput = useRef<HTMLInputElement>(null);
   const current = state.data.activeAccountId;
   const busy = state.phase !== "idle";
@@ -51,6 +41,39 @@ function CampusDiscussion(props: CampusPageProps & { post: CampusPost }) {
   const replyName = selected
     ? state.data.accounts.find(({ id }) => id === selected.authorId)!.nickname
     : null;
+  const commentCount =
+    post.backgroundComments + post.comments.filter(({ deleted }) => !deleted).length;
+  const savedBatchId = state.lastSaved?.batchId;
+  const revealedBatchId = state.revealedBatchId;
+
+  useEffect(() => {
+    const saved = state.lastSaved;
+    if (
+      !navigation.current ||
+      !saved ||
+      saved.batchId === revealedBatchId ||
+      saved.targetPostId !== post.id ||
+      !saved.commentIds.length
+    ) {
+      return;
+    }
+    const first = saved.commentIds[0]!;
+    setHighlight(first);
+    const frame = requestAnimationFrame(() => {
+      const element = comments.current?.querySelector<HTMLElement>(`[data-comment-id="${first}"]`);
+      element?.scrollIntoView({ block: "start" });
+      service.markSavedRevealed(saved.batchId);
+    });
+    return () => cancelAnimationFrame(frame);
+    // 同一条批次只定位一次；快照里的其他字段变化不重复触发。
+  }, [savedBatchId, revealedBatchId, post.id, navigation.current]);
+  useEffect(() => {
+    if (!highlight) {
+      return;
+    }
+    const timer = setTimeout(() => setHighlight(null), 2400);
+    return () => clearTimeout(timer);
+  }, [highlight]);
 
   function reply(id: string) {
     setTarget(id);
@@ -78,12 +101,19 @@ function CampusDiscussion(props: CampusPageProps & { post: CampusPost }) {
 
   return (
     <>
-      <div inert={Boolean(confirm)}>
+      <div inert={Boolean(confirm) || menu}>
         <CampusPage
           {...props}
           title="帖子"
           back={navigation.pop}
-          footerHeight={selected ? 76 : 50}
+          footerHeight={selected ? 78 : 50}
+          right={
+            <Button aria-label="帖子操作" onClick={() => setMenu(true)}>
+              <span className="campus-button-icon">
+                <MoreIcon />
+              </span>
+            </Button>
+          }
           footer={
             current ? (
               <CampusReplyForm
@@ -113,30 +143,66 @@ function CampusDiscussion(props: CampusPageProps & { post: CampusPost }) {
             ) : undefined
           }
         >
-          <CampusPostCard {...props} detail />
-          <section className="campus-section" aria-label="讨论">
-            <CampusPostActions
-              postId={post.id}
-              navigation={navigation}
-              busy={busy}
-              isOwner={isOwner}
-              onDelete={() => setConfirm({ kind: "post" })}
-            />
-            <CommentThreads
-              post={post}
-              state={state}
-              navigation={navigation}
-              onReply={reply}
-              onRemove={(id) => setConfirm({ kind: "comment", id })}
-            />
+          <CampusPostCard {...props} detail post={post} now={now} />
+          <section className="campus-section campus-discussion" aria-label="讨论" ref={comments}>
+            <div className="campus-comments-heading">
+              <h2>评论 {formatCampusCount(commentCount)}</h2>
+              <Button
+                className="campus-ai-button"
+                disabled={busy}
+                onClick={() => navigation.push({ page: "generate", postId: post.id })}
+              >
+                <span className="campus-button-icon">
+                  <SparkleIcon />
+                </span>
+                生成评论
+              </Button>
+            </div>
             {post.backgroundComments > 0 ? (
               <p className="campus-meta">
                 还有 {post.backgroundComments.toLocaleString("zh-CN")} 条评论未加载
               </p>
             ) : null}
+            <CampusComments
+              post={post}
+              state={state}
+              navigation={navigation}
+              now={now}
+              highlightCommentId={highlight}
+              onReply={reply}
+              onRemove={(id) => setConfirm({ kind: "comment", id })}
+            />
           </section>
         </CampusPage>
       </div>
+      {menu ? (
+        <ActionSheet
+          active={navigation.current}
+          onDismiss={() => setMenu(false)}
+          actions={[
+            {
+              label: "生成本帖互动",
+              disabled: busy,
+              onClick: () => navigation.push({ page: "generate", postId: post.id }),
+            },
+            {
+              label: "调整背景热度",
+              disabled: busy,
+              onClick: () => navigation.push({ page: "heat", postId: post.id }),
+            },
+            ...(isOwner
+              ? [
+                  {
+                    label: "删除帖子",
+                    destructive: true,
+                    disabled: busy,
+                    onClick: () => setConfirm({ kind: "post" }),
+                  },
+                ]
+              : []),
+          ]}
+        />
+      ) : null}
       {confirm ? (
         <Alert
           title={confirm.kind === "post" ? "删除帖子？" : "删除评论？"}
@@ -153,161 +219,5 @@ function CampusDiscussion(props: CampusPageProps & { post: CampusPost }) {
         </Alert>
       ) : null}
     </>
-  );
-}
-
-function CampusPostActions({
-  postId,
-  navigation,
-  busy,
-  isOwner,
-  onDelete,
-}: {
-  postId: string;
-  navigation: CampusPageProps["navigation"];
-  busy: boolean;
-  isOwner: boolean;
-  onDelete: () => void;
-}) {
-  return (
-    <div className="campus-row campus-actions">
-      <Button
-        variant="filled"
-        disabled={busy}
-        onClick={() => navigation.push({ page: "generate", postId })}
-      >
-        生成本帖互动
-      </Button>
-      <Button disabled={busy} onClick={() => navigation.push({ page: "heat", postId })}>
-        调整热度
-      </Button>
-      {isOwner ? (
-        <Button variant="danger" disabled={busy} onClick={onDelete}>
-          删除帖子
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-function CampusReplyForm({
-  input,
-  replyName,
-  busy,
-  onCancel,
-  onSend,
-}: {
-  input: React.RefObject<HTMLInputElement | null>;
-  replyName: string | null;
-  busy: boolean;
-  onCancel: () => void;
-  onSend: (text: string) => Promise<boolean>;
-}) {
-  const [text, setText] = useState("");
-  return (
-    <form
-      className="campus-reply"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        if (!busy && text.trim() && (await onSend(text.trim()))) {
-          setText("");
-        }
-      }}
-    >
-      {replyName ? (
-        <div className="campus-row">
-          <span className="campus-meta">回复 {replyName}</span>
-          <Button disabled={busy} onClick={onCancel}>
-            取消回复
-          </Button>
-        </div>
-      ) : null}
-      <div className="campus-row">
-        <input
-          ref={input}
-          aria-label="评论正文"
-          placeholder="写一条评论…"
-          value={text}
-          disabled={busy}
-          onChange={(event) => setText(event.target.value)}
-        />
-        <Button type="submit" disabled={busy || !text.trim()}>
-          发送
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-function CommentThreads({
-  post,
-  state,
-  navigation,
-  onReply,
-  onRemove,
-}: Pick<CampusPageProps, "state" | "navigation"> & {
-  post: CampusPost;
-  onReply: (id: string) => void;
-  onRemove: (id: string) => void;
-}) {
-  const byId = new Map(post.comments.map((comment) => [comment.id, comment]));
-  const accounts = new Map(state.data.accounts.map((account) => [account.id, account]));
-  const current = state.data.activeAccountId;
-  const busy = state.phase !== "idle";
-  function renderComment(comment: CampusComment) {
-    const author = accounts.get(comment.authorId)!;
-    const target = comment.replyTo === null ? null : byId.get(comment.replyTo)!;
-    if (comment.deleted) {
-      return <p className="campus-meta">原评论已删除</p>;
-    }
-    return (
-      <>
-        <AccountLink
-          account={author}
-          onClick={() => navigation.push({ page: "profile", accountId: author.id })}
-        />
-        {target ? (
-          <p className="campus-meta">
-            {target.deleted
-              ? "回复的评论已删除"
-              : `回复 ${accounts.get(target.authorId)!.nickname}`}
-          </p>
-        ) : null}
-        <p>{comment.text}</p>
-        {current ? (
-          <Button disabled={busy} onClick={() => onReply(comment.id)}>
-            回复
-          </Button>
-        ) : null}
-        {current === author.id ? (
-          <Button variant="danger" disabled={busy} onClick={() => onRemove(comment.id)}>
-            删除
-          </Button>
-        ) : null}
-      </>
-    );
-  }
-  const threads = groupComments(post.comments);
-  return threads.length ? (
-    <ol className="campus-comments">
-      {threads.map(({ root, replies }) => (
-        <li key={root.id} className="campus-comment">
-          {renderComment(root)}
-          {replies.some(({ deleted }) => !deleted) ? (
-            <ol className="campus-thread">
-              {replies
-                .filter(({ deleted }) => !deleted)
-                .map((reply) => (
-                  <li className="campus-comment" key={reply.id}>
-                    {renderComment(reply)}
-                  </li>
-                ))}
-            </ol>
-          ) : null}
-        </li>
-      ))}
-    </ol>
-  ) : (
-    <p className="campus-meta">还没有实际评论。</p>
   );
 }

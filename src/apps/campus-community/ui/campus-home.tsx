@@ -1,20 +1,31 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../frontend/foundation/button.tsx";
+import { CampusFeed, type CampusTab } from "./campus-feed.tsx";
+import { FollowingIcon, HomeIcon, PersonIcon } from "./campus-icons.tsx";
 import { CampusPage, type CampusPageProps } from "./campus-page.tsx";
-import { CampusPostCard } from "./campus-post-card.tsx";
 import { CampusProfile } from "./campus-profiles.tsx";
+import { useCampusClock } from "./use-campus-clock.ts";
 
-const tabs = ["首页", "关注", "我"] as const;
+const tabs = [
+  { name: "首页", icon: <HomeIcon /> },
+  { name: "关注", icon: <FollowingIcon /> },
+  { name: "我", icon: <PersonIcon /> },
+] as const;
 
 export function CampusHome(props: CampusPageProps) {
-  const { state, navigation, onHome } = props;
-  const [tab, setTab] = useState<(typeof tabs)[number]>("首页");
+  const { state, navigation, onHome, active } = props;
+  const [tab, setTab] = useState<CampusTab>("首页");
+  const now = useCampusClock(active);
+  const top = useRef<HTMLDivElement>(null);
   const account = state.data.accounts.find((item) => item.id === state.data.activeAccountId);
   const writable = state.scopeKey !== null && state.phase === "idle";
-  const posts =
-    tab === "关注"
-      ? state.data.posts.filter((post) => account?.following.includes(post.authorId))
-      : state.data.posts;
+  useEffect(() => {
+    const scroller = top.current?.closest(".ios-page-content");
+    if (scroller instanceof HTMLElement) {
+      scroller.scrollTo({ top: 0 });
+    }
+  }, [tab]);
+
   return (
     <CampusPage
       {...props}
@@ -23,6 +34,8 @@ export function CampusHome(props: CampusPageProps) {
       back={onHome}
       right={
         <Button
+          className="campus-nav-publish"
+          variant="filled"
           disabled={!account || !writable}
           onClick={() => navigation.push({ page: "compose" })}
         >
@@ -31,51 +44,26 @@ export function CampusHome(props: CampusPageProps) {
       }
       footer={
         <nav className="campus-tab-bar" aria-label="Twitter">
-          {tabs.map((label) => (
+          {tabs.map(({ name, icon }) => (
             <Button
-              key={label}
-              aria-current={tab === label ? "page" : undefined}
-              onClick={() => setTab(label)}
+              key={name}
+              aria-current={tab === name ? "page" : undefined}
+              onClick={() => setTab(name)}
             >
-              {label}
+              <span className="campus-tab-icon">{icon}</span>
+              <span>{name}</span>
             </Button>
           ))}
         </nav>
       }
     >
-      {tab === "我" ? (
-        <CampusProfile {...props} account={account} self />
-      ) : (
-        <>
-          <div className="campus-feed-header">
-            <h2>{tab}</h2>
-            {tab === "首页" ? (
-              <Button
-                disabled={!writable}
-                onClick={() => navigation.push({ page: "generate", postId: null })}
-              >
-                生成一批帖子
-              </Button>
-            ) : null}
-          </div>
-          {!account && state.scopeKey !== null ? (
-            <div className="campus-section">
-              <p>选择一个账号即可发帖、点赞和回复。</p>
-              <Button variant="filled" onClick={() => navigation.push({ page: "manage" })}>
-                管理账号
-              </Button>
-            </div>
-          ) : null}
-          {!posts.length ? (
-            <p className="campus-section">
-              {tab === "关注" ? "关注的账号还没有发帖。" : "首页还没有帖子。"}
-            </p>
-          ) : null}
-          {posts.toReversed().map((post) => (
-            <CampusPostCard key={post.id} {...props} post={post} />
-          ))}
-        </>
-      )}
+      <div ref={top}>
+        {tab === "我" ? (
+          <CampusProfile {...props} account={account} now={now} self />
+        ) : (
+          <CampusFeed {...props} account={account} tab={tab} now={now} />
+        )}
+      </div>
     </CampusPage>
   );
 }

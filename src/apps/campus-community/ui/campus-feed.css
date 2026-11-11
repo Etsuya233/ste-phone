@@ -1,0 +1,319 @@
+:host .campus-feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 46px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--campus-line);
+  background: var(--campus-paper);
+}
+
+:host .campus-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+:host .campus-identity > span:nth-child(2) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host .campus-identity-hint {
+  flex-shrink: 0;
+  color: var(--campus-accent);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+:host .campus-feed-label {
+  color: var(--campus-muted);
+  font-size: 12px;
+}
+
+:host .campus-ai-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: var(--campus-accent);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+:host .campus-tab-bar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-height: 50px;
+  border-top: 1px solid var(--campus-line);
+}
+
+:host .campus-tab-bar .ios-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 50px;
+  padding: 4px 0;
+  color: var(--campus-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+:host .campus-tab-bar .ios-button[aria-current="page"] {
+  color: var(--campus-accent);
+  font-weight: 650;
+}
+
+:host .campus-tab-icon {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+}
+
+:host .campus-card {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid var(--campus-line);
+  background: var(--campus-paper);
+}
+
+:host .campus-card--detail {
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 14px;
+  padding-top: 16px;
+}
+
+:host .campus-card--highlight {
+  animation: campus-card-highlight 2.4s ease-out;
+  scroll-margin-top: calc(var(--status-height) + var(--nav-height) + 56px);
+}
+
+@keyframes campus-card-highlight {
+  from {
+    background: var(--campus-note);
+  }
+  to {
+    background: var(--campus-paper);
+  }
+}
+
+:host .campus-card--detail > .campus-avatar {
+  width: 48px;
+  height: 48px;
+  flex-basis: 48px;
+}
+
+:host .campus-card-body {
+  min-width: 0;
+}
+
+:host .campus-card-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+:host .campus-card-heading time,
+:host .campus-comment-heading time {
+  flex-shrink: 0;
+  color: var(--campus-muted);
+  font-size: 12px;
+}
+
+:host .campus-post-text {
+  display: block;
+  width: 100%;
+  margin: 4px 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--campus-ink);
+  text-align: left;
+  font: 15px/1.45 var(--ios-font);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+:host .campus-card-text {
+  margin: 6px 0;
+  font: 17px/1.5 var(--ios-font);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+:host .campus-photos {
+  display: grid;
+  gap: 2px;
+  margin: 8px 0 6px;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+:host .campus-photos--one {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+:host .campus-photos--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+:host .campus-photos--many {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+:host .campus-photo {
+  position: relative;
+  display: block;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--campus-panel);
+  color: var(--campus-muted);
+  text-align: left;
+  aspect-ratio: 1;
+}
+
+:host .campus-photos--one .campus-photo {
+  aspect-ratio: 16 / 10;
+  max-height: 320px;
+}
+
+:host .campus-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+:host .campus-photo-placeholder {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+:host .campus-photo-placeholder svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+:host .campus-photo-placeholder span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+
+:host .campus-photos--one .campus-photo-placeholder {
+  font-size: 14px;
+}
+
+:host .campus-photos--one .campus-photo-placeholder span {
+  -webkit-line-clamp: 6;
+}
+
+:host .campus-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 6px;
+}
+
+:host .campus-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0;
+  color: var(--campus-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+:host .campus-action svg {
+  width: 18px;
+  height: 18px;
+}
+
+:host .campus-action--static {
+  color: var(--campus-muted);
+}
+
+:host .campus-like--on {
+  color: var(--campus-like);
+}
+
+:host .campus-suggestions {
+  border-top: 1px solid var(--campus-line);
+}
+
+:host .campus-suggestions h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+:host .campus-suggestion {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--campus-line);
+}
+
+:host .campus-suggestion-name {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+:host .campus-suggestion-name strong {
+  font-size: 14px;
+}
+
+:host .campus-suggestion-name small {
+  overflow: hidden;
+  color: var(--campus-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host .campus-follow-button {
+  min-height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 650;
+}

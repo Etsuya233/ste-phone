@@ -2,6 +2,8 @@ import { useEffect, useSyncExternalStore } from "react";
 import { NavigationStack } from "../../../frontend/foundation/navigation-stack.tsx";
 import type { CampusService } from "../campus-service.ts";
 import { CampusAccountEditor } from "./campus-account-editor.tsx";
+import { CampusAccountSwitcher } from "./campus-account-switcher.tsx";
+import { CampusCreateAccounts } from "./campus-create-accounts.tsx";
 import { CampusComposePage } from "./campus-compose.tsx";
 import { CampusGeneratePage } from "./campus-generate.tsx";
 import { CampusHeatPage } from "./campus-heat.tsx";
@@ -30,7 +32,7 @@ export function CampusApp({
       active={active}
     >
       {(route, navigation) => {
-        const props = { service, state, navigation, onHome };
+        const props = { service, state, navigation, onHome, active };
         switch (route.page) {
           case "home":
             return <CampusHome {...props} />;
@@ -38,8 +40,12 @@ export function CampusApp({
             return <CampusPostPage {...props} postId={route.postId} />;
           case "profile":
             return <CampusProfilePage {...props} accountId={route.accountId} />;
+          case "switch-account":
+            return <CampusAccountSwitcher {...props} />;
           case "manage":
             return <CampusManageAccounts {...props} />;
+          case "create-accounts":
+            return <CampusCreateAccounts {...props} />;
           case "edit-account":
             return <CampusAccountEditor {...props} accountId={route.accountId} />;
           case "compose":

@@ -72,6 +72,7 @@ function sampleCampus(): CampusData {
 
 export function createPreviewCampusStorage(mode: string | null): CampusStorage {
   let failBatch = mode === "save-error";
+  let failAccounts = mode === "account-save-error";
   const key = (chatId: string, space: string) =>
     `ste-phone-preview-campus-v1:${mode ?? "normal"}:${chatId}:${space}`;
   return {
@@ -90,6 +91,10 @@ export function createPreviewCampusStorage(mode: string | null): CampusStorage {
       if (failBatch && data.appliedBatches.length) {
         failBatch = false;
         throw new Error("模拟校园社区保存失败，请重试保存");
+      }
+      if (failAccounts) {
+        failAccounts = false;
+        throw new Error("模拟账号保存失败，请重试创建");
       }
       localStorage.setItem(key(chatId, space), JSON.stringify(readCampusData(data)));
     },
