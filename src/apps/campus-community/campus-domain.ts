@@ -89,29 +89,17 @@ export function createCampusId(): string {
   ).join("");
 }
 
-const heat = {
-  ordinary: { likes: [20, 46], comments: [0, 8] },
-  popular: { likes: [1100, 1850], comments: [1000, 1600] },
-} as const;
-
-function randomCount([min, max]: readonly [number, number]): number {
-  return min + Math.floor(Math.random() * (max - min + 1));
-}
-
 export function createCampusPost(input: {
   id: string;
   authorId: string;
   text: string;
   images: CampusImage[];
-  popular: boolean;
+  backgroundLikes: number;
+  backgroundComments: number;
 }): CampusPost {
-  const { popular, ...post } = input;
-  const tier = popular ? heat.popular : heat.ordinary;
   return {
-    ...post,
+    ...input,
     createdAt: Date.now(),
-    backgroundLikes: randomCount(tier.likes),
-    backgroundComments: randomCount(tier.comments),
     likes: [],
     comments: [],
   };

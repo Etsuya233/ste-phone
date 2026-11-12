@@ -23,7 +23,8 @@ test("指定账号是候选范围，当前账号可发帖，越界作者与新�
     authorId: "active",
     text: "",
     images: [{ description: "夜景", prompt: "校园灯光" }],
-    popular: false,
+    backgroundLikes: 0,
+    backgroundComments: 0,
   };
   const parse = (people: unknown[], posts: unknown[]) =>
     parseCampusBatch(
@@ -39,6 +40,39 @@ test("指定账号是候选范围，当前账号可发帖，越界作者与新�
   assert.throws(() => parse([], [post, { ...post, authorId: "outsider" }]), /候选范围/);
   assert.throws(() => parse([newcomer], [post]), /最多 0 项/);
   assert.throws(() => parse([], [{ ...post, images: [] }]), /不能全部为空/);
+});
+
+test("模型背景数量原样保存，缺失、非法数字及旧热门标记整批拒绝", () => {
+  const post = {
+    authorId: "active",
+    text: "新闻",
+    images: [],
+    backgroundLikes: 3721,
+    backgroundComments: 218,
+  };
+  const parse = (posts: unknown[]) =>
+    parseCampusBatch(JSON.stringify({ people: [], posts }), "batch", ["active"], undefined, false);
+  const batch = parse([post, { ...post, backgroundLikes: 0, backgroundComments: 0 }]);
+  assert.deepEqual(
+    batch.posts.map(({ backgroundLikes, backgroundComments }) => [
+      backgroundLikes,
+      backgroundComments,
+    ]),
+    [
+      [3721, 218],
+      [0, 0],
+    ],
+  );
+  for (const field of ["backgroundLikes", "backgroundComments"]) {
+    for (const value of [-1, 1.5, "20", null, Number.MAX_SAFE_INTEGER + 1]) {
+      assert.throws(() => parse([post, { ...post, [field]: value }]), /非负安全整数/);
+    }
+    assert.throws(() => parse([{ ...post, [field]: undefined }]), /字段无效/);
+  }
+  assert.throws(
+    () => parse([{ authorId: "active", text: "旧协议", images: [], popular: true }]),
+    /字段无效/,
+  );
 });
 
 test("自动互动保留路人和批内回复，拒绝已删除、异帖及未来回复目标", () => {
@@ -112,7 +146,8 @@ test("取材只公开账号资料，私有小号档案只附于本账号，并�
             authorId: "alt",
             text: "",
             images: [{ description: "照片", image: { id: "image", path: "private-image-path" } }],
-            popular: false,
+            backgroundLikes: 0,
+            backgroundComments: 0,
           }),
           comments: Array.from({ length: 52 }, (_, index) => ({
             id: String(index),
@@ -158,7 +193,8 @@ test("长讨论补齐跨窗口祖先链，保留删除锚点并按原顺序排�
     authorId: "notice",
     text: "朗读会讨论",
     images: [],
-    popular: false,
+    backgroundLikes: 0,
+    backgroundComments: 0,
   });
   post.comments = Array.from({ length: 56 }, (_, index) => ({
     id: `c${index}`,

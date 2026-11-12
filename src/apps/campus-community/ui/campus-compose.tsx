@@ -65,7 +65,8 @@ export function CampusComposePage(props: CampusPageProps) {
         description: value.description.trim(),
         prompt: value.prompt?.trim(),
       })),
-      popular: false,
+      backgroundLikes: 0,
+      backgroundComments: 0,
     });
     setSaved(await service.command({ type: "publish", post }));
   }

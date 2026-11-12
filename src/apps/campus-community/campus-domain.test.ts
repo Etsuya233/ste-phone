@@ -27,7 +27,8 @@ const setup = (): CampusData => {
     authorId: "main",
     text: "读书会",
     images: [],
-    popular: true,
+    backgroundLikes: 1234,
+    backgroundComments: 1056,
   });
   return {
     ...emptyCampus(),
@@ -36,6 +37,22 @@ const setup = (): CampusData => {
     activeAccountId: "main",
   };
 };
+
+test("新帖原样保留指定背景数量，实际点赞独立累加且旧帖保持原值", () => {
+  const input = { id: "new", authorId: "main", text: "日常分享", images: [] };
+  const ordinary = createCampusPost({ ...input, backgroundLikes: 0, backgroundComments: 0 });
+  assert.equal(ordinary.backgroundLikes, 0);
+  assert.equal(ordinary.backgroundComments, 0);
+  const data = { ...setup(), posts: [ordinary] };
+  const liked = applyCampusCommand(data, { type: "like", postId: "new" });
+  assert.deepEqual(liked.posts[0]!.likes, ["main"]);
+  assert.equal(liked.posts[0]!.backgroundLikes, 0);
+  const news = createCampusPost({ ...input, backgroundLikes: 537, backgroundComments: 82 });
+  assert.equal(news.backgroundLikes, 537);
+  assert.equal(news.backgroundComments, 82);
+  const legacy = { ...data, posts: [{ ...ordinary, backgroundLikes: 25, backgroundComments: 4 }] };
+  assert.deepEqual(readCampusData(legacy), legacy);
+});
 
 test("同一人物的主号和小号各自关注和点赞，取消不改变背景点赞", () => {
   let data = setup();

@@ -82,9 +82,24 @@ function parsePosts(raw: unknown, batchId: string, author: (value: unknown) => s
     throw new Error("Twitter模型未返回帖子");
   }
   return proposed.map((entry, index) => {
-    const post = fields(entry, ["authorId", "text", "images", "popular"]);
-    if (typeof post.popular !== "boolean") {
-      throw new Error("Twitter热度类型无效");
+    const post = fields(entry, [
+      "authorId",
+      "text",
+      "images",
+      "backgroundLikes",
+      "backgroundComments",
+    ]);
+    const { backgroundLikes, backgroundComments } = post;
+    // 模型直接决定背景数量；协议错误整批拒绝，不修正或随机补齐数字。
+    if (
+      typeof backgroundLikes !== "number" ||
+      !Number.isSafeInteger(backgroundLikes) ||
+      backgroundLikes < 0 ||
+      typeof backgroundComments !== "number" ||
+      !Number.isSafeInteger(backgroundComments) ||
+      backgroundComments < 0
+    ) {
+      throw new Error("Twitter背景点赞数和评论数必须为非负安全整数");
     }
     const text = string(post.text, "帖子正文", true);
     const images = list(post.images, CAMPUS_MAX_IMAGES, "帖子图片").map((entry) => {
@@ -102,7 +117,8 @@ function parsePosts(raw: unknown, batchId: string, author: (value: unknown) => s
       authorId: author(post.authorId),
       text,
       images,
-      popular: post.popular,
+      backgroundLikes,
+      backgroundComments,
     });
   });
 }

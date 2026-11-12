@@ -18,7 +18,15 @@ const connection = {
 function response() {
   const output = JSON.stringify({
     people: [{ key: "new:1", nickname: "路过的同学", bio: "", style: "", profile: "高二学生" }],
-    posts: [{ authorId: "new:1", text: "图书馆最近很热闹。", images: [], popular: false }],
+    posts: [
+      {
+        authorId: "new:1",
+        text: "图书馆最近很热闹。",
+        images: [],
+        backgroundLikes: 0,
+        backgroundComments: 0,
+      },
+    ],
   });
   const event = (delta: unknown, finish_reason: string | null) =>
     `data: ${JSON.stringify({ choices: [{ delta, finish_reason }] })}\n\n`;
@@ -218,7 +226,8 @@ test("手动发布和评论只记录本次新内容，不写回持久数据", as
     authorId,
     text: "手动帖子",
     images: [],
-    popular: false,
+    backgroundLikes: 0,
+    backgroundComments: 0,
   });
   assert.equal(await f.service.command({ type: "publish", post }), true);
   assert.equal(f.service.getSnapshot().lastSaved?.kind, "published");
