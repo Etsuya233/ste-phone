@@ -21,9 +21,9 @@ export function momentImagePromptInput(
     text: moment.text,
     description: item.description,
     prompt,
-    characters: people.filter(
-      (person) => person.id === moment.author.id || material.includes(person.name),
-    ),
+    characters: people
+      .filter((person) => person.id === moment.author.id || material.includes(person.name))
+      .map(({ id, name, profileText }) => ({ id, name, profileText })),
   });
 }
 

@@ -10,7 +10,17 @@ function fixture() {
   const memory = memoryDatabaseFixture();
   memory.install();
   const provider = new MemoryDatabaseProvider();
-  const source = new PhoneDataService(provider);
+  const source = new PhoneDataService(
+    provider,
+    {
+      read: () => undefined,
+      write: async () => {
+        throw new Error("测试不写入人物资料");
+      },
+    },
+    { getSnapshot: () => null, subscribe: () => () => {} },
+    () => true,
+  );
   const database = new DatabaseWorkspace(source);
   return {
     memory,

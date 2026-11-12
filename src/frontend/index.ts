@@ -11,6 +11,8 @@ import { MemoryDatabaseProvider } from "../infrastructure/ste-memory/memory-data
 import { createStCampusStorage } from "../infrastructure/host/campus-storage.ts";
 import { createStDiaryStorage } from "../infrastructure/host/diary-storage.ts";
 import { createStWechatStorage } from "../infrastructure/host/wechat-storage.ts";
+import { createStChatMetadataStorage } from "../infrastructure/host/chat-metadata-storage.ts";
+import { createStCharacterOverrideStorage } from "../infrastructure/host/character-override-storage.ts";
 import { createStWechatStickerStorage } from "../infrastructure/host/wechat-stickers.ts";
 import { createIndexedDbLogStorage } from "../infrastructure/browser/log-storage.ts";
 import { createPhoneLog } from "../apps/logs/public.ts";
@@ -28,6 +30,7 @@ if (!menu || !button) {
 // 入口负责组装具体来源。数据源随插件挂载，手机窗口和各 App 只消费这个共享实例。
 // 宿主上下文与 App 的具体实现只在入口组装。
 const chat = createStChatContext(() => window.SillyTavern.getContext());
+const chatMetadata = createStChatMetadataStorage(() => window.SillyTavern.getContext(), chat);
 const logs = createPhoneLog({
   storage: createIndexedDbLogStorage("ste-phone-logs-v1"),
 });
@@ -35,6 +38,8 @@ const phone = createPhone({
   speech: createBrowserSpeech(),
   imageHub: createStImageHub(),
   dataProvider: new MemoryDatabaseProvider(),
+  characterOverrides: createStCharacterOverrideStorage(chatMetadata),
+  matchesMemoryChat: chat.matchesMemoryChat,
   settingsStorage: createStSettingsStorage(),
   aiTransport: createStAiTransport(() => window.SillyTavern.getContext().getRequestHeaders(), {
     log: (entry) => {
@@ -45,10 +50,10 @@ const phone = createPhone({
   }),
   chat,
   mapConversations: createMapConversationStorage(localStorage, "ste-phone-map-conversation-v1:"),
-  mapStorage: createStMapStorage(() => window.SillyTavern.getContext(), chat),
-  campusStorage: createStCampusStorage(() => window.SillyTavern.getContext(), chat),
-  diaryStorage: createStDiaryStorage(() => window.SillyTavern.getContext(), chat),
-  wechatStorage: createStWechatStorage(() => window.SillyTavern.getContext(), chat),
+  mapStorage: createStMapStorage(chatMetadata),
+  campusStorage: createStCampusStorage(chatMetadata),
+  diaryStorage: createStDiaryStorage(chatMetadata),
+  wechatStorage: createStWechatStorage(chatMetadata),
   wechatStickerStorage: createStWechatStickerStorage(() => window.SillyTavern.getContext()),
   logs,
 });

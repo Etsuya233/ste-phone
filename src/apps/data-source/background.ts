@@ -1,9 +1,16 @@
+import type { CharacterAvatar, CharacterTextField } from "./character-overrides.ts";
+import type { CharacterProfileField } from "./character-profiles.ts";
+
 /** 手机使用的人物资料；身份、经历和当前近况统一保留在描述中。 */
 export interface CharacterProfile {
   /** 稳定记录身份。 */
   readonly id: string;
   readonly name: string;
   readonly profileText: string;
+  readonly recordId?: string;
+  readonly fields?: readonly CharacterProfileField[];
+  readonly overriddenFields?: readonly CharacterTextField[];
+  readonly avatar?: CharacterAvatar;
 }
 
 export interface Chronicle {

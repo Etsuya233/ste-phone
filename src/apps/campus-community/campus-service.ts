@@ -162,7 +162,7 @@ export class CampusService {
     }
     const { data, chat } = this.#dependencies;
     const chatId = chat.getSnapshot()?.id;
-    const { context, revision, sourceId } = data.getSnapshot();
+    const { context, revision, sourceId, characterRevision } = data.getSnapshot();
     const instance = JSON.stringify([
       chatId,
       context.chatIdentity,
@@ -170,7 +170,7 @@ export class CampusService {
       context.available,
       context.sourceName,
     ]);
-    const binding = JSON.stringify([instance, revision, sourceId]);
+    const binding = JSON.stringify([instance, revision, sourceId, characterRevision]);
     if (binding === this.#binding) {
       return;
     }

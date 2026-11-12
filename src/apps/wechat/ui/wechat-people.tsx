@@ -39,7 +39,7 @@ export function WechatAccounts({ wechat, state, navigation }: WechatPageProps) {
               })
             }
           >
-            <PersonAvatar name={person.name} />
+            <PersonAvatar path={person.avatar?.imagePath} name={person.name} />
             <strong>{person.name}</strong>
             {state.data.account?.id === person.id && (
               <span className="wechat-row-mark" aria-label="当前帐号">
@@ -62,7 +62,7 @@ export function WechatPerson({ state, navigation, id }: WechatPageProps & { id: 
   const guidance = state.data.replyGuidance?.[state.scopeId!]?.[id];
   const content = person ? (
     <>
-      <PersonIdentity name={person.name} />
+      <PersonIdentity path={person.avatar?.imagePath} name={person.name} />
       <GroupedList>
         <button
           type="button"

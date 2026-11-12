@@ -16,23 +16,33 @@ function fixture(readRecentChat?: DatabaseProvider["readRecentChat"]) {
     message: null,
   };
   const listeners = new Set<() => void>();
-  const service = new PhoneDataService({
-    getContext: () => context,
-    subscribe: (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
+  const service = new PhoneDataService(
+    {
+      getContext: () => context,
+      subscribe: (listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      describe: async () => {
+        throw new Error("聊天读取不应加载 SQL 结构");
+      },
+      register: async () => {
+        throw new Error("聊天读取不应注册视图");
+      },
+      query: async () => {
+        throw new Error("聊天读取不应执行 SQL");
+      },
+      readRecentChat,
     },
-    describe: async () => {
-      throw new Error("聊天读取不应加载 SQL 结构");
+    {
+      read: () => undefined,
+      write: async () => {
+        throw new Error("测试不写入人物资料");
+      },
     },
-    register: async () => {
-      throw new Error("聊天读取不应注册视图");
-    },
-    query: async () => {
-      throw new Error("聊天读取不应执行 SQL");
-    },
-    readRecentChat,
-  });
+    { getSnapshot: () => null, subscribe: () => () => {} },
+    () => true,
+  );
   return {
     service,
     request: { chatIdentity: "memory-chat", scopeId: "space", count: 20 },

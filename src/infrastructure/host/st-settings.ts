@@ -1,4 +1,4 @@
-import type { StDiaryContext } from "./diary-storage.ts";
+import type { StChatSaveContext } from "./chat-metadata-storage.ts";
 import type { WechatStickerPack } from "../../apps/wechat/wechat-stickers.ts";
 
 import type {
@@ -10,7 +10,7 @@ import type {
   LegacyPhoneSettings,
   SettingsStorage,
 } from "../../apps/settings/ports/settings-storage.ts";
-interface StContext extends StDiaryContext {
+interface StContext extends StChatSaveContext {
   extensionSettings: {
     ste_phone_wechat_stickers?: { version: number; packs: readonly WechatStickerPack[] };
     ste_phone?:

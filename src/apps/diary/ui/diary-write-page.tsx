@@ -13,11 +13,8 @@ export function DiaryWritePage({ diary, state, navigation }: DiaryPageProps) {
   const writing = isDiaryRunning(generation);
   const busy = state.preparing || writing;
   const savedAuthor = state.data.author;
-  const author =
-    savedAuthor &&
-    (state.preparing || state.authors.some((candidate) => sameDiaryAuthor(candidate, savedAuthor)))
-      ? savedAuthor
-      : null;
+  const currentAuthor = state.authors.find((candidate) => sameDiaryAuthor(candidate, savedAuthor));
+  const author: DiaryAuthor | null = currentAuthor ?? (state.preparing ? savedAuthor : null);
   const moment = readDiaryMoment(state.worldTime);
   // 保存失败时把重试放在纸页上方，长正文不会把它挤出首屏。
   const actionsAbove = generation.status === "save-error";
@@ -68,7 +65,7 @@ export function DiaryWritePage({ diary, state, navigation }: DiaryPageProps) {
         <div className="diary-writer-meta">
           {author ? (
             <div className="diary-writer-author diary-writer-author--static">
-              <DiaryAvatar name={author.name} size="small" />
+              <DiaryAvatar path={author.avatar?.imagePath} name={author.name} size="small" />
               <span className="diary-writer-author-copy">
                 <span className="diary-writer-label">执笔</span>
                 <span className="diary-writer-name">{author.name}</span>

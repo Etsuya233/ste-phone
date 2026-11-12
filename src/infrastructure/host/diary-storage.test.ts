@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createEmptyDiary } from "../../apps/diary/diary.ts";
-import { createStDiaryStorage, type StDiaryContext } from "./diary-storage.ts";
+import { createStDiaryStorage } from "./diary-storage.ts";
+import { createStChatMetadataStorage, type StChatSaveContext } from "./chat-metadata-storage.ts";
 
 function fixture(request: typeof fetch) {
   let activeId = "a";
-  const context: StDiaryContext = {
+  const context: StChatSaveContext = {
     chatId: "story-a",
     characterId: 0,
     groupId: null,
@@ -16,7 +17,7 @@ function fixture(request: typeof fetch) {
     eventTypes: { CHAT_CHANGED: "", CHAT_RENAMED: "", CHARACTER_RENAMED: "", GROUP_UPDATED: "" },
     eventSource: { on() {}, removeListener() {} },
   };
-  const storage = createStDiaryStorage(
+  const metadata = createStChatMetadataStorage(
     () => context,
     {
       getSnapshot: () => ({ id: activeId, name: activeId }),
@@ -24,6 +25,7 @@ function fixture(request: typeof fetch) {
     },
     request,
   );
+  const storage = createStDiaryStorage(metadata);
   return {
     storage,
     context,

@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 const createEmptyMapData = () => ({ version: 1 as const, maps: {} });
-import { createStMapStorage, type StMapContext } from "./map-storage.ts";
+import { createStMapStorage } from "./map-storage.ts";
+import { createStChatMetadataStorage, type StChatSaveContext } from "./chat-metadata-storage.ts";
 
 function fixture(request: typeof fetch) {
   let activeId = "a";
-  const context: StMapContext = {
+  const context: StChatSaveContext = {
     chatId: "story-a",
     characterId: 0,
     groupId: null,
@@ -16,7 +17,7 @@ function fixture(request: typeof fetch) {
     eventTypes: { CHAT_CHANGED: "", CHAT_RENAMED: "", CHARACTER_RENAMED: "", GROUP_UPDATED: "" },
     eventSource: { on() {}, removeListener() {} },
   };
-  const storage = createStMapStorage(
+  const metadata = createStChatMetadataStorage(
     () => context,
     {
       getSnapshot: () => ({ id: activeId, name: activeId }),
@@ -24,6 +25,7 @@ function fixture(request: typeof fetch) {
     },
     request,
   );
+  const storage = createStMapStorage(metadata);
   return {
     storage,
     context,

@@ -26,8 +26,10 @@ export function DiaryApp({
 }) {
   const state = useSyncExternalStore(diary.subscribe, diary.getSnapshot);
   useEffect(() => {
-    void diary.prepare();
-  }, [diary, state.chatId]);
+    if (active) {
+      void diary.prepare();
+    }
+  }, [diary, state.chatId, active]);
   return (
     <NavigationStack<DiaryRoute>
       key={state.chatId}

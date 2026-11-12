@@ -104,7 +104,7 @@ export function WechatMomentAiAuthor(
               disabled={disabled}
               onChange={() => setAuthorId(person.id)}
             />
-            <PersonAvatar name={person.name} />
+            <PersonAvatar path={person.avatar?.imagePath} name={person.name} />
             <strong>{person.name}</strong>
           </label>
         ))}

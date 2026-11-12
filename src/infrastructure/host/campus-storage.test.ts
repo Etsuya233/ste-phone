@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { emptyCampus } from "../../apps/campus-community/campus-domain.ts";
 import { createStCampusStorage } from "./campus-storage.ts";
-import type { StDiaryContext } from "./diary-storage.ts";
+import { createStChatMetadataStorage, type StChatSaveContext } from "./chat-metadata-storage.ts";
 
 test("固定原群聊与正文，合并不同空间，失败不修改现有元数据", async () => {
-  const context: StDiaryContext = {
+  const context: StChatSaveContext = {
     chatId: "story-a",
     groupId: "group-a",
 
@@ -20,7 +20,7 @@ test("固定原群聊与正文，合并不同空间，失败不修改现有元�
   let active = context;
   let respond = Promise.resolve(new Response(null, { status: 200 }));
   let body: Record<string, unknown> | undefined;
-  const storage = createStCampusStorage(
+  const metadata = createStChatMetadataStorage(
     () => active,
     { getSnapshot: () => ({ id: active.chatId!, name: "预览" }), subscribe: () => () => {} },
     async (url, init) => {
@@ -29,6 +29,7 @@ test("固定原群聊与正文，合并不同空间，失败不修改现有元�
       return respond;
     },
   );
+  const storage = createStCampusStorage(metadata);
   const first = { ...emptyCampus(), appliedBatches: ["first"] };
   const second = { ...emptyCampus(), appliedBatches: ["second"] };
   await storage.write("story-a", "space-a", first);

@@ -99,7 +99,7 @@ export function WechatMomentParticipants({
                   );
                 }}
               />
-              <PersonAvatar name={person.name} />
+              <PersonAvatar path={person.avatar?.imagePath} name={person.name} />
               <span>
                 <strong>{person.name}</strong>
                 <small>{readProfileSummary(person.profileText)}</small>

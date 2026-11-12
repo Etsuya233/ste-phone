@@ -80,6 +80,21 @@ function fixture(
   };
   let stableScopeId = "scope";
   const data: DataAppPublic = {
+    readCharacters: async (scope, ids) => {
+      const page = await data.query({
+        ...scope,
+        sql: ids
+          ? "SELECT stable_record_id,name,profile_text,record_id FROM phone_characters WHERE stable_record_id=:author"
+          : "SELECT stable_record_id,name,profile_text,record_id FROM phone_characters LIMIT 200 OFFSET 0",
+        params: ids ? { author: ids[0]! } : undefined,
+      });
+      return page.rows.map(([id, name, profileText, recordId]) => ({
+        id: String(id),
+        name: String(name),
+        profileText: String(profileText),
+        recordId: String(recordId),
+      }));
+    },
     readWorldState: async () => {
       throw new Error("日记使用自己的世界状态取材");
     },
@@ -180,6 +195,13 @@ function fixture(
     switchChat: () => {
       current = { id: "phone-B", name: "B" };
       for (const listener of chatListeners) {
+        listener();
+      }
+    },
+    renameCharacter: (name: string) => {
+      db.prepare("UPDATE phone_characters SET name=? WHERE stable_record_id='author'").run(name);
+      snapshot = { ...snapshot, characterRevision: (snapshot.characterRevision ?? 0) + 1 };
+      for (const listener of sourceListeners) {
         listener();
       }
     },
@@ -325,6 +347,43 @@ test("source revision keeps active generation while chat switching discards even
     assert.equal(app.service.getSnapshot().chatId, "phone-B");
     assert.equal(app.service.getSnapshot().data.entries.length, 0);
     assert.equal(app.saved.get("phone-A")!.entries.length, 0);
+  } finally {
+    app.close();
+  }
+});
+
+test("saved character edits refresh the diary roster during generation without changing its author snapshot", async () => {
+  let start!: () => void;
+  let finish!: (value: Response) => void;
+  const started = new Promise<void>((resolve) => {
+    start = resolve;
+  });
+  const app = fixture(async () => {
+    start();
+    return new Promise<Response>((resolve) => {
+      finish = resolve;
+    });
+  });
+  try {
+    await app.service.prepare();
+    await app.service.selectAuthor("author");
+    const running = app.service.generate();
+    await started;
+    const refreshed = new Promise<void>((resolve) => {
+      const unsubscribe = app.service.subscribe(() => {
+        if (app.service.getSnapshot().authors[0]?.name === "新署名") {
+          unsubscribe();
+          resolve();
+        }
+      });
+    });
+    app.renameCharacter("新署名");
+    await refreshed;
+    assert.equal(app.service.getSnapshot().generation.status, "generating");
+    finish(reply());
+    await running;
+    assert.equal(app.service.getSnapshot().authors[0]?.name, "新署名");
+    assert.equal(app.service.getSnapshot().data.entries[0]?.author.name, "林");
   } finally {
     app.close();
   }

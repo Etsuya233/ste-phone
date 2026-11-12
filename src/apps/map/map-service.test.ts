@@ -141,6 +141,7 @@ function fixture(initial: MapDocument = emptyMap(), disk = new Map<string, strin
     },
     readBackground: unused,
     readRelatedBackground: unused,
+    readCharacters: unused,
     readWorldState: unused,
     readRecentChat: unused,
     query: unused,

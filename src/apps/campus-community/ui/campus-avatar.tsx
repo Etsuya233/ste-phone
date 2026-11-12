@@ -1,4 +1,8 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { createContext, useContext, type CSSProperties } from "react";
+import { ProfileAvatar } from "../../../frontend/images/profile-avatar.tsx";
+import type { CampusAuthor } from "../campus-context.ts";
+
+export const CampusCharacterAvatars = createContext<readonly CampusAuthor[]>([]);
 import type { CampusAccount } from "../campus-domain.ts";
 
 /** 无头像时使用稳定色相，避免同名账号在信息流里完全一样。 */
@@ -17,24 +21,19 @@ export function AccountAvatar({
   account: CampusAccount;
   size?: "small" | "normal" | "large";
 }) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    setFailed(false);
-  }, [account.avatar]);
+  const people = useContext(CampusCharacterAvatars);
+  const { owner } = account;
+  const path =
+    account.avatar ||
+    (owner.kind === "memory"
+      ? people.find(({ id }) => id === owner.id)?.avatar?.imagePath
+      : undefined);
   const style = { "--campus-avatar-hue": avatarHue(account.id) } as CSSProperties;
   const className = `campus-avatar campus-avatar--${size}`;
-  return account.avatar && !failed ? (
-    <img
-      className={className}
-      src={account.avatar}
-      alt=""
-      loading="lazy"
-      onError={() => setFailed(true)}
-    />
-  ) : (
-    <span className={className} style={style} aria-hidden="true">
+  return (
+    <ProfileAvatar className={className} path={path} style={style}>
       {Array.from(account.nickname)[0]}
-    </span>
+    </ProfileAvatar>
   );
 }
 

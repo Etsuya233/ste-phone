@@ -92,10 +92,15 @@ export class DiaryService {
       }
       const { data } = this.#dependencies;
       const scope = currentDiaryScope(data);
+      const characterRevision = this.#characterRevision;
       const authors = await readDiaryAuthors(data, scope);
       const world = await readDiaryWorld(data, scope);
       if (version === this.#preparationVersion) {
-        this.#publish({ authors, worldTime: world.worldTime, preparing: false });
+        this.#publish({
+          ...(characterRevision === this.#characterRevision ? { authors } : {}),
+          worldTime: world.worldTime,
+          preparing: false,
+        });
       }
     } catch (error) {
       if (version === this.#preparationVersion) {
@@ -119,7 +124,11 @@ export class DiaryService {
     if (!author) {
       throw new Error("请选择当前资料中的日记作者");
     }
-    await this.#saveData({ ...this.#snapshot.data, author });
+    const { id: authorId, name, profileText, scopeId, sourceId } = author;
+    await this.#saveData({
+      ...this.#snapshot.data,
+      author: { id: authorId, name, profileText, scopeId, sourceId },
+    });
   }
 
   async saveSettings(settings: DiarySettings): Promise<void> {
@@ -480,9 +489,10 @@ export class DiaryService {
       preparationError: null,
     });
   };
+  #characterRevision = 0;
   #sourceChanged = (): void => {
     const binding = this.#currentSourceScopeKey();
-    const sourceId = this.#dependencies.data.getSnapshot().sourceId;
+    const { sourceId, characterRevision = 0 } = this.#dependencies.data.getSnapshot();
     if (
       binding !== this.#sourceScopeKey ||
       (this.#sourceId !== null && sourceId !== null && sourceId !== this.#sourceId)
@@ -492,7 +502,30 @@ export class DiaryService {
     }
     this.#sourceScopeKey = binding;
     this.#sourceId = sourceId;
+    if (this.#characterRevision !== characterRevision) {
+      this.#characterRevision = characterRevision;
+      void this.#refreshCharacterRoster(binding, characterRevision);
+    }
   };
+  async #refreshCharacterRoster(binding: string, revision: number): Promise<void> {
+    const { chatId } = this.#snapshot;
+    const { data } = this.#dependencies;
+    const isCurrent = () =>
+      this.#snapshot.chatId === chatId &&
+      this.#sourceScopeKey === binding &&
+      this.#characterRevision === revision;
+    try {
+      // 书目作者可以更新；运行中的日记继续使用已取得的生成输入。
+      const authors = await readDiaryAuthors(data, currentDiaryScope(data));
+      if (isCurrent()) {
+        this.#publish({ authors });
+      }
+    } catch (error) {
+      if (isCurrent()) {
+        this.#publish({ preparationError: error as Error });
+      }
+    }
+  }
   #publish(patch: Partial<DiarySnapshot>): void {
     this.#snapshot = { ...this.#snapshot, ...patch };
     for (const listener of this.#listeners) {

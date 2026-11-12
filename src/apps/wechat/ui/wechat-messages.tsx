@@ -42,8 +42,9 @@ export function WechatMessages({
           />
         ))}
       {conversation?.messages.map((message, index) => {
+        const person = people.find((person) => person.id === message.senderId);
         const sender =
-          people.find((person) => person.id === message.senderId)?.name ??
+          person?.name ??
           conversation.people.find((person) => person.id === message.senderId)!.name;
         const mine = message.senderId === accountId;
         const sticker = findWechatSticker(packs, message.content.text);
@@ -67,7 +68,7 @@ export function WechatMessages({
             <div
               className={`wechat-message ${mine ? "wechat-message--mine" : ""}${message.recalled ? " wechat-message--recalled" : ""}`}
             >
-              <PersonAvatar name={sender} />
+              <PersonAvatar path={person?.avatar?.imagePath} name={sender} />
               <WechatMessageBubble index={index} onMenu={() => memory.openMessage(message.id)}>
                 {sticker ? (
                   <img

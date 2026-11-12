@@ -1,19 +1,17 @@
 import type { CampusData, CampusStorage } from "../../apps/campus-community/campus-domain.ts";
 import { readCampusData } from "../../apps/campus-community/campus-records.ts";
-import type { ChatContext } from "../../core/chat/public.ts";
-import type { StDiaryContext } from "./diary-storage.ts";
+import type { StChatMetadataStorage } from "./chat-metadata-storage.ts";
 
 interface StoredCampus {
   version: 1;
   spaces: Record<string, CampusData>;
 }
 
-function readSpaces(metadata: Record<string, unknown>): StoredCampus["spaces"] {
-  const phone = metadata.ste_phone as { campusCommunity?: StoredCampus } | undefined;
-  const campus = phone?.campusCommunity;
-  if (campus === undefined) {
+function readSpaces(value: unknown): StoredCampus["spaces"] {
+  if (value === undefined) {
     return {};
   }
+  const campus = value as StoredCampus;
   if (
     !campus ||
     campus.version !== 1 ||
@@ -26,70 +24,21 @@ function readSpaces(metadata: Record<string, unknown>): StoredCampus["spaces"] {
   return campus.spaces;
 }
 
-function updateMetadata(metadata: Record<string, unknown>, space: string, data: CampusData) {
-  return {
-    ...(metadata.ste_phone as Record<string, unknown> | undefined),
-    campusCommunity: { version: 1, spaces: { ...readSpaces(metadata), [space]: data } },
-  };
-}
-
-export function createStCampusStorage(
-  getContext: () => StDiaryContext,
-  chat: ChatContext,
-  request: typeof fetch = fetch,
-): CampusStorage {
-  function current(chatId: string): StDiaryContext {
-    if (chat.getSnapshot()?.id !== chatId) {
-      throw new Error("Twitter所属聊天已变化");
-    }
-    return getContext();
-  }
+export function createStCampusStorage(metadata: StChatMetadataStorage): CampusStorage {
   return {
     read(chatId, space) {
-      const data = readSpaces(current(chatId).chatMetadata)[space];
+      const data = readSpaces(metadata.read(chatId, "campusCommunity", "Twitter"))[space];
       return data === undefined ? null : readCampusData(structuredClone(data));
     },
     async write(chatId, space, data) {
-      // Capture chat identity, metadata and original messages before entering the async save.
-      const context = current(chatId);
-      const target = context.chatMetadata;
       const saved = readCampusData(structuredClone(data));
-      const chatMetadata = { ...target, ste_phone: updateMetadata(target, space, saved) };
-      const rows = [
-        { chat_metadata: chatMetadata, user_name: "unused", character_name: "unused" },
-        ...context.chat,
-      ];
-      const group = context.groupId != null;
-      const character = group ? null : context.characters[Number(context.characterId)];
-      if (!group && !character) {
-        throw new Error("Twitter所属聊天缺少角色资料");
-      }
-      const body = JSON.stringify(
-        character
-          ? {
-              ch_name: character.name,
-              file_name: context.chatId,
-              avatar_url: character.avatar,
-              chat: rows,
-              force: false,
-            }
-          : { id: context.chatId, chat: rows, force: false },
-      );
-      const response = await request(group ? "/api/chats/group/save" : "/api/chats/save", {
-        method: "POST",
-        headers: context.getRequestHeaders(),
-        body,
+      await metadata.write({
+        chatId,
+        key: "campusCommunity",
+        label: "Twitter",
+        update: (previous) => ({ version: 1, spaces: { ...readSpaces(previous), [space]: saved } }),
+        updateDetached: true,
       });
-      if (!response.ok) {
-        throw new Error(`Twitter保存失败（HTTP ${response.status}）`);
-      }
-      target.ste_phone = updateMetadata(target, space, saved);
-      if (chat.getSnapshot()?.id === chatId) {
-        const live = getContext().chatMetadata;
-        if (live !== target) {
-          live.ste_phone = updateMetadata(live, space, saved);
-        }
-      }
     },
   };
 }

@@ -6,6 +6,7 @@ export const ALL_DIARY_BOOK_KEY = "all";
 export interface DiaryBookAuthor {
   readonly id: string;
   readonly name: string;
+  readonly avatar?: DiaryAuthor["avatar"];
   readonly sourceId: string;
   readonly scopeId: string;
 }

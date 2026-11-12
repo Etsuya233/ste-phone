@@ -105,23 +105,24 @@ interface ModelConnectionsReader {
 
 ### 资料 App
 
-资料模块同时提供便捷的背景读取和只读 SQL 查询，统一来源接入及查询结构管理。背景读取在模块内部使用自己的查询能力，不再依赖数据库 App 的编辑工作区。
+资料模块负责来源接入、只读 SQL、背景读取和人物资料覆写。它在模块内查询来源并合并已保存的覆写，通过公开接口提供有效人物资料。
 
 ```ts
 interface DataAppPublic {
   getSnapshot(): DataSourceSnapshot;
   subscribe(listener: () => void): () => void;
   readBackground(request: BackgroundRead): Promise<PhoneBackground>;
+  readCharacters(request: DataScope, ids?: readonly string[]): Promise<readonly CharacterProfile[]>;
   describe(request: DataScope, options?: { readonly force?: boolean }): Promise<DatabaseSchema>;
   query(request: DataQuery): Promise<QueryResult>;
 }
 ```
 
-`DataSourceSnapshot` 表达当前聊天、来源、资料范围、背景读取状态及数据是否过期；`sourceId` 在取得结构或背景前为 `null`，`revision` 用于消费方识别来源变更；`DataScope` 显式携带请求的聊天和资料范围；`DataQuery` 另外包含 SQL 与参数；`BackgroundRead` 另外表达是否强制刷新。`describe` 的 `force` 保留数据库手动刷新的行为。查询结果沿用现有列、行和截断信息，背景快照沿用现有固定快照语义。
+`DataSourceSnapshot` 表达当前聊天、来源、资料范围、背景读取状态及数据是否过期。`sourceId` 在取得结构或背景前为 `null`，`revision` 表示来源变更，`characterRevision` 表示人物覆写保存成功。`DataScope` 显式携带请求的来源聊天和资料范围，`DataQuery` 另外包含 SQL 与参数，`BackgroundRead` 另外表达是否强制刷新。`describe` 的 `force` 保留数据库手动刷新的行为。查询结果沿用现有列、行和截断信息，背景快照在交付后固定。
 
 显式请求归属用于校验请求与结果。当前 Memory 只承诺活动上下文查询，切换后可以拒绝旧请求；这个接口不承诺随时查询历史聊天。数据更新使缓存过期，新读取按现有规则重新加载。已交付的背景快照保持不变，应用自行决定正在进行的生成是否继续使用它。
 
-当前实现范围仍为 Memory 已提交数据库上的 `src_*` 与 `phone_*` 结构，以及人物、纪要和物品快照。SQL 草稿、编辑器查询错误、搜索和滚动不进入该接口。
+Memory 已提交数据库上的 `src_*` 与 `phone_*` 结构提供来源数据。人物覆写归资料 App，写入 ST 聊天元数据。SQL 草稿、编辑器查询错误、搜索和滚动归数据库 App。
 
 ST 聊天记录由资料模块通过 Memory 的公开 `chat v1` 能力读取清洗后的固定消息快照；Phone 不读取 Memory 私有运行时或自行回退到 ST 原文。清洗与消息筛选归 Memory，日记决定取最近多少条及如何用于生成。聊天 SQL、与 Memory 查询联合执行仍为后续功能，不添加假表或跨来源 JOIN。
 
@@ -264,6 +265,6 @@ flowchart TD
 
 ## 主屏与应用商店
 
-微信位于 `src/apps/wechat/`，独立拥有按聊天的帐号选择、双向会话、草稿、发送与回复任务。取材经过资料的 `readSummary/readRelatedBackground/readWorldState/readRecentChat`，模型连接由设置提供；`wechat-context.ts` 读取固定材料，`wechat-reply.ts` 组织一轮生成并创建消息，`wechat-generation.ts` 管理 Pi Agent 和输出协议，`wechat-service.ts` 负责保存顺序与普通取消。人物稳定身份到实例身份的转换、关系/持有物品/重要事件筛选和一跳第三人读取归资料模块，微信不持有来源 SQL 或 Memory 字段规则。界面分别使用根页、帐号、人物和聊天路由；宿主存储独立写入 `chatMetadata.ste_phone.wechat`，保留其他子字段，首期不引入跨 App 保存队列或极限操作协调。
+微信位于 `src/apps/wechat/`，独立拥有按聊天的帐号选择、双向会话、草稿、发送与回复任务。取材经过资料的 `readCharacters/readSummary/readRelatedBackground/readWorldState/readRecentChat`，模型连接由设置提供；`wechat-context.ts` 读取固定材料，`wechat-reply.ts` 组织一轮生成并创建消息，`wechat-generation.ts` 管理 Pi Agent 和输出协议，`wechat-service.ts` 负责应用内保存顺序与取消。人物身份转换、覆写合并和关联资料筛选归资料模块。微信写入 `chatMetadata.ste_phone.wechat`，同一聊天的 Phone 元数据请求由宿主层串行提交。
 
 内置应用的稳定 ID 和静态目录定义在 `core/launcher/catalog.ts`，供设置、外壳和商店共同使用；页面与运行定义仍由 bootstrap 组装。设置模块持有 v4 全局配置，通过 `HomeScreenSettings` 提供布局快照与安装、卸载、移动命令。两个有序数组记录主屏与 Dock，成员表示已安装；商店不再持有第二份安装状态。卸载不会删除应用的业务数据，主屏在设置保存成功后请求外壳退出对应会话；商店安装成功后将入口追加到主屏，通过注入的 `onOpen` 请求系统打开应用。运行中应用的 `onQuit` 与既有 Expose 退出规则相同，资料、设置、App Store 的卸载权限由目录与设置命令共同约束。

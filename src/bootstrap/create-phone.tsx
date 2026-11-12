@@ -15,6 +15,7 @@ import { createModelConnectionTest } from "../apps/settings/model-connection-tes
 import { SettingsApp } from "../apps/settings/ui/settings-app.tsx";
 import { PhoneDataService } from "../apps/data-source/data-service.ts";
 import type { DatabaseProvider } from "../apps/data-source/ports/database-provider.ts";
+import type { CharacterOverrideStorage } from "../apps/data-source/ports/character-override-storage.ts";
 import { DataSourceApp } from "../apps/data-source/ui/data-source-app.tsx";
 import { DatabaseWorkspace } from "../apps/database/database-workspace.ts";
 import { DatabaseApp } from "../apps/database/ui/database-app.tsx";
@@ -60,6 +61,8 @@ export interface PhoneRuntime {
 export function createPhone(dependencies: {
   settingsStorage: SettingsStorage;
   dataProvider: DatabaseProvider;
+  characterOverrides: CharacterOverrideStorage;
+  matchesMemoryChat: (identity: string | null) => boolean;
   aiTransport: AiTransport;
   chat: ChatContext;
   diaryStorage: DiaryStorage;
@@ -73,7 +76,12 @@ export function createPhone(dependencies: {
   speech: SpeechTransport;
 }): PhoneRuntime {
   const settings = new PhoneSettingsService(dependencies.settingsStorage);
-  const data = new PhoneDataService(dependencies.dataProvider);
+  const data = new PhoneDataService(
+    dependencies.dataProvider,
+    dependencies.characterOverrides,
+    dependencies.chat,
+    dependencies.matchesMemoryChat,
+  );
   const database = new DatabaseWorkspace(data);
   const testModelConnection = createModelConnectionTest(dependencies.aiTransport);
   const diary = new DiaryService({
@@ -207,7 +215,12 @@ export function createPhone(dependencies: {
     },
     "data-source": {
       render: ({ active, onHome }) => (
-        <DataSourceApp active={active} source={data} onHome={onHome} />
+        <DataSourceApp
+          active={active}
+          source={data}
+          imageHub={dependencies.imageHub}
+          onHome={onHome}
+        />
       ),
     },
     logs: {

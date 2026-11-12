@@ -1,3 +1,5 @@
+import type { CharacterProfile } from "../data-source/public.ts";
+
 export interface DiarySettings {
   readonly timeoutSeconds: number;
   readonly maxTokens: number;
@@ -9,13 +11,14 @@ export interface DiaryAuthor {
   readonly id: string;
   readonly name: string;
   readonly profileText: string;
+  readonly avatar?: CharacterProfile["avatar"];
   readonly sourceId: string;
   readonly scopeId: string;
 }
 
 export interface DiaryEntry {
   readonly id: string;
-  readonly author: Omit<DiaryAuthor, "profileText">;
+  readonly author: Omit<DiaryAuthor, "profileText" | "avatar">;
   readonly worldTime: string;
   readonly body: string;
   readonly imagePrompt?: string;
@@ -25,7 +28,7 @@ export interface DiaryEntry {
 
 export interface DiaryData {
   readonly version: 1;
-  readonly author: DiaryAuthor | null;
+  readonly author: Omit<DiaryAuthor, "avatar"> | null;
   readonly settings: DiarySettings;
   readonly entries: readonly DiaryEntry[];
 }

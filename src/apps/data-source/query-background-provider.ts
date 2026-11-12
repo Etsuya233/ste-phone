@@ -1,5 +1,6 @@
 import type { DatabaseProvider } from "./ports/database-provider.ts";
 import type { BackgroundProvider, SourceContext } from "./ports/background-provider.ts";
+import { readSourceCharacters } from "./character-profiles.ts";
 import type { PhoneBackground } from "./background.ts";
 import type { DataAppPublic, SqlValue } from "./public.ts";
 
@@ -41,7 +42,6 @@ export class QueryBackgroundProvider implements BackgroundProvider {
     const rows: SqlValue[][][] = [];
     // 串行分页，完整资料不受单次 SQL 的默认 200 行展示上限影响。
     for (const [view, name] of [
-      ["phone_characters", "name"],
       ["phone_chronicles", "title"],
       ["phone_items", "name"],
     ]) {
@@ -72,17 +72,13 @@ export class QueryBackgroundProvider implements BackgroundProvider {
       sourceId: schema.sourceId,
       scopeId: schema.scopeId,
       stableScopeId: schema.stableScopeId,
-      characters: rows[0]!.map((row) => ({
-        id: text(row[0]),
-        name: text(row[1]),
-        profileText: text(row[2]),
-      })),
-      chronicles: rows[1]!.map((row) => ({
+      characters: await readSourceCharacters(this.#database, scope),
+      chronicles: rows[0]!.map((row) => ({
         id: text(row[0]),
         title: text(row[1]),
         content: text(row[2]),
       })),
-      items: rows[2]!.map((row) => ({
+      items: rows[1]!.map((row) => ({
         id: text(row[0]),
         name: text(row[1]),
         description: text(row[2]),
