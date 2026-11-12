@@ -148,6 +148,11 @@ test("互动最近50条仅补直接目标，删除目标保留事实且不递归
 test("朋友圈分别取单人关联与多人公开资料，固定历史窗口并隔离单聊", async () => {
   const reads: string[] = [];
   const data = {
+    readCharacters: async (_scope: unknown, ids: string[]) =>
+      [
+        { id: "a", name: "甲", profileText: "完整甲资料" },
+        { id: "b", name: "乙", profileText: "完整乙资料" },
+      ].filter(({ id }) => ids.includes(id)),
     readSummary: async () => {
       reads.push("summary");
       return "全部summary";
@@ -347,6 +352,10 @@ test("朋友圈提示词只包含媒体文字，过滤图库路径与data URL", 
     ],
   };
   const data = {
+    readCharacters: async () => [
+      { id: "a", name: "甲", profileText: "", avatar: { id: "a", imagePath: "PRIVATE_AVATAR" } },
+      { id: "b", name: "乙", profileText: "" },
+    ],
     readSummary: async () => "",
     readWorldState: async () => "",
     readRecentChat: async () => [],

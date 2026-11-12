@@ -1,3 +1,4 @@
+import type { CharacterProfile } from "./background.ts";
 import type { PhoneBackground } from "./background.ts";
 import type { SourceContext } from "./ports/background-provider.ts";
 import type { DatabaseSchema, QueryResult, SqlValue } from "./database.ts";
@@ -44,11 +45,14 @@ export interface DataSourceSnapshot {
   readonly error: string | null;
   readonly loadedAt: string | null;
   readonly revision: number;
+  readonly characterRevision?: number;
+  readonly hostChatId?: string | null;
 }
 export interface DataAppPublic {
   getSnapshot(): DataSourceSnapshot;
   subscribe(listener: () => void): () => void;
   readBackground(request: BackgroundRead): Promise<PhoneBackground>;
+  readCharacters(request: DataScope, ids?: readonly string[]): Promise<readonly CharacterProfile[]>;
   readSummary(request: DataScope): Promise<string>;
   readRelatedBackground(request: RelatedBackgroundRequest): Promise<RelatedBackground>;
   readWorldState(request: DataScope): Promise<readonly WorldState[]>;

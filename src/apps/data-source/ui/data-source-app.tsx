@@ -1,3 +1,7 @@
+import { ProfileAvatar } from "../../../frontend/images/profile-avatar.tsx";
+import type { CharacterProfile, DataScope } from "../public.ts";
+import type { PhoneDataService } from "../data-service.ts";
+import { CharacterEditor } from "./character-editor.tsx";
 import { NavigationStack } from "../../../frontend/foundation/navigation-stack.tsx";
 import type { Navigation } from "../../../frontend/foundation/navigation-stack.tsx";
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -19,13 +23,18 @@ const statusNames = {
   error: "读取失败",
 } as const;
 
-type Route = { category: Category | null; selectedId: string | null; summary?: boolean };
+type Route = {
+  category: Category | null;
+  selectedId: string | null;
+  summary?: boolean;
+  editing?: { person: CharacterProfile; scope: DataScope; hostChatId: string };
+};
 export function DataSourceApp({
   source,
   onHome,
   active,
 }: {
-  source: DataAppPublic;
+  source: PhoneDataService;
   onHome: () => void;
   active: boolean;
 }) {
@@ -34,15 +43,32 @@ export function DataSourceApp({
     if (state.context.available) {
       void source.readBackground(source.getSnapshot().context).catch(() => {});
     }
-  }, [source, state.context.chatIdentity, state.context.scopeId, state.context.available]);
+  }, [
+    source,
+    state.hostChatId,
+    state.context.chatIdentity,
+    state.context.scopeId,
+    state.context.available,
+    state.revision,
+  ]);
   return (
     <NavigationStack<Route>
-      key={JSON.stringify([state.context.chatIdentity, state.context.scopeId])}
+      key={JSON.stringify([state.hostChatId, state.context.chatIdentity, state.context.scopeId])}
       active={active}
       initialRoutes={[{ category: null, selectedId: null }]}
     >
       {(route, navigation) =>
-        route.summary ? (
+        route.editing ? (
+          <CharacterEditor
+            person={route.editing.person}
+            active={navigation.current}
+            onBack={navigation.pop}
+            onSave={(changes) => {
+              const { scope, hostChatId, person } = route.editing!;
+              return source.saveCharacter(scope, hostChatId, person.id, changes);
+            }}
+          />
+        ) : route.summary ? (
           <StorySummaryPage source={source} onBack={navigation.pop} />
         ) : (
           <DataBrowser
@@ -74,12 +100,14 @@ function DataBrowser({
   const { category, selectedId } = route;
   const [search, setSearch] = useState("");
   const [copyResult, setCopyResult] = useState<string | null>(null);
-  const entries =
+  const entries:
+    { id: string; title: string; text: string; person?: CharacterProfile }[] | undefined =
     category === "characters"
       ? state.data?.characters.map((entry) => ({
           id: entry.id,
           title: entry.name,
           text: entry.profileText,
+          person: entry,
         }))
       : category === "chronicles"
         ? state.data?.chronicles.map((entry) => ({
@@ -95,6 +123,7 @@ function DataBrowser({
             }))
           : undefined;
   const selected = entries?.find((entry) => entry.id === selectedId);
+  const selectedPerson = selected?.person;
   const query = search.trim().toLocaleLowerCase();
   const visible = entries?.filter((entry) =>
     `${entry.title}\n${entry.text}`.toLocaleLowerCase().includes(query),
@@ -131,9 +160,27 @@ function DataBrowser({
             }}
             right={
               selectedId ? (
-                <Button disabled={!selected} onClick={() => void copyText()}>
-                  复制
-                </Button>
+                <span className="data-character-actions">
+                  {selectedPerson && state.hostChatId ? (
+                    <Button
+                      onClick={() =>
+                        navigation.push({
+                          ...route,
+                          editing: {
+                            person: selectedPerson,
+                            scope: state.context,
+                            hostChatId: state.hostChatId!,
+                          },
+                        })
+                      }
+                    >
+                      编辑
+                    </Button>
+                  ) : null}
+                  <Button disabled={!selected} onClick={() => void copyText()}>
+                    复制
+                  </Button>
+                </span>
               ) : (
                 <Button
                   disabled={!state.context.available || state.status === "loading"}
@@ -209,6 +256,14 @@ function DataBrowser({
           <>
             {selected ? (
               <GroupedList title={selected.title}>
+                {selectedPerson ? (
+                  <ProfileAvatar
+                    className="data-character-avatar data-detail-avatar"
+                    path={selectedPerson.avatar?.imagePath}
+                  >
+                    {selectedPerson.name.slice(0, 1)}
+                  </ProfileAvatar>
+                ) : null}
                 <p className="data-detail">{selected.text}</p>
               </GroupedList>
             ) : (
@@ -250,7 +305,21 @@ function DataBrowser({
                 visible.map((entry) => (
                   <ListCell
                     key={entry.id}
-                    title={entry.title}
+                    title={
+                      entry.person ? (
+                        <span className="data-character-actions">
+                          <ProfileAvatar
+                            className="data-character-avatar"
+                            path={entry.person.avatar?.imagePath}
+                          >
+                            {entry.title.slice(0, 1)}
+                          </ProfileAvatar>
+                          {entry.title}
+                        </span>
+                      ) : (
+                        entry.title
+                      )
+                    }
                     subtitle={entry.text}
                     onClick={() => navigation.push({ category, selectedId: entry.id })}
                   />

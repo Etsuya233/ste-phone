@@ -55,7 +55,12 @@ export async function readMomentPrompt(
   data: DataAppPublic,
   input: MomentGenerationInput,
 ): Promise<string> {
-  const [summary, world, recent, related] = await Promise.all([
+  const ids =
+    input.kind === "post"
+      ? [input.author.id]
+      : [input.account.id, ...input.candidates.map(({ id }) => id)];
+  const [people, summary, world, recent, related] = await Promise.all([
+    data.readCharacters(input.scope, ids),
     data.readSummary(input.scope),
     data.readWorldState(input.scope),
     data.readRecentChat({ ...input.scope, count: 10 }),
@@ -63,6 +68,14 @@ export async function readMomentPrompt(
       ? data.readRelatedBackground({ ...input.scope, participantIds: [input.author.id] })
       : Promise.resolve(null),
   ]);
+  const byId = new Map(people.map(({ id, name, profileText }) => [id, { id, name, profileText }]));
+  const person = (id: string) => {
+    const current = byId.get(id);
+    if (!current) {
+      throw new Error("朋友圈人物已不在当前资料中");
+    }
+    return current;
+  };
   const common = {
     world,
     summary,
@@ -74,7 +87,7 @@ export async function readMomentPrompt(
     input.kind === "post"
       ? {
           ...common,
-          author: input.author,
+          author: person(input.author.id),
           related,
           history: input.history
             .filter((moment) => moment.author.id === input.author.id)
@@ -89,8 +102,8 @@ export async function readMomentPrompt(
         }
       : {
           ...common,
-          account: input.account,
-          candidates: input.candidates,
+          account: person(input.account.id),
+          candidates: input.candidates.map(({ id }) => person(id)),
           participationMode: input.requiredAuthorIds.length ? "selected" : "auto",
           requiredAuthorIds: input.requiredAuthorIds,
           moment: {

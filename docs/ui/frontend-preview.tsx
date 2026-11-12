@@ -6,6 +6,7 @@ import { createPreviewImageHub } from "./preview-image-hub.ts";
 import { createPreviewSettingsStorage } from "./preview-wallpapers.ts";
 import { createPreviewAiTransport } from "./preview-ai-transport.ts";
 import { createPreviewChatContext } from "./preview-chat-context.ts";
+import { createPreviewCharacterOverrideStorage } from "./preview-character-overrides.ts";
 import { createPreviewCampusStorage } from "./preview-campus.ts";
 import { createPreviewDiaryStorage } from "./preview-diary-storage.ts";
 import { createPreviewWechatStorage } from "./preview-wechat-storage.ts";
@@ -21,7 +22,9 @@ import { previewSpeech } from "./preview-speech.ts";
 import { MemoryDatabaseProvider } from "../../src/infrastructure/ste-memory/memory-database-provider.ts";
 
 const options = new URLSearchParams(window.location.search);
-globalThis.STE_MEMORY_API = createPreviewMemory(options.get("data-state"));
+const memory = createPreviewMemory(options.get("data-state"));
+globalThis.STE_MEMORY_API = memory;
+const previewMemoryChatIdentity = memory.getContext().chatIdentity;
 const logs = createPhoneLog({
   storage: createIndexedDbLogStorage("ste-phone-logs-v1"),
 });
@@ -96,6 +99,8 @@ const phone = createPhone({
   ),
   chat: createPreviewChatContext(),
   dataProvider: new MemoryDatabaseProvider(),
+  characterOverrides: createPreviewCharacterOverrideStorage(options.get("character-override-test")),
+  matchesMemoryChat: (identity) => identity === previewMemoryChatIdentity,
   mapConversations: createMapConversationStorage(
     localStorage,
     "ste-phone-preview-map-conversation-v1:",

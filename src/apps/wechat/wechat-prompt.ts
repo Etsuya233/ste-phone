@@ -60,8 +60,12 @@ export function buildWechatPrompt(input: {
   return JSON.stringify({
     本轮任务: pending.length ? "回复当前帐号本轮发送的消息" : "主动发起聊天",
     微信现实时间: wechatTimeContext(eligible, start, now),
-    当前帐号: sender,
-    你扮演的回复人物: recipient,
+    当前帐号: { id: sender.id, name: sender.name, profileText: sender.profileText },
+    你扮演的回复人物: {
+      id: recipient.id,
+      name: recipient.name,
+      profileText: recipient.profileText,
+    },
     剧情总结: summary,
     关联背景: related,
     世界状态: world,

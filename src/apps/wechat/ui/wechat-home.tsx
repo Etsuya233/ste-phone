@@ -86,6 +86,7 @@ export function WechatHome({
             <WechatMe
               preferences={preferences}
               name={self?.name ?? account.name}
+              path={self?.avatar?.imagePath}
               profileText={self?.profileText ?? ""}
               onOpenProfile={() => navigation.push({ page: "person", id: account.id })}
               onSwitchAccount={() => navigation.push({ page: "accounts" })}
@@ -118,10 +119,11 @@ function WechatConversations({
         conversations.map((conversation) => {
           const other = conversation.people.find((person) => person.id !== account.id)!;
           const last = conversation.messages.at(-1)!;
-          const name =
+          const person =
             other.scopeId === account.scopeId
-              ? (people.find((person) => person.id === other.id)?.name ?? other.name)
-              : other.name;
+              ? people.find((item) => item.id === other.id)
+              : undefined;
+          const name = person?.name ?? other.name;
           return (
             <button
               type="button"
@@ -129,7 +131,7 @@ function WechatConversations({
               key={conversation.id}
               onClick={() => onOpen(other.id)}
             >
-              <PersonAvatar name={name} />
+              <PersonAvatar path={person?.avatar?.imagePath} name={name} />
               <span>
                 <span className="wechat-conversation-heading">
                   <strong>{name}</strong>
@@ -183,7 +185,7 @@ function WechatContacts({
             key={person.id}
             onClick={() => onOpen(person.id)}
           >
-            <PersonAvatar name={person.name} />
+            <PersonAvatar path={person.avatar?.imagePath} name={person.name} />
             <span>
               <strong>{person.name}</strong>
             </span>
@@ -201,6 +203,7 @@ function WechatMe({
   preferences,
   name,
   profileText,
+  path,
   onOpenProfile,
   onSwitchAccount,
   onOpenStickers,
@@ -209,6 +212,7 @@ function WechatMe({
   preferences: WechatPageProps["preferences"];
   name: string;
   profileText: string;
+  path?: string;
   onOpenProfile(): void;
   onSwitchAccount(): void;
   onOpenStickers(): void;
@@ -216,7 +220,7 @@ function WechatMe({
 }) {
   return (
     <>
-      <PersonIdentity name={name} />
+      <PersonIdentity name={name} path={path} />
       <ProfilePreview name={name} profileText={profileText} />
       <GroupedList>
         <ListCell title="个人资料" onClick={onOpenProfile} />

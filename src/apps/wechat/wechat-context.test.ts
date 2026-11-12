@@ -27,7 +27,17 @@ test("SQL-backed prompt includes one-hop context while preserving summary and te
     `INSERT INTO plot_summaries("$record_id","$stable_id","$created_at",summary,details) VALUES ('instance-summary','summary','earlier','早期总结','必须保留的完整总结'); UPDATE chronicle SET plot_summary='instance-summary' WHERE "$stable_id"='event-1';`,
   );
   const provider = new MemoryDatabaseProvider();
-  const data = new PhoneDataService(provider);
+  const data = new PhoneDataService(
+    provider,
+    {
+      read: () => undefined,
+      write: async () => {
+        throw new Error("测试不写入人物资料");
+      },
+    },
+    { getSnapshot: () => null, subscribe: () => () => {} },
+    () => true,
+  );
   try {
     const scope = data.getSnapshot().context;
     const roster = await data.readBackground(scope);
@@ -50,8 +60,16 @@ test("SQL-backed prompt includes one-hop context while preserving summary and te
     const payload = JSON.parse(
       await readWechatPrompt(data, scope, sender, recipient, conversation, 30),
     );
-    assert.deepEqual(payload.当前帐号, sender);
-    assert.deepEqual(payload.你扮演的回复人物, recipient);
+    assert.deepEqual(payload.当前帐号, {
+      id: sender.id,
+      name: sender.name,
+      profileText: sender.profileText,
+    });
+    assert.deepEqual(payload.你扮演的回复人物, {
+      id: recipient.id,
+      name: recipient.name,
+      profileText: recipient.profileText,
+    });
     assert.match(payload.剧情总结, /必须保留的完整总结/);
     assert.match(payload.剧情总结, /借出的笔记本/);
     assert.doesNotMatch(payload.剧情总结, /放学后，小红与小蓝在图书馆讨论/);

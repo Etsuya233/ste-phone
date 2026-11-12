@@ -49,7 +49,7 @@ export function MomentAuthor({
       className="wechat-moment-author"
       onClick={() => navigation.push({ page: "person", id: person.id })}
     >
-      <PersonAvatar name={name} />
+      <PersonAvatar path={person?.avatar?.imagePath} name={name} />
       <strong>{name}</strong>
     </button>
   ) : (

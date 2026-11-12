@@ -21,9 +21,10 @@ export interface StChatContext {
 /** File identity: renaming, copying or branching a chat changes its id. Character array reordering does not. */
 export function createStChatContext(
   getContext: () => StChatContext,
-): ChatContext & { dispose(): void } {
+): ChatContext & { matchesMemoryChat(identity: string | null): boolean; dispose(): void } {
   const listeners = new Set<() => void>();
   let snapshot: PhoneChat | null = null;
+  let memoryIdentity: string | null = null;
   const refresh = () => {
     const context = getContext();
     let next: PhoneChat | null = null;
@@ -41,6 +42,12 @@ export function createStChatContext(
         });
       }
     }
+    // Memory 的公开聊天键使用角色索引。与 Phone 的文件身份一起取样，防止两边通知顺序不同。
+    memoryIdentity = next
+      ? context.groupId != null
+        ? `group:${context.groupId}:${next.name}`
+        : `char:${context.characterId}:${next.name}`
+      : null;
     if (snapshot?.id === next?.id && snapshot?.name === next?.name) {
       return;
     }
@@ -62,6 +69,7 @@ export function createStChatContext(
   }
   return {
     getSnapshot: () => snapshot,
+    matchesMemoryChat: (identity) => identity === memoryIdentity,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => {

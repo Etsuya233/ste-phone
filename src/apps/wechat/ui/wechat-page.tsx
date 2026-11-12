@@ -1,4 +1,5 @@
 import type { GalleryImage } from "../../gallery/public.ts";
+import { ProfileAvatar } from "../../../frontend/images/profile-avatar.tsx";
 import type { WechatPreferences, WechatSendMode } from "../../settings/public.ts";
 import type { Navigation } from "../../../frontend/foundation/navigation-stack.tsx";
 import type { WechatService } from "../wechat-service.ts";
@@ -33,10 +34,10 @@ export interface WechatPageProps {
   stickers: WechatStickerLibrary;
   stickerState: ReturnType<WechatStickerLibrary["getSnapshot"]>;
 }
-export function PersonAvatar({ name }: { name: string }) {
+export function PersonAvatar({ name, path }: { name: string; path?: string }) {
   return (
-    <span className="wechat-avatar" aria-hidden="true">
+    <ProfileAvatar className="wechat-avatar" path={path}>
       {name.slice(0, 1)}
-    </span>
+    </ProfileAvatar>
   );
 }

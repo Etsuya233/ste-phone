@@ -11,7 +11,17 @@ function fixture(snapshot: MemorySnapshot = relatedBackgroundSnapshot(true)) {
   const memory = memoryDatabaseFixture(snapshot);
   memory.install();
   const provider = new MemoryDatabaseProvider();
-  const data = new PhoneDataService(provider);
+  const data = new PhoneDataService(
+    provider,
+    {
+      read: () => undefined,
+      write: async () => {
+        throw new Error("测试不写入人物资料");
+      },
+    },
+    { getSnapshot: () => null, subscribe: () => () => {} },
+    () => true,
+  );
   const request = { ...data.getSnapshot().context, participantIds: ["red", "blue"] };
   return {
     memory,

@@ -42,32 +42,17 @@ export async function readDiaryAuthors(
   scope: DataScope,
 ): Promise<DiaryAuthor[]> {
   const schema = await data.describe(scope);
-  const authors: DiaryAuthor[] = [];
-  for (let offset = 0; ; offset += 200) {
-    const page = await data.query({
-      ...scope,
-      sql: "SELECT stable_record_id,name,profile_text FROM phone_characters ORDER BY name,record_id LIMIT 200 OFFSET :offset",
-      params: { offset },
-    });
-    if (page.truncated) {
-      throw new Error("人物资料查询被截断");
-    }
-    for (const [id, name, profileText] of page.rows) {
-      if (typeof id !== "string" || typeof name !== "string" || typeof profileText !== "string") {
-        throw new Error("人物资料字段格式无效");
-      }
-      authors.push({
-        id,
-        name,
-        profileText,
-        sourceId: schema.sourceId,
-        scopeId: schema.stableScopeId,
-      });
-    }
-    if (page.rows.length < 200) {
-      return authors;
-    }
-  }
+  const authors = await data.readCharacters(scope);
+  return authors
+    .map(({ id, name, profileText, avatar }) => ({
+      id,
+      name,
+      profileText,
+      avatar,
+      sourceId: schema.sourceId,
+      scopeId: schema.stableScopeId,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN") || a.id.localeCompare(b.id));
 }
 
 export async function readDiaryWorld(data: DataAppPublic, scope: DataScope): Promise<DiaryWorld> {
@@ -129,25 +114,12 @@ export async function readDiaryContext(
     throw new Error("原日记作者已不在当前资料中，请重新选择");
   }
   // 持久作者通过稳定身份找到当前实例；后续关系查询使用此次取得的实例 ID。
-  const people = await data.query({
-    ...scope,
-    sql: "SELECT record_id,name,profile_text FROM phone_characters WHERE stable_record_id=:author",
-    params: { author: selected.id },
-  });
-  if (people.truncated) {
-    throw new Error("人物资料查询被截断");
-  }
-  if (people.rows.length !== 1) {
+  const people = await data.readCharacters(scope, [selected.id]);
+  const person = people[0];
+  if (people.length !== 1 || !person?.recordId) {
     throw new Error("原日记作者已不在当前资料中，请重新选择");
   }
-  const [currentRecordId, name, profileText] = people.rows[0]!;
-  if (
-    typeof currentRecordId !== "string" ||
-    typeof name !== "string" ||
-    typeof profileText !== "string"
-  ) {
-    throw new Error("人物资料字段格式无效");
-  }
+  const { recordId: currentRecordId, name, profileText } = person;
   const author = {
     id: selected.id,
     name,

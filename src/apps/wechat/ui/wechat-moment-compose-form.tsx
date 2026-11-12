@@ -22,7 +22,7 @@ export function MomentComposeForm({
   return (
     <div className="wechat-moment-editor wechat-moment-compose">
       <div className="wechat-moment-author-line">
-        <PersonAvatar name={name} />
+        <PersonAvatar path={author?.avatar?.imagePath} name={name} />
         <span>
           <strong>{name}</strong>
           <small>以此身份发布</small>

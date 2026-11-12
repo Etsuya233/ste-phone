@@ -42,12 +42,12 @@ export function DiaryBookCover({
       <span className="diary-book-spine" aria-hidden="true" />
       <span className="diary-book-kicker">DIARY</span>
       <span className="diary-book-mark">
-        {empty ? (
+        {empty && !book.author?.avatar ? (
           <span className="diary-avatar diary-avatar--large diary-avatar--blank" aria-hidden="true">
             ?
           </span>
         ) : (
-          <DiaryAvatar name={book.name} size="large" />
+          <DiaryAvatar path={book.author?.avatar?.imagePath} name={book.name} size="large" />
         )}
       </span>
       <span className="diary-book-title">{book.name}的日记</span>

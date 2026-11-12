@@ -41,6 +41,7 @@ function fixture() {
         sourceListeners.delete(listener);
       };
     },
+    readCharacters: async (_, ids) => people.filter(({ id }) => !ids || ids.includes(id)),
     readBackground: async () => ({
       sourceId: "ste-memory",
       scopeId: "instance",

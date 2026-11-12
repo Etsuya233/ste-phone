@@ -32,7 +32,7 @@ export function DiaryBookHeading({
             众
           </span>
         ) : (
-          <DiaryAvatar name={book.name} size="large" />
+          <DiaryAvatar path={book.author?.avatar?.imagePath} name={book.name} size="large" />
         )}
         <div className="diary-book-heading-copy">
           <p className="diary-eyebrow">{book.kind === "all" ? "EVERYONE" : "DIARY"}</p>

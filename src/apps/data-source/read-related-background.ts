@@ -1,3 +1,5 @@
+import { effectiveCharacter, readSourceCharacters } from "./character-profiles.ts";
+import type { CharacterOverride } from "./character-overrides.ts";
 import type { DataAppPublic, DataScope, SqlValue } from "./public.ts";
 import type {
   BackgroundPersonBrief,
@@ -9,6 +11,7 @@ import type {
 export async function readRelatedBackground(
   data: DataAppPublic,
   request: RelatedBackgroundRequest,
+  overrides: Readonly<Record<string, CharacterOverride>>,
 ): Promise<RelatedBackground> {
   const scope = { chatIdentity: request.chatIdentity, scopeId: request.scopeId };
   const participantIds = [...new Set(request.participantIds)];
@@ -16,7 +19,7 @@ export async function readRelatedBackground(
     throw new Error("关联资料至少需要一位参与人物");
   }
   await assertRelatedCapabilities(data, scope);
-  const people = await readPeople(data, scope, "stable_record_id", participantIds);
+  const people = await readPeople(data, scope, "stable_record_id", participantIds, overrides);
   if (people.size !== participantIds.length) {
     throw new Error("参与人物已不在当前资料范围内");
   }
@@ -33,7 +36,7 @@ export async function readRelatedBackground(
     }
   }
   const otherIds = [...linkedIds].filter((id) => !people.has(id));
-  const otherPeople = await readPeople(data, scope, "record_id", otherIds);
+  const otherPeople = await readPeople(data, scope, "record_id", otherIds, overrides);
   if (otherPeople.size !== otherIds.length) {
     throw new Error("关联资料引用了不存在的人物");
   }
@@ -118,27 +121,26 @@ async function readPeople(
   scope: DataScope,
   identity: "record_id" | "stable_record_id",
   ids: readonly string[],
+  overrides: Readonly<Record<string, CharacterOverride>>,
 ) {
-  const result = new Map<string, BackgroundPersonBrief>();
-  if (!ids.length) {
-    return result;
-  }
-  const rows = await readRows(
-    data,
-    scope,
-    `SELECT record_id,stable_record_id,name,personality,background,current_status FROM phone_characters WHERE ${identity} IN (SELECT value FROM json_each(:ids))`,
-    { ids: JSON.stringify(ids) },
+  const people = await readSourceCharacters(data, scope, { column: identity, ids });
+  return new Map(
+    people.map((person) => {
+      const effective = effectiveCharacter(person, overrides);
+      const field = (key: string) =>
+        effective.fields!.find((item) => item.key === key)?.value ?? null;
+      return [
+        person.recordId,
+        {
+          id: effective.id,
+          name: effective.name,
+          personality: field("personality"),
+          background: field("background"),
+          currentStatus: field("current_status"),
+        },
+      ] as const;
+    }),
   );
-  for (const [instanceId, id, name, personality, background, currentStatus] of rows) {
-    result.set(requiredText(instanceId), {
-      id: requiredText(id),
-      name: requiredText(name),
-      personality: nullableText(personality),
-      background: nullableText(background),
-      currentStatus: nullableText(currentStatus),
-    });
-  }
-  return result;
 }
 
 function assembleRelatedBackground(

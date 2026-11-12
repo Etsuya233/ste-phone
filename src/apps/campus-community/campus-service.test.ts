@@ -71,7 +71,8 @@ function fixture() {
       return () => {};
     },
     describe: async () => ({ sourceId: "memory", stableScopeId }),
-    query: async () => ({ rows: await queryAuthors(), truncated: false }),
+    readCharacters: async () =>
+      (await queryAuthors()).map(([id, name]) => ({ id, name, profileText: "" })),
     readBackground: async () => ({ characters: [] }),
     readSummary: async () => "",
     readWorldState: async () => [],

@@ -1,5 +1,11 @@
 # 手机公共资料与数据库
 
+## 人物资料覆写
+
+资料 App 把人物覆写保存在 `chatMetadata.ste_phone.characterOverrides`，以当前 ST 聊天文件、稳定资料空间和稳定人物为归属。资料模块读取来源字段并合并已保存的覆写。缺省字段继承来源，空字符串表示显式清空长文本。资料展示和取材读取有效人物资料，Fake DBeaver 和地图的 SQL 继续读取来源。归属和边界见 [ADR 0012](adr/0012-chat-scoped-character-overrides.md)。
+
+ST 宿主适配器串行提交同一聊天的 Phone 元数据写入。轮到提交时合并最新聊天头并固定原文件目标。请求成功后发布确认的数据，失败时保留原值。图库各来源维护自己的图片文件。人物覆写保存头像的来源、ID 和路径，旧头像迁移时保留路径并补为 Image Hub 来源。
+
 ## 人物关联背景与世界状态
 
 `DataAppPublic.readRelatedBackground({ chatIdentity, scopeId, participantIds })` 提供可复用的完整关联取材，`participantIds` 是当前资料范围内的稳定人物 ID。先在 `phone_characters` 找到当前实例记录 ID，再比较关系 A/B、物品持有者和事件人物引用。返回记录和人物引用均使用稳定身份，同名人物不合并。筛选仅锚定原始参与人物；关系与事件直接涉及的第三人去重、排除参与者，不继续查第三人的其他关系、物品或事件，也不从文本姓名猜测关联。
@@ -24,7 +30,7 @@ Memory 从 ST 当前生效消息中排除系统、工具和隐藏消息，保留
 
 日记使用此接口读取最近 20 条参考消息，生成中固定已取得的文本和规则摘要。世界状态及纪要时间仍通过既有标准视图查询；`readBackground()` 的人物、纪要和物品展示结构保持原有职责。
 
-Phone 定义标准查询结构，Memory 执行 SQL 并提供当前已提交资料。资料模块的 `PhoneDataService` 拥有来源结构、查询与背景缓存，Fake DBeaver 通过 `DataAppPublic` 共享这些能力，并由自己的 `DatabaseWorkspace` 保存编辑会话。Phone 只持有来源结构、视图 SELECT、查询结果与页面会话。生产插件不加载 SQLite/WASM，不调用 `STE_MEMORY_API.read()`，也不复制完整 records。
+Phone 定义标准查询结构，Memory 执行 SQL 并提供当前已提交资料。资料模块的 `PhoneDataService` 拥有来源结构、查询与背景缓存，Fake DBeaver 通过 `DataAppPublic` 共享这些能力，并由自己的 `DatabaseWorkspace` 保存编辑会话。生产插件不加载 SQLite/WASM，不调用 `STE_MEMORY_API.read()`，也不复制完整 records。
 
 ## 契约与归属
 
@@ -46,18 +52,20 @@ Memory 保留公开读取 v1 的 `getContext/subscribe/read`，Phone 要求额�
 
 所有 `src_<table.key>` 都是 Memory 公开业务表的别名 VIEW。字段 key 保持原样，布尔值使用 0/1，多值使用 JSON 数组，引用使用记录 ID。对象说明包含原始字段 ID、类型及引用目标。源别名提供 `_phone_source_id`、`_phone_scope_id`、`_phone_record_id`、`_phone_stable_scope_id`、`_phone_stable_record_id`、`_phone_created_at`、`_phone_updated_at`、`_phone_display_text`，记录稳定身份从 `$stable_id` 取得，其他记录属性从公开系统列 `$record_id/$display_text/$created_at/$updated_at` 取得值。停用表/字段不在公开 SQL 结构内。
 
-| 标准对象                     | 主要内容                                                                     |
-| ---------------------------- | ---------------------------------------------------------------------------- |
-| `phone_characters`           | 身份、`name/profile_text/personality/background/current_status`              |
-| `phone_chronicles`           | 身份、`title/content/start_time/end_time/related_character_ids/profile_text` |
-| `phone_items`                | 身份、`name/description/owner_id/status/profile_text`                        |
-| `phone_world_state`          | 身份、`name/world_time/current_location/weather/clothing/other_scenes`       |
-| `phone_chronicle_characters` | `source_id/scope_id/chronicle_id/character_id` 及稳定身份列，展开完整关系    |
-| `phone_capabilities`         | `object_name/status/detail`，明确报告 supported 或 unsupported 及原因        |
+| 标准对象                     | 主要内容                                                                       |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| `phone_characters`           | 身份、`name/profile_text/profile_fields/personality/background/current_status` |
+| `phone_chronicles`           | 身份、`title/content/start_time/end_time/related_character_ids/profile_text`   |
+| `phone_items`                | 身份、`name/description/owner_id/status/profile_text`                          |
+| `phone_world_state`          | 身份、`name/world_time/current_location/weather/clothing/other_scenes`         |
+| `phone_chronicle_characters` | `source_id/scope_id/chronicle_id/character_id` 及稳定身份列，展开完整关系      |
+| `phone_capabilities`         | `object_name/status/detail`，明确报告 supported 或 unsupported 及原因          |
 
 人物、纪要、物品和世界状态视图的身份列包含 `source_id/scope_id/record_id/stable_scope_id/stable_record_id/created_at`，关联视图保留当前记录 ID，并提供 `stable_scope_id/stable_chronicle_id/stable_character_id`。人物稳定身份通过当前人物视图关联取得，悬空人物引用保留原关系行及空稳定人物身份。各标准视图要求所声明来源字段启用、类型及引用目标兼容；无法映射时不注册该标准视图，在 `phone_capabilities` 说明原因，公开源别名仍可查询。支持的空表正常返回零行。资料展示依赖三类标准视图，任一不可用时显示具体映射错误。
 
 `profile_text` 由 SQL 按启用字段位置拼接标签和值，JSON 多值完整展开，引用名称按目标表当前显示策略生成；显示策略字段不可用或出现循环引用时明确报告 unsupported。人物改名后无需重建视图即可显示新引用名称。纪要创建顺序不代表剧情时间，世界日期仅取来源 `current_time`，不以设备时间替代。
+
+人物视图同时提供 `profile_fields`，按来源字段顺序返回字段键、显示标签和值。资料模块用这组值重建覆写后的人物正文，SQL 中的 `profile_text` 和 `profile_fields` 都来自已提交的来源记录。
 
 ```sql
 SELECT date(world_time) AS world_date, current_location FROM phone_world_state;

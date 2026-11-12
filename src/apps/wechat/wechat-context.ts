@@ -29,16 +29,21 @@ export async function readWechatPrompt(
   historyMessageLimit: number,
   stickers: ReturnType<typeof wechatStickerCatalog> = [],
 ): Promise<string> {
-  const summary = await data.readSummary(scope);
-  const related = await data.readRelatedBackground({
-    ...scope,
-    participantIds: [sender.id, recipient.id],
-  });
-  const recent = await data.readRecentChat({ ...scope, count: 10 });
-  const world = await data.readWorldState(scope);
+  const [people, related, summary, recent, world] = await Promise.all([
+    data.readCharacters(scope, [sender.id, recipient.id]),
+    data.readRelatedBackground({ ...scope, participantIds: [sender.id, recipient.id] }),
+    data.readSummary(scope),
+    data.readRecentChat({ ...scope, count: 10 }),
+    data.readWorldState(scope),
+  ]);
+  const freshSender = people.find((person) => person.id === sender.id);
+  const freshRecipient = people.find((person) => person.id === recipient.id);
+  if (!freshSender || !freshRecipient) {
+    throw new Error("微信对话人物已不在当前资料中");
+  }
   return buildWechatPrompt({
-    sender,
-    recipient,
+    sender: freshSender,
+    recipient: freshRecipient,
     summary,
     related,
     recent,

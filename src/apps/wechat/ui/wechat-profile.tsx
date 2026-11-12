@@ -3,10 +3,10 @@ import { GroupedList } from "../../../frontend/foundation/grouped-list.tsx";
 import { readProfileFields, type ProfileField } from "../profile-fields.ts";
 import { PersonAvatar } from "./wechat-page.tsx";
 
-export function PersonIdentity({ name }: { name: string }) {
+export function PersonIdentity({ name, path }: { name: string; path?: string }) {
   return (
     <div className="wechat-identity">
-      <PersonAvatar name={name} />
+      <PersonAvatar name={name} path={path} />
       <h2>{name}</h2>
     </div>
   );

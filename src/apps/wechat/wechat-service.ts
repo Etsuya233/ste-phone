@@ -49,6 +49,7 @@ export class WechatService {
   #preparation = 0;
   #sourceKey: string;
   #sourceRevision: number;
+  #characterRevision = 0;
 
   constructor(dependencies: Dependencies) {
     this.#dependencies = dependencies;
@@ -341,7 +342,7 @@ export class WechatService {
   }
   #sourceChanged = (): void => {
     const binding = this.#binding();
-    const revision = this.#dependencies.data.getSnapshot().revision;
+    const { revision, characterRevision = 0 } = this.#dependencies.data.getSnapshot();
     if (binding !== this.#sourceKey) {
       this.#sourceKey = binding;
       this.cancel(true);
@@ -354,7 +355,8 @@ export class WechatService {
           : this.#snapshot.momentsScopeId,
       });
     }
-    if (revision !== this.#sourceRevision) {
+    if (revision !== this.#sourceRevision || characterRevision !== this.#characterRevision) {
+      this.#characterRevision = characterRevision;
       this.#sourceRevision = revision;
       void this.prepare();
     }

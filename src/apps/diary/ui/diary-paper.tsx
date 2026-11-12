@@ -1,3 +1,4 @@
+import { ProfileAvatar } from "../../../frontend/images/profile-avatar.tsx";
 import { useState, type ReactNode } from "react";
 import { readDiaryMoment } from "../diary-time.ts";
 
@@ -15,19 +16,21 @@ export function diaryAuthorTone(name: string): number {
 
 export function DiaryAvatar({
   name,
+  path,
   size = "medium",
 }: {
   name: string;
+  path?: string;
   size?: "small" | "medium" | "large";
 }) {
   const initial = Array.from(name.trim())[0] ?? "记";
   return (
-    <span
+    <ProfileAvatar
+      path={path}
       className={`diary-avatar diary-avatar--${size} diary-tone--${diaryAuthorTone(name)}`}
-      aria-hidden="true"
     >
       {initial}
-    </span>
+    </ProfileAvatar>
   );
 }
 

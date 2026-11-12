@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { emptyWechat } from "../../apps/wechat/wechat.ts";
 import type { WechatData } from "../../apps/wechat/wechat.ts";
-import { createStWechatStorage, type StWechatContext } from "./wechat-storage.ts";
+import { createStWechatStorage } from "./wechat-storage.ts";
+import { createStChatMetadataStorage, type StChatSaveContext } from "./chat-metadata-storage.ts";
 
 function fixture(request: typeof fetch) {
   let activeId = "a";
-  const context: StWechatContext = {
+  const context: StChatSaveContext = {
     chatId: "story-a",
     characterId: 0,
     groupId: null,
@@ -21,7 +22,7 @@ function fixture(request: typeof fetch) {
     eventTypes: { CHAT_CHANGED: "", CHAT_RENAMED: "", CHARACTER_RENAMED: "", GROUP_UPDATED: "" },
     eventSource: { on() {}, removeListener() {} },
   };
-  const storage = createStWechatStorage(
+  const metadata = createStChatMetadataStorage(
     () => context,
     {
       getSnapshot: () => ({ id: activeId, name: activeId }),
@@ -29,6 +30,7 @@ function fixture(request: typeof fetch) {
     },
     request,
   );
+  const storage = createStWechatStorage(metadata);
   return {
     storage,
     context,
@@ -223,7 +225,7 @@ test("confirmed save refreshes a reloaded same-target metadata object without re
   });
 });
 
-test("an older acknowledgement cannot replay its metadata over a later write", async () => {
+test("a later write waits for the previous save before sending metadata", async () => {
   let finish!: (value: Response) => void;
   let calls = 0;
   const f = fixture((async () => {
@@ -236,9 +238,12 @@ test("an older acknowledgement cannot replay its metadata over a later write", a
   }) as typeof fetch);
   const old = f.storage.write("a", emptyWechat());
   const newer = { ...emptyWechat(), replyGuidance: { stable: { person: "newest" } } };
-  await f.storage.write("a", newer);
+  const next = f.storage.write("a", newer);
+  assert.equal(calls, 1);
   finish(new Response(null, { status: 200 }));
   await old;
+  await next;
+  assert.equal(calls, 2);
   assert.deepEqual(f.storage.read("a"), newer);
 });
 

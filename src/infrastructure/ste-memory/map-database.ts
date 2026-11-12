@@ -203,6 +203,11 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
         };
       });
       const text = withProfile ? profile(table) : null;
+      // 保留来源字段顺序及显示规则，Phone 可以逐字段合并后重建正文。
+      const characterFields =
+        name === "phone_characters"
+          ? `'['||${fields.map((field) => `json_array(${literal(field.key)},${literal(field.name)},${renderValue(field, "r", [])})`).join("||','||")}||']'`
+          : null;
       add({
         name,
         kind: "view",
@@ -213,8 +218,11 @@ export function mapMemoryDatabase(schema: MemoryDatabaseDescription): DatabaseSc
           ...(withProfile
             ? [column("profile_text", "按启用字段与标签拼接，引用使用当前显示策略")]
             : []),
+          ...(characterFields
+            ? [column("profile_fields", "按来源顺序排列的字段键、标签及显示值")]
+            : []),
         ],
-        select: `SELECT ${idSelect},${definitions.map(([name, key]) => `r.${q(key)} AS ${q(name)}`).join(",")}${text === null ? "" : `,${text} AS profile_text`} FROM ${q(table.key)} r`,
+        select: `SELECT ${idSelect},${definitions.map(([name, key]) => `r.${q(key)} AS ${q(name)}`).join(",")}${text === null ? "" : `,${text} AS profile_text`}${characterFields ? `,${characterFields} AS profile_fields` : ""} FROM ${q(table.key)} r`,
       });
       capabilities.push([name, "supported", "来源结构支持；零行表示当前没有记录"]);
     } catch (error) {

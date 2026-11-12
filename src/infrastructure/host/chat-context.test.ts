@@ -65,10 +65,13 @@ test("snapshot is stable and notifications observe updated chat without Memory",
 test("file rename, copy, group switch and owner identity remain distinct", () => {
   const { context, chat, emit } = fixture();
   const original = chat.getSnapshot()!;
+  assert.equal(chat.matchesMemoryChat("char:0:story"), true);
   context.characters = [{ avatar: "other.png" }, { avatar: "alice.png" }];
   context.characterId = 1;
   emit("changed");
   assert.equal(chat.getSnapshot(), original);
+  assert.equal(chat.matchesMemoryChat("char:1:story"), true);
+  assert.equal(chat.matchesMemoryChat("char:0:story"), false);
   context.chatId = "renamed";
   emit("renamed");
   assert.notEqual(chat.getSnapshot()!.id, original.id);
@@ -76,6 +79,8 @@ test("file rename, copy, group switch and owner identity remain distinct", () =>
   context.groupId = "alice.png";
   emit("changed");
   assert.notEqual(chat.getSnapshot()!.id, original.id);
+  assert.equal(chat.matchesMemoryChat("group:alice.png:story"), true);
+  assert.equal(chat.matchesMemoryChat("char:1:story"), false);
   context.groupId = null;
   context.characterId = undefined;
   emit("changed");

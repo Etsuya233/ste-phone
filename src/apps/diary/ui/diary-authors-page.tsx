@@ -63,7 +63,7 @@ export function DiaryAuthorsPage({ diary, state, navigation }: DiaryPageProps) {
                   disabled={busy}
                   onChange={() => void selectAuthor(author.id)}
                 />
-                <DiaryAvatar name={author.name} size="medium" />
+                <DiaryAvatar path={author.avatar?.imagePath} name={author.name} size="medium" />
                 <span className="diary-author-copy">
                   <span className="diary-author-name">
                     {author.name}

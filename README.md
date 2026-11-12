@@ -6,7 +6,7 @@
 
 「设置 → 外观」可分别选择手机外形（iPhone 6s / iPhone 17）与系统风格（经典 iOS / iOS 26），支持四种自由组合，选择后立即应用并跨聊天保存。旧配置升级后保留经典 iPhone 6s；切换外观保留应用页面、草稿和后台任务。iPhone 17 使用全面屏、灵动岛与底部 Home 条；从条快速上滑松手返回主屏，上滑减速定住后松手或按住停留约 240ms 查看后台，锁屏时上滑解锁。iPhone 6s 亮起锁屏后长按 Home 600ms 解锁。交互跟随手机外形，iOS 26 风格提供大圆角分组、胶囊控件、顶部渐隐导航、无边框模糊 Dock。
 
-面向 SillyTavern 的小手机插件。使用 React、TypeScript、普通 CSS 和 esbuild，提供 iPhone 6s / iPhone 17 风格外壳、主屏幕、秒表、Foundation 组件、只读资料应用、Fake DBeaver 数据库应用、日志查看和壁纸设置。公共数据源连接 STE Memory，将 Phone 定义的标准视图注册到 Memory 已提交数据库，供当前人物、纪要、物品和世界状态查询。
+面向 SillyTavern 的小手机插件。使用 React、TypeScript、普通 CSS 和 esbuild，提供 iPhone 6s / iPhone 17 风格外壳、主屏幕、秒表、Foundation 组件、资料应用、Fake DBeaver 数据库应用、日志查看和壁纸设置。公共数据源连接 STE Memory，将 Phone 定义的标准视图注册到 Memory 已提交数据库，供当前人物、纪要、物品和世界状态查询。
 
 点击右侧机身电源键锁屏，两种机型的响应式模式也保留侧电源键；iPhone 6s 响应式模式还可使用底部锁形按钮，iPhone 17 底部只保留 Home 条。关闭按钮位于顶部。锁屏先熄灭屏幕，点击黑屏、电源键或短按 Home 只唤醒到锁屏；iPhone 17 上滑解锁，iPhone 6s 长按实体或软件 Home 600ms 解锁。键盘可在 iPhone 17 锁屏按 Enter 或空格解锁；iPhone 6s 聚焦 Home 后按住 Enter 或空格 600ms 解锁，提前松开会取消。关闭重开保留锁屏状态、应用草稿和后台任务，刷新后重新开始手机会话；当前不设密码或自动熄屏。
 
@@ -44,7 +44,7 @@
 
 「图库」默认显示全部图片，可切换「手机图库」和「Image Hub」。右上角「＋」可多选 PNG、JPEG、WebP，单张最多 10 MB，保存前会检查文件内容并实际解码。上传固定进入手机图库，按照片文件和信息都保存成功的张数更新进度。Home、关闭手机和离开图库后仍继续；可在上传窗口取消，已经保存的照片会保留。部分失败时可只重试失败项。手机图库按 ST 登录帐号跨聊天保存，无需安装 Image Hub；其中一个来源读取失败时，另一个来源仍可浏览。
 
-图库按今天、昨天、更早分组，点缩略图可左右滑动或用方向键翻阅大图，查看来源、保存时间并复制已有描述。右上角「刷新」重新读取，从后台回来时也会重读。日记、朋友圈、Twitter 配图和账号头像均可从图库选图。
+图库按今天、昨天、更早分组，点缩略图可左右滑动或用方向键翻阅大图，查看来源、保存时间并复制已有描述。右上角「刷新」重新读取，从后台回来时也会重读。日记、朋友圈、Twitter 配图、账号头像及资料中的人物通用头像均可从图库选图。
 
 「图乐园」把描述便签固定在底部，Enter 生成、Shift+Enter 换行；本次结果以相纸落在上方画布，成功后合并进「最近作品」，可用「再画一张」复用本次描述。生成与保存由 ST Image Hub 负责，需要启用 `ST_IMAGE_HUB_API v1`。Home、关闭手机和退出应用都让 Hub 继续生成；回到图库后自动读取新结果。已有桌面布局可从 App Store 获取图库和图乐园。
 
@@ -120,6 +120,8 @@ iPhone 6s 在解锁后单击 Home 返回主屏、双击进入 Expose；iPhone 17
 ## 开发命令
 
 主屏「资料」可以查看 STE Memory 的当前背景资料、搜索和复制正文。需要同时安装支持 `STE_MEMORY_API v1` 和 `database v1` capability 的 Memory 构建，展示映射支持「剧情记忆」预设；结构不符会明确提示。主屏「数据库」（Fake DBeaver）提供对象搜索、列与关联说明、只读 SQL 和结果复制，提供 `src_*` 源别名及 `phone_*` 标准视图。标准世界时间用 `SELECT date(world_time) FROM phone_world_state;` 查询。公共缓存跨 App 保留，刷新 ST 后重建视图连接，不写回 Memory；SQL 草稿、结果、搜索和滚动位置按聊天及资料范围保留在内存。独立预览使用示例数据，可用 `/?data-source=1` 或 `/?database=1` 快捷进入，加入 `data-state=empty`、`error`、`unavailable`、`unsupported` 检查状态。接口、映射和缓存说明见 [公共数据源](docs/data-source.md)。
+
+「资料 → 人物 → 人物详情 → 编辑」可覆写姓名、性格、背景和现状，也可从图库设置通用头像。覆写按 ST 聊天、稳定资料空间和人物保存。「恢复来源」在保存时移除该字段的覆写，采用 Memory 的当前值。微信、日记和 Twitter 的人物读取采用有效资料，Twitter 账号自定义头像优先。Fake DBeaver 和剧情地图继续查询来源。独立预览可附加 `character-override-test=save-error` 或 `slow-save`，分别检查保存失败重试和保存状态。
 
 ```sh
 pnpm build             # JS、CSS、manifest；清理旧 Worker/WASM

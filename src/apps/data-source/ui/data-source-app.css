@@ -61,3 +61,57 @@
   font-size: var(--ios-caption-size);
   user-select: text;
 }
+
+:host .data-character-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+:host .data-character-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: var(--ios-grouped-surface, #e8e9ec);
+  color: var(--ios-label, #222);
+  font-weight: 600;
+}
+
+:host .data-detail-avatar {
+  margin: 0.75rem 0.75rem 0;
+  width: 3rem;
+  height: 3rem;
+}
+
+:host .data-character-editor {
+  display: grid;
+  gap: 1rem;
+  padding: 0.75rem;
+}
+
+:host .data-character-field {
+  display: grid;
+  gap: 0.25rem;
+}
+
+:host .data-character-field label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+:host .data-character-field input,
+:host .data-character-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem;
+  border: 1px solid var(--ios-separator, #ccc);
+  border-radius: 0.4rem;
+  background: var(--ios-grouped-surface, #fff);
+  color: inherit;
+  font: inherit;
+}
