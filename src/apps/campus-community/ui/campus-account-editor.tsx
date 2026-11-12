@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert } from "../../../frontend/foundation/alert.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { createCampusId, type CampusAccount } from "../campus-domain.ts";
@@ -43,6 +43,7 @@ export function CampusAccountEditor(props: CampusPageProps & { accountId?: strin
   const [saved, setSaved] = useState(false);
   const [discard, setDiscard] = useState(false);
   const [avatarPicker, setAvatarPicker] = useState(false);
+  const picker = useRef<HTMLDivElement>(null);
   const newPerson = !account && ownership === "new-person";
   const publicAccount = account ? account.owner.kind === "public" : ownership === "public";
   const valid = Boolean(draft.nickname.trim() && (!(person || newPerson) || personProfile.trim()));
@@ -71,6 +72,11 @@ export function CampusAccountEditor(props: CampusPageProps & { accountId?: strin
       navigation.pop();
     }
   }, [saved, navigation]);
+  useEffect(() => {
+    if (avatarPicker) {
+      picker.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [avatarPicker]);
 
   async function save() {
     if (!valid || busy) {
@@ -157,15 +163,17 @@ export function CampusAccountEditor(props: CampusPageProps & { accountId?: strin
               onPickAvatar={() => setAvatarPicker(true)}
             />
             {avatarPicker ? (
-              <CampusAvatarPicker
-                active={navigation.current}
-                selected={draft.avatar}
-                onSelect={(avatar) => {
-                  setDraft({ ...draft, avatar });
-                  setAvatarPicker(false);
-                }}
-                onClose={() => setAvatarPicker(false)}
-              />
+              <div ref={picker}>
+                <CampusAvatarPicker
+                  active={navigation.current}
+                  selected={draft.avatar}
+                  onSelect={(avatar) => {
+                    setDraft({ ...draft, avatar });
+                    setAvatarPicker(false);
+                  }}
+                  onClose={() => setAvatarPicker(false)}
+                />
+              </div>
             ) : null}
             {person ? (
               <label>
