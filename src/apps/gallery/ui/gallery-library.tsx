@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "../../../frontend/foundation/button.tsx";
-import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
+import { NavBar, NavBarActionGroup } from "../../../frontend/foundation/nav-bar.tsx";
+import { Icon } from "../../../frontend/foundation/icon.tsx";
 import { Page } from "../../../frontend/foundation/page.tsx";
 import { SegmentedControl } from "../../../frontend/foundation/segmented-control.tsx";
 import { ImageGrid } from "../../../frontend/images/image-views.tsx";
@@ -52,14 +53,31 @@ export function GalleryLibrary({
             title="图库"
             back={{ label: "主屏幕", onClick: onHome }}
             right={
-              <div className="gallery-actions">
-                <Button disabled={loading} onClick={() => void refresh()}>
-                  刷新
+              <NavBarActionGroup label="图库操作">
+                <Button
+                  aria-label="刷新图库"
+                  title="刷新图库"
+                  disabled={loading}
+                  onClick={() => void refresh()}
+                >
+                  <Icon>
+                    <svg viewBox="0 0 24 24">
+                      <path d="M20 7v5h-5M19.4 12a7.5 7.5 0 1 0-1.9 5.2" />
+                    </svg>
+                  </Icon>
                 </Button>
-                <Button aria-label="上传到手机图库" onClick={() => input.current!.click()}>
-                  ＋
+                <Button
+                  aria-label="上传到手机图库"
+                  title="上传到手机图库"
+                  onClick={() => input.current!.click()}
+                >
+                  <Icon>
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                  </Icon>
                 </Button>
-              </div>
+              </NavBarActionGroup>
             }
           />
         }

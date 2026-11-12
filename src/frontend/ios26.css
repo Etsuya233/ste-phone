@@ -75,6 +75,25 @@
 :host [data-system-style="ios26"] .ios-nav .ios-button--danger {
   color: var(--ios-red);
 }
+/* Only the group paints the glass, so neighboring buttons share one surface. */
+:host [data-system-style="ios26"] .ios-nav:has(.ios-nav-actions) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+:host [data-system-style="ios26"] .ios-nav-actions {
+  border-radius: 24px;
+  background: var(--ios-glass-surface);
+  backdrop-filter: blur(var(--ios-bar-blur)) saturate(1.5);
+  box-shadow: var(--ios-glass-shadow);
+}
+:host [data-system-style="ios26"] .ios-nav-actions > .ios-button {
+  padding-inline: var(--ios-space-small);
+  background: transparent;
+  box-shadow: none;
+}
+:host [data-system-style="ios26"] .ios-nav-actions > .ios-button:active:not(:disabled) {
+  background: color-mix(in srgb, var(--ios-ink) 4%, transparent);
+  opacity: 1;
+}
 :host [data-system-style="ios26"] .ios-nav h1 {
   font-weight: 650;
   letter-spacing: -0.4px;

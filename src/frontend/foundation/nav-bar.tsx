@@ -1,6 +1,15 @@
 import type { ReactNode } from "react";
 import { Button } from "./button.tsx";
 import { Icon } from "./icon.tsx";
+/** Related actions share one material surface, with independent buttons and focus. */
+export function NavBarActionGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="ios-nav-actions" role="group" aria-label={label}>
+      {children}
+    </div>
+  );
+}
+
 export function NavBar({
   title,
   back,

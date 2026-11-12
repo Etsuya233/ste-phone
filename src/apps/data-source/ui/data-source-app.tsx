@@ -9,7 +9,7 @@ import type { DataSourceSnapshot, DataAppPublic } from "../public.ts";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { GroupedList } from "../../../frontend/foundation/grouped-list.tsx";
 import { ListCell } from "../../../frontend/foundation/list-cell.tsx";
-import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
+import { NavBar, NavBarActionGroup } from "../../../frontend/foundation/nav-bar.tsx";
 import { Page } from "../../../frontend/foundation/page.tsx";
 import { StorySummaryPage } from "./story-summary-page.tsx";
 
@@ -160,7 +160,7 @@ function DataBrowser({
             }}
             right={
               selectedId ? (
-                <span className="data-character-actions">
+                <NavBarActionGroup label="资料操作">
                   {selectedPerson && state.hostChatId ? (
                     <Button
                       onClick={() =>
@@ -180,7 +180,7 @@ function DataBrowser({
                   <Button disabled={!selected} onClick={() => void copyText()}>
                     复制
                   </Button>
-                </span>
+                </NavBarActionGroup>
               ) : (
                 <Button
                   disabled={!state.context.available || state.status === "loading"}

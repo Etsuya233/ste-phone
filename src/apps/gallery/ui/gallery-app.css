@@ -170,12 +170,6 @@
   }
 }
 
-:host .gallery-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--ios-space-tiny);
-}
-
 :host .gallery-filters legend {
   position: absolute;
   width: 1px;

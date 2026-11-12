@@ -51,3 +51,26 @@
   width: var(--ios-back-icon-width);
   height: var(--ios-back-icon-height);
 }
+
+/* Equal side tracks keep the title centered and reserve room for two actions. */
+:host .ios-nav:has(.ios-nav-actions) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+:host .ios-nav-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  white-space: nowrap;
+}
+:host .ios-nav-side:has(.ios-nav-actions) {
+  overflow: visible;
+}
+:host .ios-nav-actions > .ios-button {
+  flex: 0 0 auto;
+  justify-content: center;
+  padding-inline: var(--ios-space-small);
+}
+:host .ios-nav-actions .ios-icon {
+  width: 20px;
+  height: 20px;
+}

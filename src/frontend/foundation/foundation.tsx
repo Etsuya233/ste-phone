@@ -3,7 +3,7 @@ export { Text } from "./text.tsx";
 export { TextField } from "./text-field.tsx";
 export { Icon } from "./icon.tsx";
 export { Page } from "./page.tsx";
-export { NavBar } from "./nav-bar.tsx";
+export { NavBar, NavBarActionGroup } from "./nav-bar.tsx";
 export { SafeArea } from "./safe-area.tsx";
 export { GroupedList } from "./grouped-list.tsx";
 export { ListCell } from "./list-cell.tsx";
