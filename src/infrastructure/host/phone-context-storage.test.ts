@@ -2,93 +2,143 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createStChatMetadataStorage, type StChatSaveContext } from "./chat-metadata-storage.ts";
 import { createStPhoneContextStorage } from "./phone-context-storage.ts";
+import { createStWechatIntentStorage } from "./wechat-intent-storage.ts";
 import { createStWechatStorage } from "./wechat-storage.ts";
+import { readPhoneIntentBlocks } from "./phone-intent-migration.ts";
 import type { PhoneContextData } from "../../apps/phone-context/public.ts";
-import { createWechatContextSource } from "../../apps/wechat/public.ts";
 
-const presets: PhoneContextData = {
+const selection = {
+  scopeId: "space",
+  personIds: ["a", "b"],
+  recentMinutes: null,
+  limitPerGroup: 50,
+};
+const legacy = {
   version: 1,
-  presets: [
-    {
-      id: "recent",
-      name: "最近聊天",
-      sourceId: "wechat",
-      selection: {
-        scopeId: "space",
-        personIds: ["a", "b"],
-        recentMinutes: null,
-        limitPerGroup: 50,
-      },
-    },
-  ],
+  presets: [{ id: "recent", name: "最近聊天", sourceId: "wechat", selection }],
+};
+const binding: PhoneContextData = {
+  version: 2,
+  presets: [{ id: "recent", name: "最近聊天", sourceId: "wechat", intentId: "recent" }],
+};
+const intentData = {
+  version: 1 as const,
+  intents: [{ id: "recent", name: "最近聊天", selection }],
 };
 
-test("宏读取只包含已确认保存的微信，预设与微信并发保存保留双方数据", async () => {
-  const response = Promise.withResolvers<Response>();
+function fixture(phone: Record<string, unknown> = {}) {
   const context: StChatSaveContext = {
     chatId: "story",
     groupId: "group",
     characters: [],
     chat: [],
-    chatMetadata: { otherPlugin: "keep" },
+    chatMetadata: { ste_phone: phone, otherPlugin: "keep" },
     getRequestHeaders: () => ({}),
     eventTypes: { CHAT_CHANGED: "", CHAT_RENAMED: "", CHARACTER_RENAMED: "", GROUP_UPDATED: "" },
     eventSource: { on() {}, removeListener() {} },
   };
-  let calls = 0;
+  const response = Promise.withResolvers<Response>();
+  const submitted: Record<string, unknown>[] = [];
   const metadata = createStChatMetadataStorage(
     () => context,
     { getSnapshot: () => ({ id: "chat", name: "story" }), subscribe: () => () => {} },
-    async () => (++calls === 1 ? response.promise : new Response(null, { status: 200 })),
+    async (_url, init) => {
+      submitted.push(JSON.parse(init!.body as string).chat[0].chat_metadata.ste_phone);
+      return submitted.length === 1 ? response.promise : new Response(null, { status: 200 });
+    },
   );
-  const storage = createStPhoneContextStorage(metadata);
-  const wechat = createStWechatStorage(metadata);
-  const source = createWechatContextSource(wechat);
-  const writing = wechat.write("chat", {
-    version: 4,
-    account: null,
-    conversations: [
-      {
-        id: '["space","a","b"]',
-        people: [
-          { id: "a", scopeId: "space", name: "甲" },
-          { id: "b", scopeId: "space", name: "乙" },
-        ],
-        messages: [
-          {
-            id: "message",
-            senderId: "a",
-            content: { type: "text", text: "保存后可见" },
-            createdAt: new Date().toISOString(),
-          },
-        ],
-      },
-    ],
-  });
-  const savingPreset = storage.write("chat", presets);
-  assert.equal(wechat.read("chat"), null);
-  assert.equal(storage.read("chat"), null);
-  response.resolve(new Response(null, { status: 200 }));
-  await Promise.all([writing, savingPreset]);
-  assert.equal(calls, 2);
-  assert.deepEqual(storage.read("chat"), presets);
-  assert.match(
-    source.read({ chatId: "chat", selection: presets.presets[0]!.selection, now: Date.now() }).text,
-    /保存后可见/,
-  );
-  assert.equal(context.chatMetadata.otherPlugin, "keep");
+  return {
+    context,
+    response,
+    submitted,
+    bindings: createStPhoneContextStorage(metadata),
+    intents: createStWechatIntentStorage(metadata),
+    wechat: createStWechatStorage(metadata),
+  };
+}
+
+test("旧预设同步投影为微信 Intent 与宏绑定，读取不写回也不修改原数据", () => {
+  const f = fixture({ contextPresets: legacy });
+  const before = structuredClone(f.context.chatMetadata);
+  assert.deepEqual(f.bindings.read("chat"), binding);
+  assert.deepEqual(f.intents.read("chat"), intentData);
+  assert.deepEqual(f.context.chatMetadata, before);
+  assert.equal(f.submitted.length, 0);
 });
 
-test("预设损坏与保存失败明确报错，失败不发布新的预设", async () => {
-  let saved: unknown = presets;
-  const storage = createStPhoneContextStorage({
-    read: () => saved,
-    write: async () => {
-      throw new Error("保存失败（HTTP 500）");
-    },
+test("首次删除迁移 Intent 时两个新数据块原子保存，旧宏保留失效引用且不会复活 Intent", async () => {
+  const f = fixture({ contextPresets: legacy, diary: { retained: true } });
+  const saving = f.intents.write("chat", { version: 1, intents: [] });
+  assert.deepEqual(f.submitted[0], {
+    contextPresets: binding,
+    wechatIntents: { version: 1, intents: [] },
+    diary: { retained: true },
   });
-  await assert.rejects(storage.write("chat", { version: 1, presets: [] }), /500/);
-  assert.deepEqual(storage.read("chat"), presets);
-  saved = { version: 999, presets: [] };
-  assert.throws(() => storage.read("chat"), /存储格式无效/);
+  assert.deepEqual(f.intents.read("chat"), intentData);
+  f.response.resolve(new Response(null, { status: 200 }));
+  await saving;
+  assert.deepEqual(f.intents.read("chat"), { version: 1, intents: [] });
+  assert.deepEqual(f.bindings.read("chat"), binding);
+  assert.equal(f.context.chatMetadata.otherPlugin, "keep");
+});
+
+test("迁移提交失败保持两个旧读取结果，重试宏绑定保存同时提交 Intent", async () => {
+  const f = fixture({ contextPresets: legacy });
+  const edited: PhoneContextData = {
+    version: 2,
+    presets: [{ ...binding.presets[0]!, name: "改名" }],
+  };
+  const saving = f.bindings.write("chat", edited);
+  const failed = assert.rejects(saving, /500/);
+  f.response.resolve(new Response(null, { status: 500 }));
+  await failed;
+  assert.deepEqual(f.bindings.read("chat"), binding);
+  assert.deepEqual(f.intents.read("chat"), intentData);
+  await f.bindings.write("chat", edited);
+  assert.deepEqual(f.bindings.read("chat"), edited);
+  assert.deepEqual(f.intents.read("chat"), intentData);
+});
+
+test("Intent 与宏绑定及微信消息并发保存按队列读取最新块，不互相覆盖", async () => {
+  const f = fixture({ contextPresets: legacy });
+  const intents = {
+    version: 1 as const,
+    intents: [{ ...intentData.intents[0]!, name: "微信独立改名" }],
+  };
+  const savingIntent = f.intents.write("chat", intents);
+  const savingBinding = f.bindings.write("chat", { version: 2, presets: [] });
+  const savingMessage = f.wechat.write("chat", { version: 4, account: null, conversations: [] });
+  assert.equal(f.submitted.length, 1);
+  f.response.resolve(new Response(null, { status: 200 }));
+  await Promise.all([savingIntent, savingBinding, savingMessage]);
+  assert.deepEqual(f.intents.read("chat"), intents);
+  assert.deepEqual(f.bindings.read("chat"), { version: 2, presets: [] });
+  assert.equal(f.wechat.read("chat")?.version, 4);
+  assert.equal(f.submitted.length, 3);
+});
+
+test("迁移拒绝未知来源、混合结构冲突和损坏数据，当前版本不再寻找旧条件", () => {
+  assert.throws(
+    () =>
+      readPhoneIntentBlocks(
+        { ...legacy, presets: [{ ...legacy.presets[0], sourceId: "other" }] },
+        undefined,
+      ),
+    /来源无效/,
+  );
+  assert.throws(() => readPhoneIntentBlocks(legacy, intentData), /同时存在/);
+  assert.throws(() => readPhoneIntentBlocks({ version: 999, presets: [] }, undefined), /格式无效/);
+  assert.throws(() =>
+    readPhoneIntentBlocks(
+      {
+        ...legacy,
+        presets: [{ ...legacy.presets[0], selection: { ...selection, personIds: [] } }],
+      },
+      undefined,
+    ),
+  );
+  assert.deepEqual(readPhoneIntentBlocks(binding, undefined), {
+    contextPresets: binding,
+    wechatIntents: { version: 1, intents: [] },
+  });
 });

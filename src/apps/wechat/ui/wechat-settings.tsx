@@ -4,6 +4,7 @@ import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { TextField } from "../../../frontend/foundation/text-field.tsx";
 import { GroupedList } from "../../../frontend/foundation/grouped-list.tsx";
+import { ListCell } from "../../../frontend/foundation/list-cell.tsx";
 import type { WechatPageProps } from "./wechat-page.tsx";
 
 export function WechatSettings({ preferences, navigation }: WechatPageProps) {
@@ -42,6 +43,9 @@ export function WechatSettings({ preferences, navigation }: WechatPageProps) {
         />
       }
     >
+      <GroupedList>
+        <ListCell title="App Intent" onClick={() => navigation.push({ page: "intents" })} />
+      </GroupedList>
       <GroupedList description="AI 读取最近的双方消息，默认 100 条。先按记忆屏障筛选，再取最近条数；本轮获准的待回复消息完整保留，可超过此数。设置跨帐号与聊天共用，保存后从下一次生成生效。">
         <TextField
           label="AI历史消息条数"

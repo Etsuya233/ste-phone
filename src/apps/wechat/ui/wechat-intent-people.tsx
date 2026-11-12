@@ -1,17 +1,15 @@
-import type { ContextScope } from "../../../core/phone-context/public.ts";
+import type { WechatIntentScope } from "../wechat-intent.ts";
 import { GroupedList } from "../../../frontend/foundation/grouped-list.tsx";
 import { ListCell } from "../../../frontend/foundation/list-cell.tsx";
 
-export function ContextPeople({
+export function WechatIntentPeople({
   scope,
   selected,
-  minimumPeople,
   busy,
   onChange,
 }: {
-  scope: ContextScope | undefined;
+  scope: WechatIntentScope | undefined;
   selected: readonly string[];
-  minimumPeople: number;
   busy: boolean;
   onChange(ids: readonly string[]): void;
 }) {
@@ -19,13 +17,13 @@ export function ContextPeople({
   return (
     <GroupedList
       title={`人物 · 已选 ${selected.length} 人`}
-      description={`至少选择 ${minimumPeople} 人，只读取参与双方均被选中的会话，与当前微信帐号无关。`}
+      description="至少选择 2 人，只读取参与双方均被选中的会话，与当前微信帐号无关。"
     >
       {scope?.people.map((person) => (
         <ListCell
           key={person.id}
           title={
-            <label className="phone-context-person">
+            <label className="wechat-intent-person">
               <input
                 type="checkbox"
                 checked={selected.includes(person.id)}
@@ -43,8 +41,11 @@ export function ContextPeople({
                 {scope.people.some(
                   (other) => other.id !== person.id && other.name === person.name,
                 ) ? (
-                  <small className="phone-context-person-id">{person.id}</small>
+                  <small className="wechat-intent-person-id">{person.id}</small>
                 ) : null}
+              </span>
+              <span className="wechat-intent-check" aria-hidden="true">
+                ✓
               </span>
             </label>
           }
@@ -54,7 +55,7 @@ export function ContextPeople({
         <ListCell
           key={id}
           title={
-            <label className="phone-context-person">
+            <label className="wechat-intent-person">
               <input
                 type="checkbox"
                 checked
@@ -62,6 +63,9 @@ export function ContextPeople({
                 onChange={() => onChange(selected.filter((personId) => personId !== id))}
               />
               <span>已不在当前列表：{id}</span>
+              <span className="wechat-intent-check" aria-hidden="true">
+                ✓
+              </span>
             </label>
           }
         />

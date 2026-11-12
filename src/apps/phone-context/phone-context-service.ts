@@ -1,5 +1,5 @@
 import type { ChatContext } from "../../core/chat/public.ts";
-import type { ContextSource } from "../../core/phone-context/public.ts";
+import type { AppIntentSource } from "../../core/phone-context/public.ts";
 import type { PhoneContextStorage } from "./ports/context-storage.ts";
 import type { PhoneContextData, PhoneContextPreset, PhoneContextSnapshot } from "./public.ts";
 import { validateContextData, validateContextPreset } from "./context-validation.ts";
@@ -7,7 +7,7 @@ import { validateContextData, validateContextPreset } from "./context-validation
 export class PhoneContextService {
   readonly #chat: ChatContext;
   readonly #storage: PhoneContextStorage;
-  readonly #sources: readonly ContextSource[];
+  readonly #sources: readonly AppIntentSource[];
   readonly #listeners = new Set<() => void>();
   readonly #unsubscribe: () => void;
   #snapshot: PhoneContextSnapshot = { chatId: null, presets: [], saving: false, error: null };
@@ -16,13 +16,13 @@ export class PhoneContextService {
   constructor(dependencies: {
     chat: ChatContext;
     storage: PhoneContextStorage;
-    sources: readonly ContextSource[];
+    sources: readonly AppIntentSource[];
   }) {
     this.#chat = dependencies.chat;
     this.#storage = dependencies.storage;
     this.#sources = dependencies.sources;
     if (new Set(this.#sources.map(({ id }) => id)).size !== this.#sources.length) {
-      throw new Error("手机上下文来源 ID 重复");
+      throw new Error("App Intent 来源 ID 重复");
     }
     this.#unsubscribe = this.#chat.subscribe(this.#chatChanged);
     this.#refresh();
@@ -42,18 +42,18 @@ export class PhoneContextService {
   }
 
   listSources() {
-    return this.#sources.map(({ id, label, minimumPeople }) => ({ id, label, minimumPeople }));
+    return this.#sources.map(({ id, label }) => ({ id, label }));
   }
 
-  listScopes(sourceId: string) {
-    return this.#source(sourceId).listScopes(this.#chatId());
+  listIntents(sourceId: string) {
+    return this.#source(sourceId).listIntents(this.#chatId());
   }
 
-  preview(preset: PhoneContextPreset) {
+  preview(preset: PhoneContextPreset): string {
     validateContextPreset(preset);
-    return this.#source(preset.sourceId).read({
+    return this.#source(preset.sourceId).readIntent({
       chatId: this.#chatId(),
-      selection: preset.selection,
+      intentId: preset.intentId,
       now: Date.now(),
     });
   }
@@ -63,17 +63,19 @@ export class PhoneContextService {
     const data = this.#read(this.#chatId());
     const preset = data.presets.find((item) => item.id === id);
     if (!preset) {
-      throw new Error(`手机上下文预设不存在：${id}`);
+      throw new Error(`ST 宏绑定不存在：${id}`);
     }
-    return this.preview(preset).text;
+    return this.preview(preset);
   }
 
   async save(preset: PhoneContextPreset): Promise<void> {
     validateContextPreset(preset);
-    this.#source(preset.sourceId).validateSelection(preset.selection);
+    if (!this.listIntents(preset.sourceId).some(({ id }) => id === preset.intentId)) {
+      throw new Error("引用的 App Intent 已不存在，请重新选择");
+    }
     const value = structuredClone(preset);
     await this.#write((data) => ({
-      version: 1,
+      version: 2,
       presets: [...data.presets.filter((item) => item.id !== value.id), value],
     }));
   }
@@ -81,15 +83,15 @@ export class PhoneContextService {
   async remove(id: string): Promise<void> {
     await this.#write((data) => {
       if (!data.presets.some((preset) => preset.id === id)) {
-        throw new Error(`手机上下文预设不存在：${id}`);
+        throw new Error(`ST 宏绑定不存在：${id}`);
       }
-      return { version: 1, presets: data.presets.filter((preset) => preset.id !== id) };
+      return { version: 2, presets: data.presets.filter((preset) => preset.id !== id) };
     });
   }
 
   async #write(update: (data: PhoneContextData) => PhoneContextData): Promise<void> {
     if (this.#snapshot.saving) {
-      throw new Error("手机上下文正在保存");
+      throw new Error("ST 宏绑定正在保存");
     }
     const chatId = this.#chatId();
     const generation = this.#generation;
@@ -112,10 +114,10 @@ export class PhoneContextService {
     }
   }
 
-  #source(id: string): ContextSource {
+  #source(id: string): AppIntentSource {
     const source = this.#sources.find((item) => item.id === id);
     if (!source) {
-      throw new Error(`手机上下文来源不可用：${id}`);
+      throw new Error(`App Intent 来源不可用：${id}`);
     }
     return source;
   }
@@ -129,7 +131,7 @@ export class PhoneContextService {
   }
 
   #read(chatId: string): PhoneContextData {
-    const data = this.#storage.read(chatId) ?? { version: 1, presets: [] };
+    const data = this.#storage.read(chatId) ?? { version: 2, presets: [] };
     validateContextData(data);
     return data;
   }

@@ -1,5 +1,5 @@
 :host .phone-context-page .ios-page-content {
-  padding-bottom: var(--ios-group-gap);
+  overflow-x: hidden;
 }
 :host .phone-context-note,
 :host .phone-context-error,
@@ -15,43 +15,6 @@
 :host .phone-context-error {
   color: var(--ios-red);
   overflow-wrap: anywhere;
-}
-:host .phone-context-fields {
-  display: grid;
-  gap: var(--ios-space-medium);
-  margin: var(--ios-space-large);
-}
-:host .phone-context-select {
-  display: grid;
-  gap: var(--ios-space-small);
-}
-:host .phone-context-select select {
-  width: 100%;
-  min-width: 0;
-  min-height: var(--control-size);
-  border: var(--ios-hairline) solid var(--ios-line);
-  border-radius: var(--ios-control-radius);
-  padding: var(--ios-space-small);
-  background: var(--ios-row-surface);
-  color: var(--ios-ink);
-  font: inherit;
-}
-:host .phone-context-person {
-  display: flex;
-  align-items: center;
-  gap: var(--ios-space-medium);
-  min-height: var(--control-size);
-}
-:host .phone-context-person input {
-  accent-color: var(--ios-blue);
-}
-:host .phone-context-person span {
-  overflow-wrap: anywhere;
-}
-:host .phone-context-person-id {
-  display: block;
-  font-size: var(--ios-caption-size);
-  color: var(--ios-secondary-ink);
 }
 :host .phone-context-actions {
   display: flex;

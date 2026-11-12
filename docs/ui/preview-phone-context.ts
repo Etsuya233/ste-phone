@@ -1,30 +1,60 @@
 import type { PhoneContextStorage } from "../../src/apps/phone-context/ports/context-storage.ts";
+import type { WechatIntentStorage } from "../../src/apps/wechat/ports/wechat-intent-storage.ts";
 import { validateContextData } from "../../src/apps/phone-context/context-validation.ts";
+import { validateWechatIntentData } from "../../src/apps/wechat/public.ts";
+import {
+  readPhoneIntentBlocks,
+  type PhoneIntentBlocks,
+} from "../../src/infrastructure/host/phone-intent-migration.ts";
 import type { WechatData, WechatPerson } from "../../src/apps/wechat/wechat.ts";
 import { conversationId } from "../../src/apps/wechat/wechat.ts";
 
-export function createPreviewPhoneContextStorage(mode: string | null): PhoneContextStorage {
+/** 一个 localStorage 值原子保存绑定与 Intent；存在新结构后不再读取旧预设。 */
+export function createPreviewIntentStores(mode: string | null): {
+  context: PhoneContextStorage;
+  intents: WechatIntentStorage;
+} {
   let failNext = mode === "save-error";
+  const prefix = "ste-phone-preview-intent-blocks:";
+  function read(chatId: string): PhoneIntentBlocks {
+    const text = localStorage.getItem(prefix + chatId);
+    if (text !== null) {
+      const saved = JSON.parse(text);
+      if (!saved || saved.version !== 1 || !saved.blocks) {
+        throw new Error("预览 App Intent 存储格式无效");
+      }
+      return readPhoneIntentBlocks(saved.blocks.contextPresets, saved.blocks.wechatIntents);
+    }
+    const legacy = localStorage.getItem(`ste-phone-preview-context:${chatId}`);
+    return readPhoneIntentBlocks(legacy === null ? undefined : JSON.parse(legacy), undefined);
+  }
+  async function write(chatId: string, update: (blocks: PhoneIntentBlocks) => PhoneIntentBlocks) {
+    if (mode === "slow-save") {
+      await new Promise<void>((resolve) => setTimeout(resolve, 1500));
+    }
+    if (failNext) {
+      failNext = false;
+      throw new Error("模拟 App Intent 配置保存失败，请重试");
+    }
+    const blocks = update(read(chatId));
+    localStorage.setItem(prefix + chatId, JSON.stringify({ version: 1, blocks }));
+  }
   return {
-    read(chatId) {
-      const value = localStorage.getItem(`ste-phone-preview-context:${chatId}`);
-      if (value === null) {
-        return null;
-      }
-      const data: unknown = JSON.parse(value);
-      validateContextData(data);
-      return data;
+    context: {
+      read: (chatId) => read(chatId).contextPresets,
+      async write(chatId, data) {
+        validateContextData(data);
+        const saved = structuredClone(data);
+        await write(chatId, (blocks) => ({ ...blocks, contextPresets: saved }));
+      },
     },
-    async write(chatId, data) {
-      validateContextData(data);
-      if (mode === "slow-save") {
-        await new Promise<void>((resolve) => setTimeout(resolve, 1500));
-      }
-      if (failNext) {
-        failNext = false;
-        throw new Error("模拟上下文预设保存失败，请重试");
-      }
-      localStorage.setItem(`ste-phone-preview-context:${chatId}`, JSON.stringify(data));
+    intents: {
+      read: (chatId) => read(chatId).wechatIntents,
+      async write(chatId, data) {
+        validateWechatIntentData(data);
+        const saved = structuredClone(data);
+        await write(chatId, (blocks) => ({ ...blocks, wechatIntents: saved }));
+      },
     },
   };
 }

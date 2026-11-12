@@ -8,14 +8,23 @@ export interface StChatSaveContext extends StChatContext {
   getRequestHeaders(): Record<string, string>;
 }
 
-interface MetadataWrite {
+interface MetadataWriteOptions {
   readonly chatId: string;
-  readonly key: string;
   readonly label: string;
-  readonly update: (previous: unknown) => unknown;
   readonly beforeSubmit?: () => void;
   readonly updateDetached?: boolean;
 }
+
+type MetadataWrite = MetadataWriteOptions &
+  (
+    | { readonly key: string; readonly update: (previous: unknown) => unknown }
+    | {
+        /** 关联数据块的迁移必须同次提交；回调仅返回本次负责的块，不覆盖其他 App。 */
+        readonly updateBlocks: (
+          previous: Readonly<Record<string, unknown>>,
+        ) => Record<string, unknown>;
+      }
+  );
 
 export function createStChatMetadataStorage(
   getContext: () => StChatSaveContext,
@@ -36,8 +45,12 @@ export function createStChatMetadataStorage(
     const context = current(write.chatId, write.label);
     const target = context.chatMetadata;
     const updatePhone = (metadata: Record<string, unknown>) => {
-      const phone = metadata.ste_phone as Record<string, unknown> | undefined;
-      return { ...phone, [write.key]: write.update(phone?.[write.key]) };
+      const phone = (metadata.ste_phone ?? {}) as Record<string, unknown>;
+      const blocks =
+        "updateBlocks" in write
+          ? write.updateBlocks(phone)
+          : { [write.key]: write.update(phone[write.key]) };
+      return { ...phone, ...blocks };
     };
     const savedPhone = updatePhone(target);
     const messages = [

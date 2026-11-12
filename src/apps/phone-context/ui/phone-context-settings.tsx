@@ -53,7 +53,7 @@ export function PhoneContextSettings({
             className="phone-context-page"
             navBar={
               <NavBar
-                title="ST 上下文"
+                title="ST 接入"
                 back={{ label: "设置", onClick: onBack }}
                 right={
                   <Button
@@ -67,14 +67,17 @@ export function PhoneContextSettings({
             }
           >
             <p className="phone-context-note">
-              将预设宏放入 ST 提示词，展开时读取当前聊天已保存的手机内容。
+              将宏绑定到应用提供的 App Intent，再复制到 ST 提示词。展开时同步读取已保存内容。
             </p>
             {snapshot.error ? (
               <p className="phone-context-error" role="alert">
                 {snapshot.error}
               </p>
             ) : null}
-            <GroupedList title="当前聊天的预设" description="人物选择与预设按 ST 聊天分别保存。">
+            <GroupedList
+              title="当前聊天的宏绑定"
+              description="宏绑定按 ST 聊天分别保存，读取条件在各应用内管理。"
+            >
               {snapshot.presets.map((preset) => (
                 <ListCell
                   key={preset.id}
@@ -88,7 +91,9 @@ export function PhoneContextSettings({
             {!snapshot.chatId ? (
               <p className="phone-context-note">请先打开一个 ST 聊天。</p>
             ) : snapshot.presets.length === 0 ? (
-              <p className="phone-context-note">还没有预设，点击「新增」选择人物与读取范围。</p>
+              <p className="phone-context-note">
+                还没有宏绑定，点击「新增」选择应用与 App Intent。
+              </p>
             ) : null}
           </Page>
         );

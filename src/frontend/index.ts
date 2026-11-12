@@ -13,6 +13,7 @@ import { createStCampusStorage } from "../infrastructure/host/campus-storage.ts"
 import { createStDiaryStorage } from "../infrastructure/host/diary-storage.ts";
 import { createStWechatStorage } from "../infrastructure/host/wechat-storage.ts";
 import { createStPhoneContextStorage } from "../infrastructure/host/phone-context-storage.ts";
+import { createStWechatIntentStorage } from "../infrastructure/host/wechat-intent-storage.ts";
 import { registerPhoneContextMacro } from "../infrastructure/host/phone-context-macro.ts";
 import { createStChatMetadataStorage } from "../infrastructure/host/chat-metadata-storage.ts";
 import { createStCharacterOverrideStorage } from "../infrastructure/host/character-override-storage.ts";
@@ -66,6 +67,7 @@ const phone = createPhone({
   diaryStorage: createStDiaryStorage(chatMetadata),
   wechatStorage: createStWechatStorage(chatMetadata),
   phoneContextStorage: createStPhoneContextStorage(chatMetadata),
+  wechatIntentStorage: createStWechatIntentStorage(chatMetadata),
   wechatStickerStorage: createStWechatStickerStorage(() => window.SillyTavern.getContext()),
   logs,
 });
@@ -73,8 +75,8 @@ registerPhoneContextMacro(
   () => window.SillyTavern.getContext(),
   (id) => phone.phoneContext.expand(id),
   (message) => {
-    logs.error("system", "ST 上下文", message);
-    toastr.error(message, "手机上下文", { escapeHtml: true, preventDuplicates: true });
+    logs.error("system", "ST 接入", message);
+    toastr.error(message, "ST 接入", { escapeHtml: true, preventDuplicates: true });
   },
 );
 mountPhone({

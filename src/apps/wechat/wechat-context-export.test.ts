@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createWechatContextSource } from "./wechat-context-export.ts";
 import type { WechatConversation, WechatData, WechatMessage } from "./wechat.ts";
-import type { ContextSelection } from "../../core/phone-context/public.ts";
+import type { WechatIntentSelection } from "./wechat-intent.ts";
 
 const now = Date.parse("2026-11-12T08:00:00Z");
-const selection: ContextSelection = {
+const selection: WechatIntentSelection = {
   scopeId: "world",
   personIds: ["a", "b", "c"],
   recentMinutes: 30,

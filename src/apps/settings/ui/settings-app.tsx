@@ -55,7 +55,7 @@ export function SettingsApp({
               <ListCell title="模型连接" onClick={() => navigation.push({ page: "connections" })} />
               <ListCell title="语音连接" onClick={() => navigation.push({ page: "speech" })} />
               <ListCell
-                title="ST 上下文"
+                title="ST 接入"
                 onClick={() => navigation.push({ page: "phone-context" })}
               />
             </GroupedList>

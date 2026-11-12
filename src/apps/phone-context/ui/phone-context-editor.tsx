@@ -51,8 +51,8 @@ export function PhoneContextEditor({
         inert={editor.confirmation !== null}
         navBar={
           <NavBar
-            title={preset ? "编辑预设" : "新建预设"}
-            back={{ label: "ST 上下文", onClick: leave }}
+            title={preset ? "编辑宏绑定" : "新建宏绑定"}
+            back={{ label: "ST 接入", onClick: leave }}
             right={
               <Button disabled={editor.busy} onClick={() => void editor.save()}>
                 {editor.busy ? "保存中…" : "保存"}
@@ -71,7 +71,7 @@ export function PhoneContextEditor({
           editing={preset !== null}
           busy={editor.busy}
           sources={editor.sources}
-          scopes={editor.scopes}
+          intents={editor.intents}
           onChange={editor.change}
           onSource={editor.selectSource}
         />
@@ -102,14 +102,14 @@ export function PhoneContextEditor({
               disabled={editor.busy}
               onClick={() => editor.setConfirmation("delete")}
             >
-              删除预设
+              删除宏绑定
             </Button>
           </div>
         ) : null}
       </Page>
       {editor.confirmation ? (
         <Alert
-          title={editor.confirmation === "discard" ? "舍弃未保存的修改？" : "删除这个预设？"}
+          title={editor.confirmation === "discard" ? "舍弃未保存的修改？" : "删除这个宏绑定？"}
           active={active}
           busy={editor.busy}
           onDismiss={() => {
@@ -127,8 +127,8 @@ export function PhoneContextEditor({
           ]}
         >
           {editor.confirmation === "discard"
-            ? "已保存的预设保持原样。"
-            : "删除后，使用这个宏的提示词将无法找到该预设。"}
+            ? "已保存的宏绑定保持原样。"
+            : "删除后，使用这个宏的提示词将无法找到该绑定，应用内的 App Intent 会保留。"}
         </Alert>
       ) : null}
     </>

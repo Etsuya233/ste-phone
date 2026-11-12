@@ -1,14 +1,12 @@
-import type { ContextSelection } from "../../core/phone-context/public.ts";
-
 export interface PhoneContextPreset {
   readonly id: string;
   readonly name: string;
   readonly sourceId: string;
-  readonly selection: ContextSelection;
+  readonly intentId: string;
 }
 
 export interface PhoneContextData {
-  readonly version: 1;
+  readonly version: 2;
   readonly presets: readonly PhoneContextPreset[];
 }
 

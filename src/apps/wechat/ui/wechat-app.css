@@ -13,6 +13,10 @@
   height: 100%;
   color: var(--ios-ink);
 }
+/* 微信页面采用纵向阅读；横向内容由各自内部容器管理，页面不开放横向滚动。 */
+:host .wechat-app .ios-page-content {
+  overflow-x: hidden;
+}
 :host .wechat-notice[role="alert"] {
   color: var(--ios-red);
 }

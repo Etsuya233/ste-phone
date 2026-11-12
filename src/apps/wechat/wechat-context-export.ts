@@ -1,15 +1,14 @@
 import type {
-  ContextResult,
-  ContextScope,
-  ContextSelection,
-  ContextSource,
-} from "../../core/phone-context/public.ts";
+  WechatIntentResult,
+  WechatIntentScope,
+  WechatIntentSelection,
+} from "./wechat-intent.ts";
 import type { WechatStorage } from "./ports/wechat-storage.ts";
 import type { WechatConversation, WechatMessage } from "./wechat.ts";
 import { pendingWechatMessages } from "./wechat.ts";
 import { wechatMemoryBoundaries } from "./wechat-memory.ts";
 
-function validateWechatSelection(selection: ContextSelection): void {
+function validateWechatSelection(selection: WechatIntentSelection): void {
   if (selection.personIds.length < 2) {
     throw new Error("微信上下文须选择至少两位人物");
   }
@@ -44,7 +43,7 @@ function messageLine(
 /** 屏障先于时间和条数窗口，待回复队列在导出时同样受窗口限制。 */
 function selectConversationMessages(
   conversation: WechatConversation,
-  selection: ContextSelection,
+  selection: WechatIntentSelection,
   now: number,
 ) {
   const cutoff =
@@ -74,9 +73,9 @@ function selectConversationMessages(
 function readWechatContext(
   storage: WechatStorage,
   chatId: string,
-  selection: ContextSelection,
+  selection: WechatIntentSelection,
   now: number,
-): ContextResult {
+): WechatIntentResult {
   validateWechatSelection(selection);
   const data = storage.read(chatId);
   const selected = new Set(selection.personIds);
@@ -119,13 +118,9 @@ function readWechatContext(
 }
 
 /** 来源直接读持久化入口，不依赖微信页面、当前操作帐号或异步人物资料加载。 */
-export function createWechatContextSource(storage: WechatStorage): ContextSource {
+export function createWechatContextSource(storage: WechatStorage) {
   return {
-    id: "wechat",
-    label: "微信",
-    minimumPeople: 2,
-    validateSelection: validateWechatSelection,
-    listScopes(chatId) {
+    listScopes(chatId: string) {
       const data = storage.read(chatId);
       const scopes = new Map<string, Map<string, string>>();
       const people = [
@@ -140,12 +135,20 @@ export function createWechatContextSource(storage: WechatStorage): ContextSource
         }
         scope.set(person.id, person.name);
       }
-      return [...scopes].map(([id, members]): ContextScope => ({
+      return [...scopes].map(([id, members]): WechatIntentScope => ({
         id,
         label: `资料空间 ${id}`,
         people: [...members].map(([personId, name]) => ({ id: personId, name })),
       }));
     },
-    read: ({ chatId, selection, now }) => readWechatContext(storage, chatId, selection, now),
+    read: ({
+      chatId,
+      selection,
+      now,
+    }: {
+      chatId: string;
+      selection: WechatIntentSelection;
+      now: number;
+    }) => readWechatContext(storage, chatId, selection, now),
   };
 }

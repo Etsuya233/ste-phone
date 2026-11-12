@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import type { ContextScope } from "../../../core/phone-context/public.ts";
 import type { PhoneContextPreset, PhoneContextService } from "../public.ts";
 import type { ContextDraft } from "./phone-context-fields.tsx";
 
@@ -14,18 +13,17 @@ export function useContextEditor(
     id: preset?.id ?? "",
     name: preset?.name ?? "",
     sourceId: preset?.sourceId ?? sources[0]!.id,
-    scopeId: preset?.selection.scopeId ?? "",
-    personIds: preset?.selection.personIds ?? [],
-    recentMinutes: String(preset?.selection.recentMinutes ?? 30),
-    unlimitedTime: preset?.selection.recentMinutes === null,
-    limitPerGroup: String(preset?.selection.limitPerGroup ?? 50),
+    intentId: preset?.intentId ?? "",
   }));
   const initialDraft = useRef(JSON.stringify(draft)).current;
-  const [options, setOptions] = useState<{ scopes: readonly ContextScope[]; error: string }>(() => {
+  const [options, setOptions] = useState<{
+    intents: readonly { id: string; name: string }[];
+    error: string;
+  }>(() => {
     try {
-      return { scopes: service.listScopes(draft.sourceId), error: "" };
+      return { intents: service.listIntents(draft.sourceId), error: "" };
     } catch (error) {
-      return { scopes: [], error: error instanceof Error ? error.message : String(error) };
+      return { intents: [], error: error instanceof Error ? error.message : String(error) };
     }
   });
   const [error, setError] = useState("");
@@ -42,18 +40,13 @@ export function useContextEditor(
 
   function readDraft(): PhoneContextPreset {
     if (service.getSnapshot().chatId !== chatId) {
-      throw new Error("当前 ST 聊天已变化，请重新打开预设");
+      throw new Error("当前 ST 聊天已变化，请重新打开宏绑定");
     }
     return {
       id: draft.id.trim(),
       name: draft.name.trim(),
       sourceId: draft.sourceId,
-      selection: {
-        scopeId: draft.scopeId,
-        personIds: draft.personIds,
-        recentMinutes: draft.unlimitedTime ? null : Number(draft.recentMinutes),
-        limitPerGroup: Number(draft.limitPerGroup),
-      },
+      intentId: draft.intentId,
     };
   }
   function change(patch: Partial<ContextDraft>) {
@@ -62,12 +55,12 @@ export function useContextEditor(
     setNotice("");
   }
   function selectSource(sourceId: string) {
-    change({ sourceId, scopeId: "", personIds: [] });
+    change({ sourceId, intentId: "" });
     try {
-      setOptions({ scopes: service.listScopes(sourceId), error: "" });
+      setOptions({ intents: service.listIntents(sourceId), error: "" });
     } catch (failure) {
       setOptions({
-        scopes: [],
+        intents: [],
         error: failure instanceof Error ? failure.message : String(failure),
       });
     }
@@ -113,7 +106,7 @@ export function useContextEditor(
   return {
     draft,
     sources,
-    scopes: options.scopes,
+    intents: options.intents,
     error: error || options.error,
     notice,
     busy,

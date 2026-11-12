@@ -1,33 +1,11 @@
-/** App 负责解释人物与分组；所有读取均同步，只消费当前聊天已确认保存的数据。 */
-export interface ContextSelection {
-  readonly scopeId: string;
-  readonly personIds: readonly string[];
-  readonly recentMinutes: number | null;
-  readonly limitPerGroup: number;
-}
-
-export interface ContextScope {
+/** 应用拥有 Intent 配置；ST 只引用稳定 ID，同步读取已确认保存的内容。 */
+export interface AppIntentSource {
   readonly id: string;
   readonly label: string;
-  readonly people: readonly { readonly id: string; readonly name: string }[];
-}
-
-export interface ContextResult {
-  readonly text: string;
-  readonly itemCount: number;
-  readonly groupCount: number;
-  readonly excluded: { readonly barrier: number; readonly time: number; readonly limit: number };
-}
-
-export interface ContextSource {
-  readonly id: string;
-  readonly label: string;
-  readonly minimumPeople: number;
-  validateSelection(selection: ContextSelection): void;
-  listScopes(chatId: string): readonly ContextScope[];
-  read(request: {
+  listIntents(chatId: string): readonly { readonly id: string; readonly name: string }[];
+  readIntent(request: {
     readonly chatId: string;
-    readonly selection: ContextSelection;
+    readonly intentId: string;
     readonly now: number;
-  }): ContextResult;
+  }): string;
 }

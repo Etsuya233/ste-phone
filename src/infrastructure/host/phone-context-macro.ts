@@ -34,8 +34,8 @@ export function registerPhoneContextMacro(
     }
     const registered = context.macros.register("phone", {
       category: "chat",
-      description: "同步读取当前聊天中手机上下文预设选中的已保存记录",
-      unnamedArgs: [{ name: "preset", description: "手机设置中已保存的上下文预设标识" }],
+      description: "同步读取当前聊天中 ST 宏绑定引用的 App Intent",
+      unnamedArgs: [{ name: "preset", description: "手机设置 → ST 接入中已保存的宏标识" }],
       exampleUsage: "{{phone::wechat_recent}}",
       handler: ({ unnamedArgs }) => {
         try {

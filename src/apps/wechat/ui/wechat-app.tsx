@@ -12,6 +12,8 @@ import { WechatStickers } from "./wechat-stickers.tsx";
 import type { WechatStickerLibrary } from "../wechat-sticker-library.ts";
 import { Alert } from "../../../frontend/foundation/alert.tsx";
 import { WechatSettings } from "./wechat-settings.tsx";
+import { WechatIntents } from "./wechat-intents.tsx";
+import type { WechatIntentService } from "../wechat-intent-service.ts";
 import { WechatReplyGuidance } from "./wechat-reply-guidance.tsx";
 import { WechatMoments } from "./wechat-moments.tsx";
 import { WechatMomentCompose } from "./wechat-moment-compose.tsx";
@@ -21,12 +23,14 @@ import { WechatMomentParticipants } from "./wechat-moment-participants.tsx";
 
 export function WechatApp({
   wechat,
+  intents,
   preferences,
   stickers,
   active,
   onHome,
 }: {
   wechat: WechatService;
+  intents: WechatIntentService;
   preferences: WechatPreferences;
   stickers: WechatStickerLibrary;
   active: boolean;
@@ -137,6 +141,14 @@ export function WechatApp({
                 );
               case "settings":
                 return <WechatSettings {...props} />;
+              case "intents":
+                return (
+                  <WechatIntents
+                    service={intents}
+                    active={active && navigation.current}
+                    onBack={navigation.pop}
+                  />
+                );
               case "accounts":
                 return <WechatAccounts {...props} />;
               case "stickers":

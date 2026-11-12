@@ -43,7 +43,8 @@ import type {
 } from "../apps/settings/public.ts";
 import { AppStore } from "../apps/app-store/ui/app-store.tsx";
 import { WechatService } from "../apps/wechat/wechat-service.ts";
-import { createWechatContextSource } from "../apps/wechat/public.ts";
+import { WechatIntentService } from "../apps/wechat/public.ts";
+import type { WechatIntentStorage } from "../apps/wechat/ports/wechat-intent-storage.ts";
 import { PhoneContextService } from "../apps/phone-context/public.ts";
 import { PhoneContextSettings } from "../apps/phone-context/ui/phone-context-settings.tsx";
 import type { PhoneContextStorage } from "../apps/phone-context/ports/context-storage.ts";
@@ -65,6 +66,7 @@ export interface PhoneRuntime {
   readonly wechat: WechatService;
   readonly map: MapService;
   readonly phoneContext: PhoneContextService;
+  readonly wechatIntents: WechatIntentService;
 }
 
 /** 生产和预览共享组装；页面、后台消费者始终使用同一数据所有者。 */
@@ -81,6 +83,7 @@ export function createPhone(dependencies: {
   mapConversations: MapConversationStorage;
   wechatStorage: WechatStorage;
   phoneContextStorage: PhoneContextStorage;
+  wechatIntentStorage: WechatIntentStorage;
   wechatStickerStorage: WechatStickerStorage;
   logs: PhoneLog;
   photoStorage: PhotoStorage;
@@ -89,10 +92,15 @@ export function createPhone(dependencies: {
 }): PhoneRuntime {
   const gallery = new GalleryService(dependencies.photoStorage, dependencies.imageHub);
   const settings = new PhoneSettingsService(dependencies.settingsStorage);
+  const wechatIntents = new WechatIntentService({
+    chat: dependencies.chat,
+    storage: dependencies.wechatIntentStorage,
+    messageStorage: dependencies.wechatStorage,
+  });
   const phoneContext = new PhoneContextService({
     chat: dependencies.chat,
     storage: dependencies.phoneContextStorage,
-    sources: [createWechatContextSource(dependencies.wechatStorage)],
+    sources: [wechatIntents.source],
   });
   const data = new PhoneDataService(
     dependencies.dataProvider,
@@ -184,6 +192,7 @@ export function createPhone(dependencies: {
       render: ({ active, onHome }) => (
         <GalleryContext.Provider value={gallery}>
           <WechatApp
+            intents={wechatIntents}
             preferences={settings.wechatPreferences}
             active={active}
             wechat={wechat}
@@ -276,5 +285,6 @@ export function createPhone(dependencies: {
     wechat,
     map,
     phoneContext,
+    wechatIntents,
   };
 }
