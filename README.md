@@ -82,7 +82,7 @@
 
 ## 安装与运行要求
 
-当前版本：**0.0.11**。资料与数据库功能需要 **[STE Memory](https://github.com/Etsuya233/ste-memory) 0.2.6 或更新版本**，该版本提供 `STE_MEMORY_API.database v1` 与日记所需的 `STE_MEMORY_API.chat v1`。请先安装或升级 Memory，再刷新 ST。未连接 Memory 时，手机外壳、秒表及组件应用仍可使用。
+当前版本：**0.0.13**。资料与数据库功能需要 **[STE Memory](https://github.com/Etsuya233/ste-memory) 0.2.6 或更新版本**，该版本提供 `STE_MEMORY_API.database v1` 与日记所需的 `STE_MEMORY_API.chat v1`。请先安装或升级 Memory，再刷新 ST。未连接 Memory 时，手机外壳、秒表及组件应用仍可使用。
 
 本轮源码还要求 Memory 提供 `identity v1` 稳定身份能力，请配套更新两个插件。空间导出导入和分支继承会保留人物等资料的稳定身份，当前实例 ID 仍可改变。Phone 继续沿用已有日记的作者引用；Memory 旧快照升级时使用原空间与记录 ID 初始化稳定身份。旧版导入已经遗失的身份对应关系无法自动恢复。缺少稳定身份能力时明确提示升级，已保存日记仍可阅读。
 
@@ -91,7 +91,7 @@
 | 插件               | 仓库 URL                                  | Branch or tag name           |
 | ------------------ | ----------------------------------------- | ---------------------------- |
 | STE Memory ≥ 0.2.6 | `https://github.com/Etsuya233/ste-memory` | `release/sillytavern-plugin` |
-| STE Phone 0.0.11   | `https://github.com/Etsuya233/ste-phone`  | `release/sillytavern-plugin` |
+| STE Phone 0.0.13   | `https://github.com/Etsuya233/ste-phone`  | `release/sillytavern-plugin` |
 
 安装后刷新页面，从聊天输入区的**魔法棒菜单 → 小手机**打开。更新使用 ST 扩展面板的 Update；升级 Phone 前请核对本节所需的 Memory 最低版本。`main` 分支用于源码开发，ST 安装请选择上述构建产物分支。
 
