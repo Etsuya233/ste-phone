@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { ImageRecord } from "../../../core/image-hub/public.ts";
+import { galleryImageKey, gallerySourceLabels } from "../public.ts";
+import type { GalleryImage } from "../public.ts";
+import { useGallery } from "../../../frontend/images/gallery-context.ts";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Page } from "../../../frontend/foundation/page.tsx";
@@ -12,7 +14,7 @@ export function GalleryViewer({
   active,
   onBack,
 }: {
-  images: readonly ImageRecord[];
+  images: readonly GalleryImage[];
   initialIndex: number;
   active: boolean;
   onBack: () => void;
@@ -119,25 +121,31 @@ export function GalleryViewer({
         onScroll={handleScroll}
       >
         {images.map((image) => (
-          <GallerySlide key={image.id} image={image} />
+          <GallerySlide key={galleryImageKey(image)} image={image} />
         ))}
       </div>
     </Page>
   );
 }
 
-function GallerySlide({ image }: { image: ImageRecord }) {
+function GallerySlide({ image }: { image: GalleryImage }) {
+  const { imageUrl } = useGallery();
   return (
     <figure className="gallery-viewer-slide">
       <div className="gallery-viewer-media">
-        <img src={image.imagePath} alt={image.prompt} loading="lazy" />
+        <img
+          src={imageUrl(image.imagePath)}
+          alt={image.description ?? gallerySourceLabels[image.source]}
+          loading="lazy"
+        />
       </div>
       <figcaption className="gallery-viewer-caption">
-        <p className="gallery-viewer-prompt">{image.prompt}</p>
+        {image.description ? <p className="gallery-viewer-prompt">{image.description}</p> : null}
+        <p className="gallery-viewer-source">{gallerySourceLabels[image.source]}</p>
         <time className="gallery-viewer-time" dateTime={image.savedAt}>
           {new Date(image.savedAt).toLocaleString("zh-CN")}
         </time>
-        <CopyPromptButton prompt={image.prompt} />
+        {image.description ? <CopyPromptButton prompt={image.description} /> : null}
       </figcaption>
     </figure>
   );

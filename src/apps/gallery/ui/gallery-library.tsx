@@ -1,56 +1,149 @@
-import type { ImageHub, ImageRecord } from "../../../core/image-hub/public.ts";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Page } from "../../../frontend/foundation/page.tsx";
+import { SegmentedControl } from "../../../frontend/foundation/segmented-control.tsx";
 import { ImageGrid } from "../../../frontend/images/image-views.tsx";
 import { groupImagesBySavedAt } from "../gallery-groups.ts";
-import { useGalleryImages } from "./use-gallery-images.ts";
+import type { GalleryService } from "../gallery-service.ts";
+import { galleryImageKey, gallerySourceLabels } from "../public.ts";
+import type { GalleryFilter, GalleryImage } from "../public.ts";
+import { photoAccept } from "../photo-storage.ts";
+import { GalleryUploadAlert } from "./gallery-upload-alert.tsx";
+import { useGalleryImages } from "../../../frontend/images/use-gallery-images.ts";
+
+const filters = [
+  { value: "all", label: "全部" },
+  { value: "phone", label: gallerySourceLabels.phone },
+  { value: "hub", label: gallerySourceLabels.hub },
+] as const;
 
 export function GalleryLibrary({
   active,
-  hub,
+  gallery,
   onHome,
   onOpenPlayground,
   onOpenImage,
 }: {
   active: boolean;
-  hub: ImageHub;
+  gallery: GalleryService;
   onHome: () => void;
   onOpenPlayground: () => void;
-  onOpenImage: (images: readonly ImageRecord[], index: number) => void;
+  onOpenImage: (images: readonly GalleryImage[], index: number) => void;
 }) {
-  const { state, loading, refreshing, refresh } = useGalleryImages(hub, active);
+  const [filter, setFilter] = useState<GalleryFilter>("all");
+  const { images, errors, ready, loading, refresh } = useGalleryImages(gallery, active, filter);
+  const upload = useSyncExternalStore(gallery.subscribeUpload, gallery.getUploadState);
+  const input = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (active && filter !== "hub") {
+      return gallery.subscribePhotos(() => void refresh());
+    }
+  }, [active, filter, gallery, refresh]);
+
   return (
-    <Page
-      className="gallery-page"
-      navBar={
-        <NavBar
-          title="图库"
-          back={{ label: "主屏幕", onClick: onHome }}
-          right={
-            <Button disabled={loading || refreshing} onClick={refresh}>
-              刷新
-            </Button>
-          }
+    <>
+      <Page
+        className="gallery-page"
+        inert={upload.status !== "idle"}
+        navBar={
+          <NavBar
+            title="图库"
+            back={{ label: "主屏幕", onClick: onHome }}
+            right={
+              <div className="gallery-actions">
+                <Button disabled={loading} onClick={() => void refresh()}>
+                  刷新
+                </Button>
+                <Button aria-label="上传到手机图库" onClick={() => input.current!.click()}>
+                  ＋
+                </Button>
+              </div>
+            }
+          />
+        }
+      >
+        <input
+          ref={input}
+          type="file"
+          accept={photoAccept}
+          multiple
+          hidden
+          onChange={(event) => {
+            const files = Array.from(event.currentTarget.files!);
+            event.currentTarget.value = "";
+            if (files.length > 0) {
+              setFilter("phone");
+              void gallery.startUpload(files);
+            }
+          }}
         />
-      }
-    >
-      {state.status === "loading" ? (
-        <GallerySkeleton />
-      ) : state.status === "error" ? (
-        <GalleryError message={state.message} onRetry={refresh} />
-      ) : (
-        <GalleryContent
-          images={state.images}
-          error={state.error}
-          refreshing={state.refreshing}
-          onRefresh={refresh}
-          onOpenPlayground={onOpenPlayground}
-          onOpenImage={onOpenImage}
-        />
+        <div className="gallery-filters">
+          <SegmentedControl
+            label="图片来源"
+            value={filter}
+            onValueChange={setFilter}
+            options={filters}
+          />
+        </div>
+        {errors.map(({ source, message }) => (
+          <p key={source} className="gallery-notice" role="alert">
+            {gallerySourceLabels[source]}：{message}
+          </p>
+        ))}
+        {loading && ready ? (
+          <p className="gallery-refreshing" role="status">
+            正在刷新…
+          </p>
+        ) : null}
+        {loading && !ready ? <GallerySkeleton /> : null}
+        {!loading && images.length === 0 && errors.length === 0 ? (
+          <div className="gallery-empty">
+            <p className="image-message" role="status">
+              图库还没有图片。
+            </p>
+            {filter !== "hub" ? (
+              <Button variant="filled" onClick={() => input.current!.click()}>
+                上传照片
+              </Button>
+            ) : null}
+            {filter !== "phone" ? <Button onClick={onOpenPlayground}>去图乐园</Button> : null}
+          </div>
+        ) : null}
+        <GalleryGroups images={images} onOpenImage={onOpenImage} />
+      </Page>
+      {upload.status === "idle" ? null : (
+        <GalleryUploadAlert gallery={gallery} state={upload} active={active} />
       )}
-    </Page>
+    </>
   );
+}
+
+function GalleryGroups({
+  images,
+  onOpenImage,
+}: {
+  images: readonly GalleryImage[];
+  onOpenImage: (images: readonly GalleryImage[], index: number) => void;
+}) {
+  return groupImagesBySavedAt(images, new Date()).map(({ key, title, images: groupImages }) => (
+    <section key={key} className="gallery-group" aria-labelledby={`gallery-group-${key}`}>
+      <h2 id={`gallery-group-${key}`} className="gallery-group-title">
+        {title}
+      </h2>
+      <ImageGrid
+        images={groupImages}
+        empty=""
+        onOpen={(image) =>
+          onOpenImage(
+            images,
+            images.findIndex((candidate) => galleryImageKey(candidate) === galleryImageKey(image)),
+          )
+        }
+      />
+    </section>
+  ));
 }
 
 function GallerySkeleton() {
@@ -64,82 +157,6 @@ function GallerySkeleton() {
           <span key={index} />
         ))}
       </div>
-    </>
-  );
-}
-
-function GalleryError({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="gallery-error" role="alert">
-      <p>{message}</p>
-      <Button variant="filled" onClick={onRetry}>
-        重试
-      </Button>
-    </div>
-  );
-}
-
-function GalleryContent({
-  images,
-  error,
-  refreshing,
-  onRefresh,
-  onOpenPlayground,
-  onOpenImage,
-}: {
-  images: readonly ImageRecord[];
-  error: string | null;
-  refreshing: boolean;
-  onRefresh: () => void;
-  onOpenPlayground: () => void;
-  onOpenImage: (images: readonly ImageRecord[], index: number) => void;
-}) {
-  const groups = groupImagesBySavedAt(images, new Date());
-  return (
-    <>
-      {error !== null ? (
-        <div className="gallery-notice" role="alert">
-          <p>{error}</p>
-          <Button onClick={onRefresh}>重试</Button>
-        </div>
-      ) : null}
-      {refreshing ? (
-        <p className="gallery-refreshing" role="status">
-          正在刷新…
-        </p>
-      ) : null}
-      {images.length === 0 ? (
-        <div className="gallery-empty">
-          <p className="image-message" role="status">
-            图库还没有图片。去图乐园生成第一张吧。
-          </p>
-          <Button variant="filled" onClick={onOpenPlayground}>
-            去图乐园
-          </Button>
-        </div>
-      ) : (
-        groups.map((group) => (
-          <section
-            key={group.key}
-            className="gallery-group"
-            aria-labelledby={`gallery-group-${group.key}`}
-          >
-            <h2 id={`gallery-group-${group.key}`} className="gallery-group-title">
-              {group.title}
-            </h2>
-            <ImageGrid
-              images={group.images}
-              empty=""
-              onOpen={(image) =>
-                onOpenImage(
-                  images,
-                  images.findIndex((candidate) => candidate.id === image.id),
-                )
-              }
-            />
-          </section>
-        ))
-      )}
     </>
   );
 }

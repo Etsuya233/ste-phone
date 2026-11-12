@@ -1,3 +1,5 @@
+import { useGallery } from "../../../frontend/images/gallery-context.ts";
+import { galleryImageKey } from "../../gallery/public.ts";
 import { useEffect, useRef, useState } from "react";
 import { Page } from "../../../frontend/foundation/page.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
@@ -159,7 +161,7 @@ export function WechatMomentImage(
                   onClick={() =>
                     navigation.push({
                       page: "moment-image-picker",
-                      selectedId: image.image?.id,
+                      selectedKey: image.image ? galleryImageKey(image.image) : undefined,
                       onSelect: (selected) => wechat.moments.selectImage(id, index, selected),
                     })
                   }
@@ -205,10 +207,11 @@ export function WechatMomentImageView({
   imagePath,
   description,
 }: Pick<WechatPageProps, "navigation"> & { imagePath: string; description: string }) {
+  const { imageUrl } = useGallery();
   return (
     <Page navBar={<NavBar title="图片" back={{ label: "返回", onClick: navigation.pop }} />}>
       <figure className="wechat-moment-image-figure">
-        <img className="wechat-moment-full-photo" src={imagePath} alt={description} />
+        <img className="wechat-moment-full-photo" src={imageUrl(imagePath)} alt={description} />
         <figcaption>{description}</figcaption>
       </figure>
     </Page>
@@ -219,6 +222,7 @@ function MomentImagePreview({
   image,
   navigation,
 }: { image: MomentImage } & Pick<WechatPageProps, "navigation">) {
+  const { imageUrl } = useGallery();
   return image.image ? (
     <>
       <button
@@ -235,7 +239,7 @@ function MomentImagePreview({
       >
         <img
           className="wechat-moment-full-photo"
-          src={image.image.imagePath}
+          src={imageUrl(image.image.imagePath)}
           alt={image.description}
         />
       </button>

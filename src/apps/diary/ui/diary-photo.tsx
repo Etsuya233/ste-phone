@@ -1,3 +1,4 @@
+import { useGallery } from "../../../frontend/images/gallery-context.ts";
 import { useState } from "react";
 import type { DiaryEntry } from "../diary.ts";
 
@@ -15,6 +16,7 @@ export function DiaryPhoto({
   large?: boolean;
   onOpen?: () => void;
 }) {
+  const { imageUrl } = useGallery();
   const [failedPath, setFailedPath] = useState<string | null>(null);
   const failed = failedPath === image.imagePath;
   const picture = failed ? (
@@ -24,7 +26,7 @@ export function DiaryPhoto({
     </span>
   ) : (
     <img
-      src={image.imagePath}
+      src={imageUrl(image.imagePath)}
       alt={prompt ?? "日记配图"}
       loading={large ? "eager" : "lazy"}
       onError={() => setFailedPath(image.imagePath)}

@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { ImageHub, ImageRecord } from "../../../core/image-hub/public.ts";
+import type { ImageHub } from "../../../core/image-hub/public.ts";
+import { useGallery } from "../../../frontend/images/gallery-context.ts";
+import { fromHubImage, galleryImageReference, gallerySourceLabels } from "../../gallery/public.ts";
+import type { GalleryBrowseResult, GalleryImage } from "../../gallery/public.ts";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { ImageGrid } from "../../../frontend/images/image-views.tsx";
 import type { CampusImage } from "../campus-domain.ts";
@@ -21,10 +24,11 @@ export function CampusImageEditor({
   onWorking: (working: boolean) => void;
   stillOwned: () => boolean;
 }) {
+  const library = useGallery();
   const mounted = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
-  const [gallery, setGallery] = useState<readonly ImageRecord[] | null>(null);
+  const [gallery, setGallery] = useState<GalleryBrowseResult | null>(null);
   const prompt = image.prompt?.trim() || image.description.trim();
   useEffect(() => {
     mounted.current = true;
@@ -33,11 +37,11 @@ export function CampusImageEditor({
     };
   }, []);
 
-  function select(record: ImageRecord) {
+  function select(record: GalleryImage) {
     onChange({
       ...image,
-      description: image.description.trim() || record.prompt,
-      image: { id: record.id, path: record.imagePath },
+      description: image.description.trim() || record.description || "",
+      image: galleryImageReference(record),
     });
     setGallery(null);
   }
@@ -47,19 +51,20 @@ export function CampusImageEditor({
     onWorking(true);
     setError(null);
     try {
-      const records = await (kind === "gallery" ? hub.listImages() : hub.generate({ prompt }));
-      // Image Hub may finish after leaving the draft. Its saved assets stay in the gallery.
-      if (!mounted.current || !stillOwned()) {
+      if (kind === "gallery") {
+        const result = await library.browse();
+        if (mounted.current && stillOwned()) {
+          setGallery(result);
+        }
         return;
       }
-      if (kind === "gallery") {
-        setGallery(records);
-      } else {
-        const record = records[0];
+      const [record] = await hub.generate({ prompt });
+      // Hub can finish after leaving the draft; only the draft's owner can attach the result.
+      if (mounted.current && stillOwned()) {
         if (!record) {
           throw new Error("生图完成，但图库未返回图片。");
         }
-        select(record);
+        select(fromHubImage(record));
       }
     } catch (cause) {
       if (mounted.current && stillOwned()) {
@@ -76,7 +81,11 @@ export function CampusImageEditor({
   return (
     <div className="campus-image-fields">
       {image.image ? (
-        <img className="campus-image-preview" src={image.image.path} alt={image.description} />
+        <img
+          className="campus-image-preview"
+          src={library.imageUrl(image.image.imagePath)}
+          alt={image.description}
+        />
       ) : null}
       <label>
         图片描述
@@ -118,7 +127,7 @@ export function CampusImageEditor({
       {error ? <p role="alert">{error}</p> : null}
       {gallery ? (
         <CampusImageLibrary
-          images={gallery}
+          result={gallery}
           disabled={disabled || working}
           onSelect={select}
           onClose={() => setGallery(null)}
@@ -129,20 +138,25 @@ export function CampusImageEditor({
 }
 
 function CampusImageLibrary({
-  images,
+  result,
   disabled,
   onSelect,
   onClose,
 }: {
-  images: readonly ImageRecord[];
+  result: GalleryBrowseResult;
   disabled: boolean;
-  onSelect: (image: ImageRecord) => void;
+  onSelect: (image: GalleryImage) => void;
   onClose: () => void;
 }) {
-  const [preview, setPreview] = useState<ImageRecord | null>(null);
+  const { imageUrl } = useGallery();
+  const [preview, setPreview] = useState<GalleryImage | null>(null);
   return preview ? (
     <div>
-      <img className="campus-image-preview" src={preview.imagePath} alt={preview.prompt} />
+      <img
+        className="campus-image-preview"
+        src={imageUrl(preview.imagePath)}
+        alt={preview.description ?? gallerySourceLabels[preview.source]}
+      />
       <Button variant="filled" disabled={disabled} onClick={() => onSelect(preview)}>
         使用这张
       </Button>
@@ -150,7 +164,14 @@ function CampusImageLibrary({
     </div>
   ) : (
     <div>
-      <ImageGrid images={images} empty="图库还没有图片。" onOpen={setPreview} />
+      {result.errors.map(({ source, message }) => (
+        <p key={source} role="alert">
+          {gallerySourceLabels[source]}：{message}
+        </p>
+      ))}
+      {result.images.length > 0 || result.errors.length === 0 ? (
+        <ImageGrid images={result.images} empty="图库还没有图片。" onOpen={setPreview} />
+      ) : null}
       <Button onClick={onClose}>关闭图库</Button>
     </div>
   );

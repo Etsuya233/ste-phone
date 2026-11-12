@@ -1,4 +1,3 @@
-import type { ImageHub } from "../../../core/image-hub/public.ts";
 import { WechatMomentImage, WechatMomentImageView } from "./wechat-moment-image.tsx";
 import { WechatMomentImagePicker } from "./wechat-moment-image-picker.tsx";
 import type { WechatPreferences } from "../../settings/public.ts";
@@ -24,14 +23,12 @@ export function WechatApp({
   wechat,
   preferences,
   stickers,
-  hub,
   active,
   onHome,
 }: {
   wechat: WechatService;
   preferences: WechatPreferences;
   stickers: WechatStickerLibrary;
-  hub: ImageHub;
   active: boolean;
   onHome(): void;
 }) {
@@ -73,8 +70,7 @@ export function WechatApp({
                 return (
                   <WechatMomentImagePicker
                     {...props}
-                    hub={hub}
-                    selectedId={route.selectedId}
+                    selectedKey={route.selectedKey}
                     onSelect={route.onSelect}
                     active={active && navigation.current}
                   />

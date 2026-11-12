@@ -1,5 +1,8 @@
 import { useState } from "react";
 import type { ImageRecord } from "../../core/image-hub/public.ts";
+import { galleryImageKey, gallerySourceLabels } from "../../apps/gallery/public.ts";
+import type { GalleryImage } from "../../apps/gallery/public.ts";
+import { useGallery } from "./gallery-context.ts";
 import { NavBar } from "../foundation/nav-bar.tsx";
 import { Page } from "../foundation/page.tsx";
 
@@ -9,12 +12,14 @@ function ImageTile({
   selected,
   onOpen,
 }: {
-  image: ImageRecord;
+  image: GalleryImage;
   selected: boolean;
-  onOpen: (image: ImageRecord) => void;
+  onOpen: (image: GalleryImage) => void;
 }) {
   const [failed, setFailed] = useState(false);
-  const label = image.prompt.length > 40 ? `${image.prompt.slice(0, 40)}…` : image.prompt;
+  const { imageUrl } = useGallery();
+  const description = image.description || gallerySourceLabels[image.source];
+  const label = description.length > 40 ? `${description.slice(0, 40)}…` : description;
   return (
     <button
       type="button"
@@ -24,7 +29,12 @@ function ImageTile({
       {failed ? (
         <span className="image-tile-missing">图片不可用</span>
       ) : (
-        <img src={image.imagePath} alt={label} loading="lazy" onError={() => setFailed(true)} />
+        <img
+          src={imageUrl(image.imagePath)}
+          alt={label}
+          loading="lazy"
+          onError={() => setFailed(true)}
+        />
       )}
       {selected ? <span className="image-tile-current">当前</span> : null}
     </button>
@@ -35,12 +45,12 @@ export function ImageGrid({
   images,
   onOpen,
   empty,
-  selectedId,
+  selectedKey,
 }: {
-  images: readonly ImageRecord[];
-  onOpen: (image: ImageRecord) => void;
+  images: readonly GalleryImage[];
+  onOpen: (image: GalleryImage) => void;
   empty: string;
-  selectedId?: string;
+  selectedKey?: string;
 }) {
   if (images.length === 0) {
     return (
@@ -52,8 +62,12 @@ export function ImageGrid({
   return (
     <ul className="image-grid" aria-label="图片列表">
       {images.map((image) => (
-        <li key={image.id}>
-          <ImageTile image={image} selected={image.id === selectedId} onOpen={onOpen} />
+        <li key={galleryImageKey(image)}>
+          <ImageTile
+            image={image}
+            selected={galleryImageKey(image) === selectedKey}
+            onOpen={onOpen}
+          />
         </li>
       ))}
     </ul>

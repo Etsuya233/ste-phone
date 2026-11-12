@@ -47,7 +47,7 @@ const demoEntries: DiaryEntry[] = [
 ];
 
 const demoDiary: DiaryData = {
-  version: 1,
+  version: 2,
   author: demoAuthor,
   settings: { timeoutSeconds: 300, maxTokens: 10240 },
   entries: demoEntries,

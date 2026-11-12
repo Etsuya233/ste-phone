@@ -1,43 +1,30 @@
-import { useEffect, useRef, useState } from "react";
-import type { ImageHub, ImageRecord } from "../../../core/image-hub/public.ts";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { ImageGrid } from "../../../frontend/images/image-views.tsx";
+import { useGallery } from "../../../frontend/images/gallery-context.ts";
+import { useGalleryImages } from "../../../frontend/images/use-gallery-images.ts";
+import {
+  galleryImageKey,
+  galleryImageReference,
+  gallerySourceLabels,
+} from "../../gallery/public.ts";
+import type { CampusAccount } from "../campus-domain.ts";
 
 export function CampusAvatarPicker({
-  hub,
   selected,
   onSelect,
   onClose,
+  active,
 }: {
-  hub: ImageHub;
-  selected: string;
-  onSelect: (path: string) => void;
+  selected: CampusAccount["avatar"];
+  onSelect: (image: CampusAccount["avatar"]) => void;
   onClose: () => void;
+  active: boolean;
 }) {
-  const [images, setImages] = useState<readonly ImageRecord[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const read = useRef(0);
-
-  useEffect(() => {
-    const request = ++read.current;
-    setImages(null);
-    setError(null);
-    void hub
-      .listImages()
-      .then((records) => {
-        if (read.current === request) {
-          setImages(records);
-        }
-      })
-      .catch((cause: unknown) => {
-        if (read.current === request) {
-          setError(cause instanceof Error ? cause.message : String(cause));
-        }
-      });
-    return () => {
-      read.current++;
-    };
-  }, [hub]);
+  const { images, errors, ready, loading } = useGalleryImages(useGallery(), active);
+  const selectedImage =
+    typeof selected === "string"
+      ? images.find(({ imagePath }) => imagePath === selected)
+      : selected;
 
   return (
     <section className="campus-avatar-picker" aria-label="选择头像">
@@ -45,22 +32,22 @@ export function CampusAvatarPicker({
         <strong>选择头像</strong>
         <Button onClick={onClose}>关闭</Button>
       </div>
-      {error ? (
-        <p role="alert" className="campus-hint">
-          {error}
+      {errors.map(({ source, message }) => (
+        <p key={source} role="alert" className="campus-hint">
+          {gallerySourceLabels[source]}：{message}
         </p>
-      ) : null}
-      {images === null && !error ? (
+      ))}
+      {loading ? (
         <p role="status" className="campus-meta">
           正在读取图库…
         </p>
       ) : null}
-      {images ? (
+      {ready && (images.length > 0 || errors.length === 0) ? (
         <ImageGrid
           images={images}
-          selectedId={images.find(({ imagePath }) => imagePath === selected)?.id}
+          selectedKey={selectedImage ? galleryImageKey(selectedImage) : undefined}
           empty="图库还没有图片。"
-          onOpen={(image) => onSelect(image.imagePath)}
+          onOpen={(image) => onSelect(galleryImageReference(image))}
         />
       ) : null}
     </section>

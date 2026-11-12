@@ -62,7 +62,11 @@
 :host .ios-alert-action--primary {
   font-weight: 600;
 }
-:host .ios-alert-action:active {
+:host .ios-alert-action[aria-disabled="true"] {
+  opacity: var(--ios-disabled-opacity);
+  cursor: default;
+}
+:host .ios-alert-action:not([aria-disabled="true"]):active {
   background: var(--ios-row-active);
 }
 :host .ios-alert-spinner {

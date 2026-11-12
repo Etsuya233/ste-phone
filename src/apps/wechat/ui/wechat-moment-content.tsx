@@ -1,3 +1,4 @@
+import { useGallery } from "../../../frontend/images/gallery-context.ts";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import type { MomentComment, WechatMoment } from "../wechat-moments.ts";
 import { formatWechatMomentFullTime, formatWechatMomentTime } from "../wechat-time.ts";
@@ -70,6 +71,7 @@ export function MomentContentView({
   showTime?: boolean;
   onImage?(index: number): void;
 }) {
+  const { imageUrl } = useGallery();
   const layout =
     moment.media.length === 1
       ? "single"
@@ -92,7 +94,7 @@ export function MomentContentView({
               <>
                 <img
                   className="wechat-moment-photo"
-                  src={image.imagePath}
+                  src={imageUrl(image.imagePath)}
                   alt={description}
                   loading="lazy"
                 />

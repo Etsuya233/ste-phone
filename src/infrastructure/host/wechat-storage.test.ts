@@ -127,7 +127,7 @@ test("moments round-trip alongside existing metadata and invalid moments fail be
                 type: "image",
                 description: "晚霞",
                 prompt: "天空",
-                image: { id: "hub", imagePath: "/sky.png" },
+                image: { source: "hub", id: "hub", imagePath: "/sky.png" },
               },
               { type: "video", description: "海浪" },
             ],
@@ -290,14 +290,14 @@ test("legacy moments migrate on read and persist on explicit save for single and
             type: "image",
             description: "新图片",
             prompt: "细节",
-            image: { id: "hub", imagePath: "/image.png" },
+            image: { source: "hub", id: "hub", imagePath: "/image.png" },
           },
         ],
         [{ type: "video", description: "旧视频" }],
       ],
     );
     assert.deepEqual(context.chatMetadata, original);
-    assert.equal(loaded.version, 3);
+    assert.equal(loaded.version, 4);
     await storage.write("a", loaded);
     assert.deepEqual(storage.read("a"), loaded);
     assert.deepEqual((context.chatMetadata.ste_phone as Record<string, unknown>).diary, {

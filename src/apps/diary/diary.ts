@@ -1,3 +1,6 @@
+import { migrateData, type MigrationPlan } from "../../core/storage/migrations.ts";
+import { isGalleryImageReference, type GalleryImageReference } from "../gallery/public.ts";
+
 export interface DiarySettings {
   readonly timeoutSeconds: number;
   readonly maxTokens: number;
@@ -19,12 +22,12 @@ export interface DiaryEntry {
   readonly worldTime: string;
   readonly body: string;
   readonly imagePrompt?: string;
-  readonly image?: { readonly id: string; readonly imagePath: string };
+  readonly image?: GalleryImageReference;
   readonly createdAt: string;
 }
 
 export interface DiaryData {
-  readonly version: 1;
+  readonly version: 2;
   readonly author: DiaryAuthor | null;
   readonly settings: DiarySettings;
   readonly entries: readonly DiaryEntry[];
@@ -32,7 +35,7 @@ export interface DiaryData {
 
 export function createEmptyDiary(): DiaryData {
   return {
-    version: 1,
+    version: 2,
     author: null,
     settings: { timeoutSeconds: 300, maxTokens: 10240, autoGenerateImage: false },
     entries: [],
@@ -95,10 +98,31 @@ export function createDiaryEntry(author: DiaryAuthor, worldTime: string, body: s
   };
 }
 
-/** v1 旧条目允许没有配图字段；已出现的新字段须完整有效。 */
-export function readDiaryData(data: DiaryData): DiaryData {
-  if (data.version !== 1) {
-    throw new Error("日记数据版本不受支持");
+const diaryMigrations: MigrationPlan<DiaryData> = {
+  currentVersion: 2,
+  steps: [
+    {
+      from: 1,
+      to: 2,
+      name: "diary-gallery-source",
+      migrate(value) {
+        const data = value as { entries: { image?: { id: string; imagePath: string } }[] };
+        for (const entry of data.entries) {
+          if (entry.image) {
+            Object.assign(entry.image, { source: "hub" });
+          }
+        }
+        return data;
+      },
+    },
+  ],
+  validate: validateDiaryData,
+};
+
+function validateDiaryData(value: unknown): asserts value is DiaryData {
+  const data = value as DiaryData;
+  if (!Array.isArray(data.entries)) {
+    throw new Error("日记条目无效");
   }
   if (
     data.settings.autoGenerateImage !== undefined &&
@@ -113,17 +137,14 @@ export function readDiaryData(data: DiaryData): DiaryData {
     ) {
       throw new Error("日记配图描述无效");
     }
-    if (
-      entry.image !== undefined &&
-      (!entry.image ||
-        typeof entry.image.id !== "string" ||
-        !entry.image.id.trim() ||
-        typeof entry.image.imagePath !== "string" ||
-        !entry.image.imagePath.trim())
-    ) {
+    if (entry.image !== undefined && !isGalleryImageReference(entry.image)) {
       throw new Error("日记配图引用无效");
     }
   }
+}
+
+export function readDiaryData(value: unknown): DiaryData {
+  const { data } = migrateData(value, diaryMigrations);
   return {
     ...data,
     settings: { ...data.settings, autoGenerateImage: data.settings.autoGenerateImage ?? false },

@@ -1,10 +1,14 @@
 import { migrateData, type MigrationPlan } from "../../core/storage/migrations.ts";
-import { migrateWechatMoments, validateWechatMoments } from "./wechat-moments-storage.ts";
+import {
+  migrateWechatMoments,
+  migrateMomentImageSources,
+  validateWechatMoments,
+} from "./wechat-moments-storage.ts";
 import { wechatMemoryBoundaries } from "./wechat-memory.ts";
 import type { WechatConversation, WechatData } from "./wechat.ts";
 
 const wechatMigrations: MigrationPlan<WechatData> = {
-  currentVersion: 3,
+  currentVersion: 4,
   steps: [
     {
       from: 1,
@@ -18,6 +22,16 @@ const wechatMigrations: MigrationPlan<WechatData> = {
       },
     },
     { from: 2, to: 3, name: "message-recall", migrate: object },
+    {
+      from: 3,
+      to: 4,
+      name: "moment-gallery-source",
+      migrate(value) {
+        const data = object(value);
+        migrateMomentImageSources(data.moments);
+        return data;
+      },
+    },
   ],
   validate: validateWechatData,
 };
@@ -30,7 +44,7 @@ export function readWechatData(value: unknown): WechatData {
 /** 当前结构只接受媒体数组；历史字段转换仅允许在 v1 → v2 中执行。 */
 export function validateWechatData(value: unknown): asserts value is WechatData {
   const data = object(value);
-  if (data.version !== 3 || !Array.isArray(data.conversations)) {
+  if (data.version !== 4 || !Array.isArray(data.conversations)) {
     throw new Error("微信数据版本或会话列表无效");
   }
   if (data.account !== null) {

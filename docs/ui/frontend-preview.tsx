@@ -1,6 +1,7 @@
 import { createMapConversationStorage } from "../../src/infrastructure/host/map-conversation-storage.ts";
 import { PhoneSettingsService } from "../../src/apps/settings/settings-service.ts";
 import { createPreviewMapStorage } from "./preview-map.ts";
+import { createPreviewPhotoStorage } from "./preview-gallery.ts";
 import { createPreviewImageHub } from "./preview-image-hub.ts";
 import { createPreviewSettingsStorage } from "./preview-wallpapers.ts";
 import { createPreviewAiTransport } from "./preview-ai-transport.ts";
@@ -81,6 +82,7 @@ if (options.get("map") === "1" || campusPreview) {
 }
 const phone = createPhone({
   speech: previewSpeech,
+  photoStorage: await createPreviewPhotoStorage(options.get("photo-test")),
   imageHub: createPreviewImageHub(options.get("image-test")),
   settingsStorage,
   aiTransport: createPreviewAiTransport(

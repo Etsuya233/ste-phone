@@ -1,3 +1,4 @@
+import { useGallery } from "../../../frontend/images/gallery-context.ts";
 import { useEffect, useState } from "react";
 import { Alert } from "../../../frontend/foundation/alert.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
@@ -35,6 +36,7 @@ function CampusPublishedImage(
     onIndex: (index: number) => void;
   },
 ) {
+  const { imageUrl } = useGallery();
   const { service, state, navigation, post, image, index, onIndex } = props;
   const [draft, setDraft] = useState<CampusImage | null>(null);
   const [working, setWorking] = useState(false);
@@ -132,7 +134,7 @@ function CampusPublishedImage(
                 {image.image ? (
                   <img
                     className="campus-image-preview"
-                    src={image.image.path}
+                    src={imageUrl(image.image.imagePath)}
                     alt={image.description}
                   />
                 ) : (

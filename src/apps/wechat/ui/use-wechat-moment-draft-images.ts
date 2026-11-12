@@ -1,3 +1,4 @@
+import { galleryImageKey, galleryImageReference } from "../../gallery/public.ts";
 import { useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { momentImageAt, type MomentDraft, type MomentImage } from "../wechat-moments.ts";
@@ -34,7 +35,7 @@ export function useMomentDraftImages({
     const items = draft.media;
     navigation.push({
       page: "moment-image-picker",
-      selectedId: selected.image?.id,
+      selectedKey: selected.image ? galleryImageKey(selected.image) : undefined,
       onSelect: async (image) => {
         setDraft({
           ...draft,
@@ -42,8 +43,8 @@ export function useMomentDraftImages({
             position === index
               ? {
                   ...selected,
-                  description: selected.description || image.prompt,
-                  image: { id: image.id, imagePath: image.imagePath },
+                  description: selected.description || image.description || "",
+                  image: galleryImageReference(image),
                 }
               : item,
           ),

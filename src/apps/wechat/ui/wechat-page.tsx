@@ -1,4 +1,4 @@
-import type { ImageRecord } from "../../../core/image-hub/public.ts";
+import type { GalleryImage } from "../../gallery/public.ts";
 import type { WechatPreferences, WechatSendMode } from "../../settings/public.ts";
 import type { Navigation } from "../../../frontend/foundation/navigation-stack.tsx";
 import type { WechatService } from "../wechat-service.ts";
@@ -15,8 +15,8 @@ export type WechatRoute =
   | { page: "moment-image-view"; imagePath: string; description: string }
   | {
       page: "moment-image-picker";
-      selectedId?: string;
-      onSelect(image: ImageRecord): Promise<void>;
+      selectedKey?: string;
+      onSelect(image: GalleryImage): Promise<void>;
     }
   | {
       page: "moment-participants";

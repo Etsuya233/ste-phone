@@ -1,3 +1,5 @@
+import { galleryImageKey } from "../../gallery/public.ts";
+import { useGallery } from "../../../frontend/images/gallery-context.ts";
 import { useState } from "react";
 import type { CampusImage, CampusPost } from "../campus-domain.ts";
 import { ImageIcon } from "./campus-icons.tsx";
@@ -11,6 +13,7 @@ function MediaTile({
   index: number;
   onOpen: (index: number) => void;
 }) {
+  const { imageUrl } = useGallery();
   const [failed, setFailed] = useState(false);
   return (
     <button
@@ -21,7 +24,7 @@ function MediaTile({
     >
       {image.image && !failed ? (
         <img
-          src={image.image.path}
+          src={imageUrl(image.image.imagePath)}
           alt={image.description}
           loading="lazy"
           onError={() => setFailed(true)}
@@ -55,7 +58,7 @@ export function CampusMedia({
     >
       {post.images.map((image, index) => (
         <MediaTile
-          key={image.image?.id ?? `${index}:${image.description}`}
+          key={image.image ? `${index}:${galleryImageKey(image.image)}` : index}
           image={image}
           index={index}
           onOpen={onOpen}

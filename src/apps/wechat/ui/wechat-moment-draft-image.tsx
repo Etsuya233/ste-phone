@@ -1,3 +1,4 @@
+import { useGallery } from "../../../frontend/images/gallery-context.ts";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import type { MomentImage } from "../wechat-moments.ts";
 
@@ -25,6 +26,7 @@ export function MomentDraftImage({
   onMove(direction: number): void;
   onChange(item: MomentImage): void;
 }) {
+  const { imageUrl } = useGallery();
   return (
     <div className="wechat-moment-image-page">
       <p className="wechat-moment-image-caption">
@@ -33,7 +35,7 @@ export function MomentDraftImage({
       {item.image ? (
         <img
           className="wechat-moment-draft-photo"
-          src={item.image.imagePath}
+          src={imageUrl(item.image.imagePath)}
           alt={item.description}
         />
       ) : (

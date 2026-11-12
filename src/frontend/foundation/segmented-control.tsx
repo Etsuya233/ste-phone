@@ -1,14 +1,14 @@
 import { useId } from "react";
-export function SegmentedControl({
+export function SegmentedControl<Value extends string>({
   label,
   value,
   onValueChange,
   options,
 }: {
   label: string;
-  value: string;
-  onValueChange: (value: string) => void;
-  options: readonly { value: string; label: string; disabled?: boolean }[];
+  value: Value;
+  onValueChange: (value: Value) => void;
+  options: readonly { value: Value; label: string; disabled?: boolean }[];
 }) {
   const name = useId();
   return (

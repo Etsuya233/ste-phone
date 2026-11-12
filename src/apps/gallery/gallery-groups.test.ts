@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ImageRecord } from "../../core/image-hub/public.ts";
+import type { GalleryImage } from "./public.ts";
 import { groupImagesBySavedAt } from "./gallery-groups.ts";
 
-function image(id: string, savedAt: Date): ImageRecord {
+function image(id: string, savedAt: Date): GalleryImage {
   const time = savedAt.toISOString();
-  return { id, imagePath: `${id}.png`, prompt: id, startedAt: time, savedAt: time };
+  return { source: "hub", id, imagePath: `${id}.png`, savedAt: time };
 }
 
 test("图库按本地日历划分今天、昨天和更早", () => {

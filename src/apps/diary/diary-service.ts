@@ -1,5 +1,6 @@
 import { DiaryImages, type DiaryImageAction } from "./diary-images.ts";
-import type { ImageHub, ImageRecord } from "../../core/image-hub/public.ts";
+import type { GalleryImageReference } from "../gallery/public.ts";
+import type { ImageHub } from "../../core/image-hub/public.ts";
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { ChatContext } from "../../core/chat/public.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
@@ -246,7 +247,7 @@ export class DiaryService {
     await this.#runImageTask(entryId, { type: "prompt", prompt });
   }
 
-  async selectImage(entryId: string, image: ImageRecord): Promise<void> {
+  async selectImage(entryId: string, image: GalleryImageReference): Promise<void> {
     await this.#runImageTask(entryId, { type: "select", image });
   }
 

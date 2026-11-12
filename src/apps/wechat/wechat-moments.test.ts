@@ -300,7 +300,13 @@ test("旧图片描述只在读取时迁移，混用字段与非法新图片拒�
   assert.throws(() =>
     normalizeMomentContent({
       text: "",
-      media: [{ type: "image" as const, description: "图", image: { id: "", imagePath: "x" } }],
+      media: [
+        {
+          type: "image" as const,
+          description: "图",
+          image: { source: "hub" as const, id: "", imagePath: "x" },
+        },
+      ],
     }),
   );
   assert.throws(() =>
@@ -333,7 +339,7 @@ test("图片调序保留引用，跨作者手动生成仅关联选定图片，�
         type: "image" as const,
         description: "第二张",
         prompt: "窗边的笔记本",
-        image: { id: "previous", imagePath: "/previous.png" },
+        image: { source: "hub", id: "previous", imagePath: "/previous.png" },
       },
       { type: "image" as const, description: "第一张", prompt: "树叶" },
     ],
@@ -352,8 +358,12 @@ test("图片调序保留引用，跨作者手动生成仅关联选定图片，�
   if (media[0]!.type !== "image" || media[1]!.type !== "image") {
     throw new Error("预期图片");
   }
-  assert.deepEqual(media[0]!.image, { id: "previous", imagePath: "/previous.png" });
-  assert.deepEqual(media[1]!.image, { id: imageRecord.id, imagePath: imageRecord.imagePath });
+  assert.deepEqual(media[0]!.image, { source: "hub", id: "previous", imagePath: "/previous.png" });
+  assert.deepEqual(media[1]!.image, {
+    source: "hub",
+    id: imageRecord.id,
+    imagePath: imageRecord.imagePath,
+  });
   assert.equal(media[1]!.prompt, "新 Prompt");
   assert.equal(f.snapshot().data.moments!.stable![0]!.author.id, "a");
 });

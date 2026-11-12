@@ -58,7 +58,8 @@ test("微信 v1 所有已发布媒体结构统一升级，保留其他微信字�
   };
   const original = structuredClone(legacy);
   const loaded = readWechatData(legacy);
-  assert.equal(loaded.version, 3);
+  const currentImage = { ...image, image: { ...image.image, source: "hub" } };
+  assert.equal(loaded.version, 4);
   assert.deepEqual(legacy, original);
   assert.deepEqual(loaded.conversations, legacy.conversations);
   assert.deepEqual(loaded.account, author);
@@ -71,11 +72,11 @@ test("微信 v1 所有已发布媒体结构统一升级，保留其他微信字�
         { type: "image", description: "描述一" },
         { type: "image", description: "描述二" },
       ],
-      [{ type: "image", ...image }],
+      [{ type: "image", ...currentImage }],
       [{ type: "video", description: "旧视频" }],
       [
         { type: "video", description: "新视频" },
-        { type: "image", ...image },
+        { type: "image", ...currentImage },
       ],
     ],
   );
@@ -96,7 +97,7 @@ test("当前 v3 严格校验，不再转换旧媒体；非法版本与损坏微�
   }
   for (const data of [
     { account: null, conversations: [] },
-    { ...emptyWechat(), version: 4 },
+    { ...emptyWechat(), version: 5 },
     { ...emptyWechat(), version: "2" },
     { ...emptyWechat(), account: {} },
     { ...emptyWechat(), conversations: {} },
@@ -154,12 +155,12 @@ test("预览读取复用迁移链且不写盘，正常保存才持久化 v3", as
     values.set(key, original);
     const storage = createPreviewWechatStorage(null);
     const loaded = storage.read("chat")!;
-    assert.equal(loaded.version, 3);
+    assert.equal(loaded.version, 4);
     assert.equal(writes, 0);
     assert.equal(values.get(key), original);
     await storage.write("chat", loaded);
     assert.equal(writes, 1);
-    assert.equal(JSON.parse(values.get(key)!).version, 3);
+    assert.equal(JSON.parse(values.get(key)!).version, 4);
     assert.deepEqual(storage.read("chat"), loaded);
   } finally {
     if (savedDescriptor) {

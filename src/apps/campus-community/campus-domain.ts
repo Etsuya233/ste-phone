@@ -1,10 +1,11 @@
+import type { GalleryImageReference } from "../gallery/public.ts";
 import type { DataScope } from "../data-source/public.ts";
 
 export interface CampusAccount {
   id: string;
   owner: { kind: "memory"; id: string } | { kind: "person"; id: string } | { kind: "public" };
   nickname: string;
-  avatar: string;
+  avatar: string | GalleryImageReference;
   bio: string;
   style: string;
   disabled: boolean;
@@ -23,7 +24,7 @@ export const CAMPUS_MAX_IMAGES = 9;
 export interface CampusImage {
   description: string;
   prompt?: string;
-  image?: { id: string; path: string };
+  image?: GalleryImageReference;
 }
 
 export interface CampusComment {
@@ -49,6 +50,7 @@ export interface CampusPost {
 }
 
 export interface CampusData {
+  version: 2;
   accounts: CampusAccount[];
   people: CampusPerson[];
   posts: CampusPost[];
@@ -79,7 +81,14 @@ export interface CampusStorage {
 }
 
 export function emptyCampus(): CampusData {
-  return { accounts: [], people: [], posts: [], activeAccountId: null, appliedBatches: [] };
+  return {
+    version: 2,
+    accounts: [],
+    people: [],
+    posts: [],
+    activeAccountId: null,
+    appliedBatches: [],
+  };
 }
 
 export function createCampusId(): string {

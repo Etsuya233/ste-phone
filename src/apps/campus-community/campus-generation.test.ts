@@ -145,7 +145,12 @@ test("取材只公开账号资料，私有小号档案只附于本账号，并�
             id: "post",
             authorId: "alt",
             text: "",
-            images: [{ description: "照片", image: { id: "image", path: "private-image-path" } }],
+            images: [
+              {
+                description: "照片",
+                image: { source: "hub", id: "image", imagePath: "private-image-path" },
+              },
+            ],
             backgroundLikes: 0,
             backgroundComments: 0,
           }),

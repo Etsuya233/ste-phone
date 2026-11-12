@@ -17,7 +17,8 @@ import {
   type WechatMoment,
 } from "./wechat-moments.ts";
 
-import type { ImageHub, ImageRecord } from "../../core/image-hub/public.ts";
+import { galleryImageReference, type GalleryImageReference } from "../gallery/public.ts";
+import type { ImageHub } from "../../core/image-hub/public.ts";
 import {
   generateRefinedMomentImagePrompt,
   momentImagePromptInput,
@@ -173,12 +174,12 @@ export class WechatMomentsService {
     );
   }
 
-  async selectImage(momentId: string, index: number, image: ImageRecord): Promise<void> {
+  async selectImage(momentId: string, index: number, image: GalleryImageReference): Promise<void> {
     const account = this.#accountForWriting();
     await this.#dependencies.save((data) =>
       this.#updateImage(data, account.scopeId, momentId, index, (item) => ({
         ...item,
-        image: { id: image.id, imagePath: image.imagePath },
+        image: galleryImageReference(image),
       })),
     );
   }
@@ -202,7 +203,7 @@ export class WechatMomentsService {
           (data) =>
             this.#updateImage(data, account.scopeId, momentId, index, (current) => ({
               ...current,
-              image: { id: images[0]!.id, imagePath: images[0]!.imagePath },
+              image: { source: "hub", id: images[0]!.id, imagePath: images[0]!.imagePath },
             })),
           generated,
         );
@@ -243,7 +244,10 @@ export class WechatMomentsService {
       if (!images.length) {
         throw new Error("Image Hub 未返回图片");
       }
-      return { ...item, image: { id: images[0]!.id, imagePath: images[0]!.imagePath } };
+      return {
+        ...item,
+        image: { source: "hub", id: images[0]!.id, imagePath: images[0]!.imagePath },
+      };
     });
   }
 

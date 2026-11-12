@@ -1,4 +1,3 @@
-import type { ImageHub } from "../../../core/image-hub/public.ts";
 import { DiaryImagePicker } from "./diary-image-picker.tsx";
 import { DiaryImageView } from "./diary-image-view.tsx";
 import { DiaryImagePromptPage } from "./diary-image-prompt-page.tsx";
@@ -15,12 +14,10 @@ import { DiaryDetailPage } from "./diary-entry-page.tsx";
 
 export function DiaryApp({
   diary,
-  hub,
   active,
   onHome,
 }: {
   diary: DiaryService;
-  hub: ImageHub;
   active: boolean;
   onHome: () => void;
 }) {
@@ -57,7 +54,7 @@ export function DiaryApp({
             page = <DiaryImagePromptPage {...props} id={route.id} />;
             break;
           case "image-picker":
-            page = <DiaryImagePicker {...props} imageHub={hub} id={route.id} />;
+            page = <DiaryImagePicker {...props} id={route.id} />;
             break;
           case "image-view":
             page = <DiaryImageView {...props} id={route.id} />;

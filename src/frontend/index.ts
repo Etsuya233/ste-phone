@@ -1,5 +1,6 @@
 import { createMapConversationStorage } from "../infrastructure/host/map-conversation-storage.ts";
 import { createStMapStorage } from "../infrastructure/host/map-storage.ts";
+import { createStPhotoStorage } from "../infrastructure/host/gallery-storage.ts";
 import { createStImageHub } from "../infrastructure/host/image-hub.ts";
 import { createStSettingsStorage } from "../infrastructure/host/st-settings.ts";
 import { createBrowserSpeech } from "../infrastructure/browser/speech.ts";
@@ -33,6 +34,7 @@ const logs = createPhoneLog({
 });
 const phone = createPhone({
   speech: createBrowserSpeech(),
+  photoStorage: createStPhotoStorage(),
   imageHub: createStImageHub(),
   dataProvider: new MemoryDatabaseProvider(),
   settingsStorage: createStSettingsStorage(),

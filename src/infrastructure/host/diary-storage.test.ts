@@ -84,9 +84,17 @@ test("legacy settings disable automatic images and invalid references fail expli
   const { storage, context } = fixture(async () => new Response(null, { status: 200 }));
   const data = createEmptyDiary();
   context.chatMetadata.ste_phone = {
-    diary: { ...data, settings: { timeoutSeconds: 300, maxTokens: 10240 } },
+    diary: {
+      ...data,
+      version: 1,
+      settings: { timeoutSeconds: 300, maxTokens: 10240 },
+      entries: [{ image: { id: "hub", imagePath: "/old.png" } }],
+    },
   };
-  assert.equal(storage.read("a")!.settings.autoGenerateImage, false);
+  const migrated = storage.read("a")!;
+  assert.equal(migrated.settings.autoGenerateImage, false);
+  assert.equal(migrated.version, 2);
+  assert.deepEqual(migrated.entries[0]!.image, { source: "hub", id: "hub", imagePath: "/old.png" });
   context.chatMetadata.ste_phone = { diary: { ...data, entries: [{ image: { id: "bad" } }] } };
   assert.throws(() => storage.read("a"), /配图引用无效/);
 });

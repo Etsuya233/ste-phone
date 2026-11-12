@@ -1,4 +1,5 @@
-import type { ImageHub, ImageRecord } from "../../core/image-hub/public.ts";
+import type { ImageHub } from "../../core/image-hub/public.ts";
+import { galleryImageReference, type GalleryImageReference } from "../gallery/public.ts";
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { ModelConnectionsReader } from "../settings/public.ts";
 import type { DiaryEntry, DiarySettings } from "./diary.ts";
@@ -6,7 +7,7 @@ import { generateDiaryText, parseImagePrompt } from "./diary-generation.ts";
 
 export type DiaryImageAction =
   | { type: "prompt"; prompt: string }
-  | { type: "select"; image: ImageRecord }
+  | { type: "select"; image: GalleryImageReference }
   | { type: "generate" }
   | { type: "create-prompt" }
   | { type: "remove" };
@@ -49,7 +50,7 @@ export class DiaryImages {
       case "select":
         await owner.save({
           ...entry,
-          image: { id: action.image.id, imagePath: action.image.imagePath },
+          image: galleryImageReference(action.image),
         });
         return;
       case "remove":
@@ -92,7 +93,10 @@ export class DiaryImages {
           throw new Error("Image Hub 未返回图片");
         }
         try {
-          await owner.save({ ...entry, image: { id: image.id, imagePath: image.imagePath } });
+          await owner.save({
+            ...entry,
+            image: { source: "hub", id: image.id, imagePath: image.imagePath },
+          });
         } catch (error) {
           throw new Error("配图关联保存失败，图片已存入图库，请重新选取", { cause: error });
         }

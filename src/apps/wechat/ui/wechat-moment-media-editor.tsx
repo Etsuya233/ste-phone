@@ -1,3 +1,4 @@
+import { useGallery } from "../../../frontend/images/gallery-context.ts";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import type { MomentMedia } from "../wechat-moments.ts";
 
@@ -12,6 +13,7 @@ export function MomentMediaEditor({
   onEdit(index: number): void;
   onAdd(type: MomentMedia[number]["type"]): void;
 }) {
+  const { imageUrl } = useGallery();
   return (
     <div className="wechat-moment-media-editor">
       <div className="wechat-moment-media-heading">
@@ -31,7 +33,11 @@ export function MomentMediaEditor({
               onClick={() => onEdit(index)}
             >
               {item.type === "image" && item.image ? (
-                <img className="wechat-moment-media-tile-photo" src={item.image.imagePath} alt="" />
+                <img
+                  className="wechat-moment-media-tile-photo"
+                  src={imageUrl(item.image.imagePath)}
+                  alt=""
+                />
               ) : (
                 <span className="wechat-moment-media-tile-text">
                   {item.type === "video" ? "视频：" : ""}

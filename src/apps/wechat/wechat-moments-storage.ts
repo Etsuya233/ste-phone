@@ -110,7 +110,31 @@ export function migrateWechatMoments(value: unknown): void {
       }
     }
   }
-  validateWechatMoments(value);
+}
+
+/** 旧动态图片统一归 Hub；仅在迁移中补来源，引用地址保持原样。 */
+export function migrateMomentImageSources(value: unknown): void {
+  if (value === undefined) {
+    return;
+  }
+  const moments = Object.values(object(value)).flatMap((records) => {
+    if (!Array.isArray(records)) {
+      throw new Error("朋友圈空间数据无效");
+    }
+    return records;
+  });
+  for (const raw of moments) {
+    const record = object(raw);
+    if (!Array.isArray(record.media)) {
+      throw new Error("朋友圈媒体数据无效");
+    }
+    for (const rawItem of record.media) {
+      const item = object(rawItem);
+      if (item.type === "image" && item.image !== undefined) {
+        object(item.image).source = "hub";
+      }
+    }
+  }
 }
 
 /** 只接受已发布的三种旧结构，混用字段与损坏内容直接报错。 */

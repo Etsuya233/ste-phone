@@ -342,7 +342,7 @@ test("朋友圈提示词只包含媒体文字，过滤图库路径与data URL", 
         type: "image" as const,
         description: "甲在窗边",
         prompt: "甲的侧面近景",
-        image: { id: "secret", imagePath: "data:image/png;base64,PRIVATE" },
+        image: { source: "hub" as const, id: "secret", imagePath: "data:image/png;base64,PRIVATE" },
       },
     ],
   };
@@ -387,7 +387,7 @@ test("旧动态完善Prompt只提供作者及明确点名人物，AI新图必须
   for (const items of [
     [{ description: "图" }],
     [{ description: "图", prompt: " " }],
-    [{ description: "图", prompt: "内容", image: { id: "x", imagePath: "x" } }],
+    [{ description: "图", prompt: "内容", image: { source: "hub", id: "x", imagePath: "x" } }],
   ]) {
     assert.throws(() =>
       parseGeneratedMoment(

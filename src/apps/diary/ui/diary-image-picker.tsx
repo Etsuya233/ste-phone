@@ -1,73 +1,35 @@
 import { useEffect, useRef, useState } from "react";
-import type { ImageHub, ImageRecord } from "../../../core/image-hub/public.ts";
+import { galleryImageKey, gallerySourceLabels } from "../../gallery/public.ts";
+import type { GalleryImage } from "../../gallery/public.ts";
+import { useGallery } from "../../../frontend/images/gallery-context.ts";
+import { useGalleryImages } from "../../../frontend/images/use-gallery-images.ts";
 import { ImageGrid } from "../../../frontend/images/image-views.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { isDiaryImageTaskRunning, isDiaryRunning, type DiaryEntry } from "../diary.ts";
 import { DiaryPage, type DiaryPageProps } from "./diary-page.tsx";
 import { DiaryPhoto } from "./diary-photo.tsx";
 
-/** 图库读取归页面所有；刷新保留已有网格，卸载或更新的读取结果按序号丢弃。 */
-function usePickerImages(imageHub: ImageHub) {
-  const [images, setImages] = useState<readonly ImageRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const mounted = useRef(false);
-  const latestRead = useRef(0);
-
-  useEffect(() => {
-    mounted.current = true;
-    void load("initial");
-    return () => {
-      mounted.current = false;
-      latestRead.current += 1;
-    };
-  }, [imageHub]);
-
-  async function load(kind: "initial" | "refresh") {
-    const readId = ++latestRead.current;
-    if (kind === "refresh") {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-    setError(null);
-    try {
-      const result = await imageHub.listImages();
-      if (mounted.current && readId === latestRead.current) {
-        setImages(result);
-      }
-    } catch (cause) {
-      if (mounted.current && readId === latestRead.current) {
-        setError((cause as Error).message);
-      }
-    } finally {
-      if (mounted.current && readId === latestRead.current) {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    }
-  }
-
-  return { images, loading, refreshing, error, load };
-}
-
 /** 选图分网格和页内预览两步；保存成功后才回到日记页。 */
 export function DiaryImagePicker({
   diary,
   state,
   navigation,
-  imageHub,
   id,
-}: DiaryPageProps & { imageHub: ImageHub; id: string }) {
+}: DiaryPageProps & { id: string }) {
   const entry = state.data.entries.find((item) => item.id === id);
-  const { images, loading, refreshing, error: listError, load } = usePickerImages(imageHub);
-  const [preview, setPreview] = useState<ImageRecord | null>(null);
+  const { images, loading, ready, errors, refresh } = useGalleryImages(
+    useGallery(),
+    navigation.current,
+  );
+  const listError = errors
+    .map(({ source, message }) => `${gallerySourceLabels[source]}：${message}`)
+    .join("；");
+  const [preview, setPreview] = useState<GalleryImage | null>(null);
   const [working, setWorking] = useState(false);
   const [chosen, setChosen] = useState(false);
   const [selectError, setSelectError] = useState<string | null>(null);
   const mounted = useRef(false);
-  const error = selectError ?? listError;
+  const error = selectError ?? (listError || null);
 
   useEffect(() => {
     mounted.current = true;
@@ -86,7 +48,7 @@ export function DiaryImagePicker({
   const taskBusy = isDiaryImageTaskRunning(state.imageTask);
   const busy = working || chosen || taskBusy || isDiaryRunning(state.generation) || state.preparing;
 
-  async function useImage(image: ImageRecord) {
+  async function useImage(image: GalleryImage) {
     setWorking(true);
     setSelectError(null);
     try {
@@ -141,16 +103,16 @@ export function DiaryImagePicker({
       backLabel="日记"
       error={error}
       right={
-        <Button disabled={loading || refreshing || busy} onClick={() => void load("refresh")}>
+        <Button disabled={loading || busy} onClick={() => void refresh()}>
           刷新
         </Button>
       }
     >
       <ImagePickerGrid
-        selectedId={entry.image?.id}
+        selectedKey={entry.image ? galleryImageKey(entry.image) : undefined}
         images={images}
-        loading={loading}
-        refreshing={refreshing}
+        loading={loading && !ready}
+        refreshing={loading && ready}
         listError={listError}
         taskBusy={taskBusy}
         busy={busy}
@@ -161,7 +123,7 @@ export function DiaryImagePicker({
 }
 
 function ImagePickerGrid({
-  selectedId,
+  selectedKey,
   images,
   loading,
   refreshing,
@@ -170,14 +132,14 @@ function ImagePickerGrid({
   busy,
   onPreview,
 }: {
-  selectedId?: string;
-  images: readonly ImageRecord[];
+  selectedKey?: string;
+  images: readonly GalleryImage[];
   loading: boolean;
   refreshing: boolean;
-  listError: string | null;
+  listError: string;
   taskBusy: boolean;
   busy: boolean;
-  onPreview: (image: ImageRecord) => void;
+  onPreview: (image: GalleryImage) => void;
 }) {
   return (
     <>
@@ -200,7 +162,7 @@ function ImagePickerGrid({
         {loading || (images.length === 0 && listError) ? null : (
           <ImageGrid
             images={images}
-            selectedId={selectedId}
+            selectedKey={selectedKey}
             onOpen={onPreview}
             empty="图库还没有图片。"
           />
@@ -218,15 +180,19 @@ function ImagePickerPreview({
   onBack,
 }: {
   entry: DiaryEntry;
-  image: ImageRecord;
+  image: GalleryImage;
   busy: boolean;
   onUse: () => void;
   onBack: () => void;
 }) {
-  const current = image.id === entry.image?.id;
+  const current = entry.image && galleryImageKey(image) === galleryImageKey(entry.image);
   return (
     <div className="diary-image-picker-preview" inert={busy}>
-      <DiaryPhoto image={image} prompt={image.prompt} large />
+      <DiaryPhoto
+        image={image}
+        prompt={image.description ?? gallerySourceLabels[image.source]}
+        large
+      />
       <p className="diary-image-saved-at">{new Date(image.savedAt).toLocaleString()}</p>
       {current ? (
         <p className="diary-image-current-note" role="status">

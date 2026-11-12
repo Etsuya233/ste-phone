@@ -1,3 +1,4 @@
+import { useGallery } from "../../../frontend/images/gallery-context.ts";
 import { useEffect, useState } from "react";
 import { Alert } from "../../../frontend/foundation/alert.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
@@ -13,6 +14,7 @@ import { CampusImageEditor } from "./campus-image-editor.tsx";
 import { CampusPage, type CampusPageProps } from "./campus-page.tsx";
 
 export function CampusComposePage(props: CampusPageProps) {
+  const { imageUrl } = useGallery();
   const { service, state, navigation } = props;
   const [text, setText] = useState("");
   const [images, setImages] = useState<{ key: string; value: CampusImage }[]>([]);
@@ -158,7 +160,7 @@ export function CampusComposePage(props: CampusPageProps) {
                     onClick={() => setEditingKey(key)}
                   >
                     {value.image ? (
-                      <img src={value.image.path} alt="" loading="lazy" />
+                      <img src={imageUrl(value.image.imagePath)} alt="" loading="lazy" />
                     ) : (
                       <span>{value.description || "待补充描述"}</span>
                     )}

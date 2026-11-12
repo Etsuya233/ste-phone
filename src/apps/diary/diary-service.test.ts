@@ -611,7 +611,8 @@ test("rebuilding a stable space during generation rejects its old author even wi
   }
 });
 
-const image: ImageRecord = {
+const image: ImageRecord & { source: "hub" } = {
+  source: "hub",
   id: "image-1",
   imagePath: "/images/1.png",
   prompt: "海边",
@@ -649,6 +650,7 @@ test("automatic images start after text persistence, associate only the first im
     assert.deepEqual(app.saved.get("phone-A")!.entries[0]!.image, {
       id: image.id,
       imagePath: image.imagePath,
+      source: "hub",
     });
   } finally {
     app.close();

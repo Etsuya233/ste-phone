@@ -13,7 +13,7 @@ export function Alert({
   children: ReactNode;
   active: boolean;
   busy?: boolean;
-  actions: { label: string; onClick: () => void; primary?: boolean }[];
+  actions: { label: string; onClick: () => void; primary?: boolean; disabled?: boolean }[];
   onDismiss: () => void;
 }) {
   const titleId = useId();
@@ -90,7 +90,8 @@ export function Alert({
               type="button"
               key={action.label}
               className={`ios-alert-action ${action.primary ? "ios-alert-action--primary" : ""}`}
-              onClick={action.onClick}
+              aria-disabled={action.disabled}
+              onClick={action.disabled ? undefined : action.onClick}
             >
               {action.label}
             </button>

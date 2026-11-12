@@ -4,6 +4,10 @@ import { CampusApp } from "../apps/campus-community/ui/campus-app.tsx";
 import { MapService } from "../apps/map/map-service.ts";
 import { MapApp } from "../apps/map/ui/map-app.tsx";
 import type { MapConversationStorage, MapStorage } from "../apps/map/map.ts";
+import { GalleryService } from "../apps/gallery/gallery-service.ts";
+import type { PhotoStorage } from "../apps/gallery/photo-storage.ts";
+import type { GalleryPublic } from "../apps/gallery/public.ts";
+import { GalleryContext } from "../frontend/images/gallery-context.ts";
 import { GalleryApp } from "../apps/gallery/ui/gallery-app.tsx";
 import { ImagePlaygroundApp } from "../apps/image-playground/ui/image-playground-app.tsx";
 import { VoicePlaygroundApp } from "../apps/voice-playground/ui/voice-playground-app.tsx";
@@ -44,6 +48,7 @@ import { WechatStickerLibrary } from "../apps/wechat/wechat-sticker-library.ts";
 import type { WechatStickerStorage } from "../apps/wechat/wechat-stickers.ts";
 
 export interface PhoneRuntime {
+  readonly gallery: GalleryPublic;
   readonly apps: Record<AppId, AppDefinition>;
   readonly wallpaper: WallpaperReader;
   readonly homeScreen: HomeScreenSettings;
@@ -69,9 +74,11 @@ export function createPhone(dependencies: {
   wechatStorage: WechatStorage;
   wechatStickerStorage: WechatStickerStorage;
   logs: PhoneLog;
+  photoStorage: PhotoStorage;
   imageHub: ImageHub;
   speech: SpeechTransport;
 }): PhoneRuntime {
+  const gallery = new GalleryService(dependencies.photoStorage, dependencies.imageHub);
   const settings = new PhoneSettingsService(dependencies.settingsStorage);
   const data = new PhoneDataService(dependencies.dataProvider);
   const database = new DatabaseWorkspace(data);
@@ -128,7 +135,9 @@ export function createPhone(dependencies: {
     },
     gallery: {
       render: ({ active, onHome, onOpen }) => (
-        <GalleryApp active={active} hub={dependencies.imageHub} onHome={onHome} onOpen={onOpen} />
+        <GalleryContext.Provider value={gallery}>
+          <GalleryApp active={active} gallery={gallery} onHome={onHome} onOpen={onOpen} />
+        </GalleryContext.Provider>
       ),
     },
     "image-playground": {
@@ -154,20 +163,23 @@ export function createPhone(dependencies: {
     },
     wechat: {
       render: ({ active, onHome }) => (
-        <WechatApp
-          hub={dependencies.imageHub}
-          preferences={settings.wechatPreferences}
-          active={active}
-          wechat={wechat}
-          stickers={stickers}
-          onHome={onHome}
-        />
+        <GalleryContext.Provider value={gallery}>
+          <WechatApp
+            preferences={settings.wechatPreferences}
+            active={active}
+            wechat={wechat}
+            stickers={stickers}
+            onHome={onHome}
+          />
+        </GalleryContext.Provider>
       ),
       onQuit: () => wechat.cancel(),
     },
     "campus-community": {
       render: ({ active, onHome }) => (
-        <CampusApp service={campus} active={active} onHome={onHome} />
+        <GalleryContext.Provider value={gallery}>
+          <CampusApp service={campus} active={active} onHome={onHome} />
+        </GalleryContext.Provider>
       ),
       onQuitRequested: () => {
         if (!campus.canQuit()) {
@@ -180,7 +192,9 @@ export function createPhone(dependencies: {
     },
     diary: {
       render: ({ active, onHome }) => (
-        <DiaryApp active={active} diary={diary} hub={dependencies.imageHub} onHome={onHome} />
+        <GalleryContext.Provider value={gallery}>
+          <DiaryApp active={active} diary={diary} onHome={onHome} />
+        </GalleryContext.Provider>
       ),
       onQuit: () => diary.quit(),
     },
@@ -228,6 +242,7 @@ export function createPhone(dependencies: {
     },
   };
   return {
+    gallery,
     apps,
     wallpaper: settings.wallpaper,
     homeScreen: settings.homeScreen,

@@ -8,7 +8,7 @@ import { CampusPage, type CampusPageProps } from "./campus-page.tsx";
 
 interface AccountDraft {
   nickname: string;
-  avatar: string;
+  avatar: CampusAccount["avatar"];
   bio: string;
   style: string;
   privateIdentity: boolean;
@@ -93,7 +93,7 @@ export function CampusAccountEditor(props: CampusPageProps & { accountId?: strin
       id: account?.id ?? createCampusId(),
       owner,
       nickname: draft.nickname.trim(),
-      avatar: draft.avatar.trim(),
+      avatar: draft.avatar,
       bio: draft.bio.trim(),
       style: draft.style.trim(),
       privateIdentity: !publicAccount && draft.privateIdentity,
@@ -158,10 +158,10 @@ export function CampusAccountEditor(props: CampusPageProps & { accountId?: strin
             />
             {avatarPicker ? (
               <CampusAvatarPicker
-                hub={service.imageHub}
+                active={navigation.current}
                 selected={draft.avatar}
-                onSelect={(path) => {
-                  setDraft({ ...draft, avatar: path });
+                onSelect={(avatar) => {
+                  setDraft({ ...draft, avatar });
                   setAvatarPicker(false);
                 }}
                 onClose={() => setAvatarPicker(false)}

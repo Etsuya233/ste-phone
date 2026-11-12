@@ -1,3 +1,5 @@
+import { migrateData, type MigrationPlan } from "../../core/storage/migrations.ts";
+import { isGalleryImageReference } from "../gallery/public.ts";
 import { CAMPUS_MAX_IMAGES, type CampusData } from "./campus-domain.ts";
 
 function invalid(field: string): never {
@@ -58,7 +60,7 @@ function readAccounts(value: unknown, people: Set<string>): Set<string> {
     unique(ids, account.id, "账号 ID");
     id(account.nickname, "账号昵称");
     if (
-      typeof account.avatar !== "string" ||
+      (typeof account.avatar !== "string" && !isGalleryImageReference(account.avatar)) ||
       typeof account.bio !== "string" ||
       typeof account.style !== "string" ||
       typeof account.disabled !== "boolean" ||
@@ -107,9 +109,9 @@ function readImages(value: unknown): number {
       invalid("绘图提示词");
     }
     if (image.image !== undefined) {
-      const attachment = record(image.image, "图库引用");
-      id(attachment.id, "图库 ID");
-      id(attachment.path, "图库路径");
+      if (!isGalleryImageReference(image.image)) {
+        invalid("图库引用");
+      }
     } else if (!image.description.trim()) {
       invalid("图片占位描述");
     }
@@ -171,7 +173,7 @@ function readPosts(value: unknown, accounts: Set<string>): void {
   }
 }
 
-export function readCampusData(value: unknown): CampusData {
+function validateCampusData(value: unknown): asserts value is CampusData {
   const data = record(value, "社区数据");
   const people = readPeople(data.people);
   const accounts = readAccounts(data.accounts, people);
@@ -183,5 +185,37 @@ export function readCampusData(value: unknown): CampusData {
   for (const batch of list(data.appliedBatches, "已保存批次")) {
     unique(batches, batch, "批次 ID");
   }
-  return data as unknown as CampusData;
+}
+
+const campusMigrations: MigrationPlan<CampusData> = {
+  currentVersion: 2,
+  steps: [
+    {
+      from: 1,
+      to: 2,
+      name: "campus-gallery-source",
+      migrate(value) {
+        const data = record(value, "社区数据");
+        for (const rawPost of list(data.posts, "帖子")) {
+          const post = record(rawPost, "帖子");
+          for (const rawImage of list(post.images, "帖子图片")) {
+            const image = record(rawImage, "帖子图片");
+            if (image.image !== undefined) {
+              const attachment = record(image.image, "图库引用");
+              image.image = { source: "hub", id: attachment.id, imagePath: attachment.path };
+            }
+          }
+        }
+        return data;
+      },
+    },
+  ],
+  validate: validateCampusData,
+};
+
+export function readCampusData(value: unknown): CampusData {
+  const data = record(value, "社区数据");
+  // 已发布的 Twitter 仅在聊天存储外层标记版本；预览内层没有版本字段。
+  const versioned = Object.hasOwn(data, "version") ? data : { ...data, version: 1 };
+  return migrateData(versioned, campusMigrations).data;
 }

@@ -54,6 +54,31 @@ test("新帖原样保留指定背景数量，实际点赞独立累加且旧帖�
   assert.deepEqual(readCampusData(legacy), legacy);
 });
 
+test("旧 Twitter 配图升级保留 Hub 路径，只有地址的头像保持原样", () => {
+  const data = setup();
+  const legacy = {
+    people: data.people,
+    activeAccountId: data.activeAccountId,
+    appliedBatches: data.appliedBatches,
+    accounts: [{ ...data.accounts[0]!, avatar: "/avatar.png" }, data.accounts[1]!],
+    posts: [
+      {
+        ...data.posts[0]!,
+        images: [{ description: "窗外", image: { id: "hub", path: "/old.png" } }],
+      },
+    ],
+  };
+  const result = readCampusData(legacy);
+  assert.equal(result.version, 2);
+  assert.equal(result.accounts[0]!.avatar, "/avatar.png");
+  assert.deepEqual(result.posts[0]!.images[0]!.image, {
+    source: "hub",
+    id: "hub",
+    imagePath: "/old.png",
+  });
+  assert.equal(legacy.posts[0]!.images[0]!.image.path, "/old.png");
+});
+
 test("同一人物的主号和小号各自关注和点赞，取消不改变背景点赞", () => {
   let data = setup();
   data = applyCampusCommand(data, { type: "follow", accountId: "alt" });

@@ -1,4 +1,4 @@
-import type { ImageRecord } from "../../core/image-hub/public.ts";
+import type { GalleryImage } from "./public.ts";
 
 const GROUPS = [
   { key: "today", title: "今天" },
@@ -11,7 +11,7 @@ export type GalleryGroupKey = (typeof GROUPS)[number]["key"];
 export interface GalleryImageGroup {
   readonly key: GalleryGroupKey;
   readonly title: string;
-  readonly images: readonly ImageRecord[];
+  readonly images: readonly GalleryImage[];
 }
 
 /**
@@ -19,12 +19,12 @@ export interface GalleryImageGroup {
  * 组内保持输入顺序；无效的 savedAt 无法落到今天或昨天，归入「更早」。
  */
 export function groupImagesBySavedAt(
-  images: readonly ImageRecord[],
+  images: readonly GalleryImage[],
   now: Date,
 ): readonly GalleryImageGroup[] {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime();
-  const buckets: Record<GalleryGroupKey, ImageRecord[]> = {
+  const buckets: Record<GalleryGroupKey, GalleryImage[]> = {
     today: [],
     yesterday: [],
     earlier: [],

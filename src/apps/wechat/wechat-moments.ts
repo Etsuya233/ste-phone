@@ -1,10 +1,15 @@
+import {
+  galleryImageReference,
+  isGalleryImageReference,
+  type GalleryImageReference,
+} from "../gallery/public.ts";
 import type { WechatData, WechatPerson } from "./wechat.ts";
 
 export interface MomentImage {
   readonly type: "image";
   readonly description: string;
   readonly prompt?: string;
-  readonly image?: { readonly id: string; readonly imagePath: string };
+  readonly image?: GalleryImageReference;
 }
 
 /** 附件按展示顺序保存，图片和视频共享九个名额。 */
@@ -73,23 +78,14 @@ export function normalizeMomentContent(content: MomentContent): MomentContent {
     if (item.prompt !== undefined && (typeof item.prompt !== "string" || !item.prompt.trim())) {
       throw new Error("绘图 Prompt 不能为空");
     }
-    if (
-      item.image !== undefined &&
-      (!item.image ||
-        typeof item.image.id !== "string" ||
-        !item.image.id.trim() ||
-        typeof item.image.imagePath !== "string" ||
-        !item.image.imagePath.trim())
-    ) {
+    if (item.image !== undefined && !isGalleryImageReference(item.image)) {
       throw new Error("朋友圈图片引用无效");
     }
     return {
       type: "image",
       description: item.description.trim(),
       ...(item.prompt === undefined ? {} : { prompt: item.prompt.trim() }),
-      ...(item.image === undefined
-        ? {}
-        : { image: { id: item.image.id, imagePath: item.image.imagePath } }),
+      ...(item.image === undefined ? {} : { image: galleryImageReference(item.image) }),
     };
   });
   if (!text && !media.length) {
