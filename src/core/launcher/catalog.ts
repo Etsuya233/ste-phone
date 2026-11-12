@@ -15,6 +15,7 @@ export const appCatalog = {
   wechat: { name: "微信", description: "切换人物帐号，与故事中的好友聊天", removable: true },
   "voice-playground": { name: "声乐园", description: "为台词配音，试听不同音色", removable: true },
   diary: { name: "日记", description: "以人物的视角记录故事与回忆", removable: true },
+  notes: { name: "备忘录", description: "为角色记录图文，用 AI 起草和补写", removable: true },
   database: {
     name: "Fake DBeaver",
     description: "浏览资料结构，运行只读 SQL 查询",
@@ -39,6 +40,7 @@ export interface HomeLayout {
 export const defaultHomeLayout: HomeLayout = {
   grid: [
     "diary",
+    "notes",
     "wechat",
     "database",
     "data-source",

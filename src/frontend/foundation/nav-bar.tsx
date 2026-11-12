@@ -15,7 +15,7 @@ export function NavBar({
   back,
   right,
 }: {
-  title: string;
+  title?: string;
   back?: { label: string; onClick: () => void };
   right?: ReactNode;
 }) {
@@ -33,7 +33,7 @@ export function NavBar({
           </Button>
         ) : null}
       </div>
-      <h1 title={title}>{title}</h1>
+      {title === undefined ? <div aria-hidden="true" /> : <h1 title={title}>{title}</h1>}
       <div className="ios-nav-side ios-nav-side--right">{right}</div>
     </header>
   );

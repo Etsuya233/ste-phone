@@ -47,6 +47,18 @@
   fill: var(--diary-icon-ribbon);
 }
 
+:host .notes-app-icon {
+  background: #fffdf9;
+}
+:host .notes-app-icon .notes-icon-header {
+  fill: #ffcc36;
+}
+:host .notes-app-icon .notes-icon-lines {
+  fill: none;
+  stroke: #ddd8ce;
+  stroke-width: 1;
+}
+
 :host .database-app-icon {
   background: var(--database-icon-fill);
 }

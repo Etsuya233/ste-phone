@@ -1,0 +1,231 @@
+@import "./notes-list.css";
+@import "./notes-writing.css";
+
+:host .notes-app,
+:host .notes-stack {
+  position: absolute;
+  inset: 0;
+}
+
+/* The warm paper palette comes from the app icon; amber carries actions so yellow stays decoration. */
+:host .notes-app {
+  --notes-paper: #fffdf8;
+  --notes-paper-deep: #f6f0e2;
+  --notes-card: #fffefb;
+  --notes-ink: #2f2a20;
+  --notes-ink-soft: #746a58;
+  --notes-ink-faint: #7a705e;
+  --notes-line: #ece4d2;
+  --notes-accent: #ffcc36;
+  --notes-accent-soft: #fff2c4;
+  --notes-accent-deep: #8a5c00;
+  --notes-card-shadow: 0 10px 26px #6b53170d, 0 1px 2px #6b53170a;
+  --notes-pressed: #fbf4e4;
+  --ios-surface: var(--notes-paper);
+  --ios-bar: #fffdf8d9;
+  --ios-line: var(--notes-line);
+  --ios-row-surface: var(--notes-card);
+  --ios-row-active: var(--notes-pressed);
+  --ios-ink: var(--notes-ink);
+  --ios-secondary-ink: var(--notes-ink-soft);
+  --ios-blue: var(--notes-accent-deep);
+  --ios-accessory-ink: #c9c0ad;
+  --ios-muted-fill: #f5efe2;
+  --ios-muted-ink: #7c7464;
+  --ios-footer-surface: #fffdf8e3;
+  --ios-alert-surface: #fffdf7f5;
+}
+
+:host [data-system-style="ios26"] .notes-app {
+  --notes-paper: #f4f0e5;
+  --notes-paper-deep: #ece5d5;
+  --notes-card: #fffdf8;
+  --notes-line: #e6ddc9;
+  --ios-surface: var(--notes-paper);
+  --ios-bar: #f4f0e5cc;
+  --ios-footer-surface: #f7f3e9e0;
+}
+
+:host .notes-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:host .notes-icon--filled {
+  fill: currentColor;
+  stroke: none;
+}
+
+:host .notes-page .ios-page-content {
+  background:
+    radial-gradient(120% 56% at 100% 0%, #ffe9a266 0%, transparent 55%),
+    radial-gradient(90% 48% at 0% 100%, #f2e7ce66 0%, transparent 62%), var(--notes-paper);
+}
+
+:host .notes-page .ios-nav {
+  border-bottom-color: var(--notes-line);
+}
+
+:host .notes-page .ios-nav h1 {
+  letter-spacing: 0.01em;
+}
+
+:host .notes-display {
+  margin: 0;
+  color: var(--notes-ink);
+  font-size: clamp(30px, 9cqw, 38px);
+  font-weight: 750;
+  letter-spacing: -1.2px;
+  line-height: 1.12;
+}
+
+:host .notes-avatar {
+  display: grid;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  place-items: center;
+  background: linear-gradient(#ffe27a, #f3b51c);
+  box-shadow: inset 0 1px 0 #fff9;
+  color: #594000;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+:host .notes-message {
+  margin: 14px 18px;
+  color: var(--notes-ink-soft);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+:host .notes-message[role="alert"] {
+  color: var(--ios-red);
+}
+
+:host .notes-notice {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--notes-line);
+  border-radius: 14px;
+  background: var(--notes-card);
+  color: var(--notes-ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+:host .notes-notice p {
+  margin: 0;
+}
+
+:host .notes-notice .ios-button {
+  margin-top: 8px;
+}
+
+:host .notes-notice--error {
+  border-color: #f0cfc5;
+  background: #fdf2ee;
+  color: #a83f2c;
+}
+
+:host .notes-load-page .ios-page-content {
+  display: grid;
+}
+
+:host .notes-load-state {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 32px;
+}
+
+:host .notes-load-mark {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  border: 1px solid var(--notes-line);
+  border-radius: 22px;
+  place-items: center;
+  background: var(--notes-card);
+  box-shadow: var(--notes-card-shadow);
+  color: var(--notes-accent-deep);
+}
+
+:host .notes-load-mark .notes-icon {
+  width: 30px;
+  height: 30px;
+}
+
+:host .notes-load-state .notes-message {
+  margin: 0;
+  text-align: center;
+}
+
+:host .notes-picker-hint {
+  margin: 14px 18px 2px;
+  color: var(--notes-ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+:host .notes-picker-page .image-grid {
+  gap: 8px;
+  margin: 14px 16px 32px;
+}
+
+:host .notes-picker-page .image-grid button {
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--notes-paper-deep);
+}
+
+:host .notes-picker-page .image-grid button:focus-visible {
+  outline-offset: -3px;
+}
+
+:host .notes-image-page .ios-page-content {
+  padding-bottom: 32px;
+}
+
+:host .notes-image-preview {
+  display: grid;
+  gap: 12px;
+  margin: 16px;
+  padding: 10px;
+  border: 1px solid var(--notes-line);
+  border-radius: 20px;
+  background: var(--notes-card);
+  box-shadow: var(--notes-card-shadow);
+}
+
+:host .notes-image-preview img {
+  display: block;
+  width: 100%;
+  max-height: 58cqh;
+  border-radius: 12px;
+  background: var(--notes-paper-deep);
+  object-fit: contain;
+}
+
+:host .notes-image-preview .notes-message {
+  margin: 0;
+  padding: 28px 16px;
+  text-align: center;
+}
+
+:host .notes-image-preview figcaption {
+  padding: 0 6px 4px;
+  color: var(--notes-ink-soft);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}

@@ -71,6 +71,11 @@ export function usePhoneViewport(panel: RefObject<HTMLDialogElement | null>, ope
       frame = requestAnimationFrame(update);
     };
     const element = panel.current!;
+    const trackCaret = () => {
+      if (open && focusedEditor(element)?.isContentEditable) {
+        schedule();
+      }
+    };
     window.addEventListener("resize", schedule);
     window.visualViewport?.addEventListener("resize", schedule);
     window.visualViewport?.addEventListener("scroll", schedule);
@@ -79,6 +84,7 @@ export function usePhoneViewport(panel: RefObject<HTMLDialogElement | null>, ope
     element.addEventListener("focusin", schedule);
     element.addEventListener("focusout", schedule);
     element.addEventListener("input", schedule);
+    document.addEventListener("selectionchange", trackCaret);
     schedule();
     return () => {
       if (frame !== null) {
@@ -90,9 +96,37 @@ export function usePhoneViewport(panel: RefObject<HTMLDialogElement | null>, ope
       element.removeEventListener("focusin", schedule);
       element.removeEventListener("focusout", schedule);
       element.removeEventListener("input", schedule);
+      document.removeEventListener("selectionchange", trackCaret);
     };
   }, [open, panel]);
   return viewport;
+}
+
+function editorBounds(editor: HTMLElement) {
+  if (!editor.isContentEditable) {
+    return editor.getBoundingClientRect();
+  }
+  const selection = document.getSelection();
+  if (!selection?.rangeCount) {
+    return editor.getBoundingClientRect();
+  }
+  // 跨过 Shadow DOM 取得真实选区，长文只避让光标所在行，避免跳回正文顶部。
+  const selected =
+    selection.getComposedRanges?.({ shadowRoots: [editor.getRootNode() as ShadowRoot] })[0] ??
+    selection.getRangeAt(0);
+  const backward = selection.direction === "backward";
+  const node = backward ? selected.startContainer : selected.endContainer;
+  const offset = backward ? selected.startOffset : selected.endOffset;
+  if (!editor.contains(node)) {
+    return editor.getBoundingClientRect();
+  }
+  const caret = document.createRange();
+  caret.setStart(node, offset);
+  caret.collapse(true);
+  const bounds = caret.getBoundingClientRect();
+  return bounds.height
+    ? bounds
+    : (node instanceof HTMLElement ? node : editor).getBoundingClientRect();
 }
 
 function scrollEditorIntoPage(editor: HTMLElement, panel: HTMLDialogElement, scale: number) {
@@ -114,7 +148,7 @@ function scrollEditorIntoPage(editor: HTMLElement, panel: HTMLDialogElement, sca
       style.scrollPaddingBottom === "auto" ? 0 : parseFloat(style.scrollPaddingBottom);
     const top = bounds.top + (parent.clientTop + paddingTop) * scale;
     const bottom = bounds.top + (parent.clientTop + parent.clientHeight - paddingBottom) * scale;
-    const input = editor.getBoundingClientRect();
+    const input = editorBounds(editor);
     const movement = input.top < top ? input.top - top : Math.max(0, input.bottom - bottom);
     parent.scrollTop += movement / scale;
   }
@@ -141,7 +175,7 @@ export function usePhoneInputVisibility(
       // 再转换可见区域，避免把 offsetTop 重复加到输入框的坐标中。
       const clientOrigin =
         element.getBoundingClientRect().top - parseFloat(getComputedStyle(element).top);
-      const bounds = editor.getBoundingClientRect();
+      const bounds = editorBounds(editor);
       const top = clientOrigin + viewport.top + 8;
       const bottom = clientOrigin + viewport.top + viewport.height - 8;
       const offset = bounds.top < top ? top - bounds.top : Math.min(0, bottom - bounds.bottom);

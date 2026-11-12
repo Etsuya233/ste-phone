@@ -45,10 +45,19 @@ test("v3 migration adds the store and preserves wallpaper and model credentials"
     wechatHistoryMessageLimit: 100,
     wechatSendMode: "delayed",
     homeLayout: {
-      ...defaultSettings.homeLayout,
-      grid: defaultSettings.homeLayout.grid.filter(
-        (id) => id !== "map" && id !== "voice-playground" && id !== "campus-community",
-      ),
+      grid: [
+        "diary",
+        "wechat",
+        "database",
+        "data-source",
+        "logs",
+        "foundation",
+        "settings",
+        "app-store",
+        "gallery",
+        "image-playground",
+      ],
+      dock: ["stopwatch"],
     },
   });
   assert.deepEqual(storage.read(), service.getState());
@@ -92,6 +101,7 @@ test("moving between home and dock, uninstalling and reinstalling survive a new 
       "foundation",
       "stopwatch",
       "diary",
+      "notes",
       "wechat",
       "data-source",
       "logs",

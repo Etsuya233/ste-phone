@@ -35,6 +35,9 @@ import type { DataAppPublic } from "../apps/data-source/public.ts";
 import { DiaryService } from "../apps/diary/diary-service.ts";
 import type { DiaryStorage } from "../apps/diary/ports/diary-storage.ts";
 import { DiaryApp } from "../apps/diary/ui/diary-app.tsx";
+import { NotesService } from "../apps/notes/notes-service.ts";
+import type { NotesStorage } from "../apps/notes/notes.ts";
+import { NotesApp } from "../apps/notes/ui/notes-app.tsx";
 import type {
   ModelConnectionsReader,
   WallpaperReader,
@@ -78,6 +81,7 @@ export function createPhone(dependencies: {
   aiTransport: AiTransport;
   chat: ChatContext;
   diaryStorage: DiaryStorage;
+  notesStorage: NotesStorage;
   campusStorage: CampusStorage;
   mapStorage: MapStorage;
   mapConversations: MapConversationStorage;
@@ -118,6 +122,13 @@ export function createPhone(dependencies: {
     connections: settings.modelConnections,
     transport: dependencies.aiTransport,
   });
+  const notes = new NotesService({
+    storage: dependencies.notesStorage,
+    data,
+    connections: settings.modelConnections,
+    transport: dependencies.aiTransport,
+  });
+  const notesQuitGuard = { request: () => true };
   const campus = new CampusService({
     imageHub: dependencies.imageHub,
     storage: dependencies.campusStorage,
@@ -225,6 +236,19 @@ export function createPhone(dependencies: {
         </GalleryContext.Provider>
       ),
       onQuit: () => diary.quit(),
+    },
+    notes: {
+      render: ({ active, onHome, onOpen }) => (
+        <NotesApp
+          active={active}
+          notes={notes}
+          gallery={gallery}
+          onHome={onHome}
+          onOpen={onOpen}
+          quitGuard={notesQuitGuard}
+        />
+      ),
+      onQuitRequested: () => notesQuitGuard.request(),
     },
     "app-store": {
       render: ({ active, onHome, onOpen }) => (

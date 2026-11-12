@@ -11,6 +11,7 @@ import { mountPhone } from "./host/mount-phone.tsx";
 import { MemoryDatabaseProvider } from "../infrastructure/ste-memory/memory-database-provider.ts";
 import { createStCampusStorage } from "../infrastructure/host/campus-storage.ts";
 import { createStDiaryStorage } from "../infrastructure/host/diary-storage.ts";
+import { createStNotesStorage } from "../infrastructure/host/notes-storage.ts";
 import { createStWechatStorage } from "../infrastructure/host/wechat-storage.ts";
 import { createStPhoneContextStorage } from "../infrastructure/host/phone-context-storage.ts";
 import { createStWechatIntentStorage } from "../infrastructure/host/wechat-intent-storage.ts";
@@ -65,6 +66,7 @@ const phone = createPhone({
   mapStorage: createStMapStorage(chatMetadata),
   campusStorage: createStCampusStorage(chatMetadata),
   diaryStorage: createStDiaryStorage(chatMetadata),
+  notesStorage: createStNotesStorage(),
   wechatStorage: createStWechatStorage(chatMetadata),
   phoneContextStorage: createStPhoneContextStorage(chatMetadata),
   wechatIntentStorage: createStWechatIntentStorage(chatMetadata),

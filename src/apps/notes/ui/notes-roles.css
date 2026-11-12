@@ -1,0 +1,91 @@
+:host .notes-roles-intro {
+  padding: 18px 18px 14px;
+}
+
+:host .notes-roles-page .notes-notice,
+:host .notes-roles-page .notes-message {
+  margin: 0 18px 12px;
+}
+
+:host .notes-role-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 2px 16px 34px;
+  list-style: none;
+}
+
+:host .notes-role-row {
+  display: flex;
+  width: 100%;
+  min-height: 64px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--notes-line);
+  border-radius: 18px;
+  background: var(--notes-card);
+  box-shadow: var(--notes-card-shadow);
+  color: inherit;
+  text-align: left;
+}
+
+:host .notes-role-row[aria-current="true"] {
+  border-color: #ecd58c;
+  background: #fffbec;
+}
+
+:host .notes-role-row:active:not(:disabled) {
+  background: var(--notes-pressed);
+}
+
+:host .notes-role-row:disabled {
+  opacity: 0.72;
+}
+
+:host .notes-role-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  overflow-wrap: anywhere;
+}
+
+:host .notes-role-name {
+  color: var(--notes-ink);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+:host .notes-role-meta {
+  color: var(--notes-ink-faint);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+:host .notes-role-current {
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--notes-accent-soft);
+  color: #755200;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+@media (max-width: 340px) {
+  :host .notes-roles-intro {
+    padding-inline: 14px;
+  }
+
+  :host .notes-roles-page .notes-notice,
+  :host .notes-roles-page .notes-message {
+    margin-inline: 14px;
+  }
+
+  :host .notes-role-list {
+    padding-inline: 12px;
+  }
+}

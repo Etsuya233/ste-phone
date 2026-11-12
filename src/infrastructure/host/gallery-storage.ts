@@ -1,18 +1,11 @@
 import { readPhotoIndex } from "../../apps/gallery/photo-storage.ts";
 import type { PhotoIndexEntry, PhotoStorage } from "../../apps/gallery/photo-storage.ts";
+import { encodeBase64 } from "../browser/base64.ts";
 
 const folder = "ste-phone-photos";
 const filenamePattern = /^([a-f0-9]{32})\.(?:png|jpg|webp)$/;
 const indexName = (id: string) => `${folder}-${id}.json`;
 const indexPath = (id: string) => `/user/files/${indexName(id)}`;
-
-function base64(bytes: Uint8Array): string {
-  let binary = "";
-  for (let offset = 0; offset < bytes.length; offset += 32768) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
-  }
-  return btoa(binary);
-}
 
 export function createStPhotoStorage(
   context: Pick<
@@ -78,7 +71,7 @@ export function createStPhotoStorage(
       return result;
     },
     uploadFile: async (file, id, format, signal) => {
-      const image = base64(new Uint8Array(await file.arrayBuffer()));
+      const image = encodeBase64(new Uint8Array(await file.arrayBuffer()));
       signal.throwIfAborted();
       const expected = `/user/images/${folder}/${id}.${format}`;
       const saved = (await post(
@@ -98,7 +91,7 @@ export function createStPhotoStorage(
       return saved.path;
     },
     saveIndex: async (entry) => {
-      const data = base64(new TextEncoder().encode(JSON.stringify(entry)));
+      const data = encodeBase64(new TextEncoder().encode(JSON.stringify(entry)));
       const saved = (await post(
         "/api/files/upload",
         { name: indexName(entry.id), data },

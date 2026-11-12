@@ -1,0 +1,222 @@
+:host .notes-edit-body {
+  padding: 12px 16px 34px;
+}
+
+:host .notes-edit-page .ios-nav .ios-button {
+  color: var(--notes-accent-deep);
+  font-weight: 600;
+}
+
+:host .notes-editor-surface {
+  min-height: 54cqh;
+  padding: 18px;
+  border: 1px solid var(--notes-line);
+  border-radius: 20px;
+  background: var(--notes-card);
+  box-shadow: var(--notes-card-shadow);
+}
+
+:host .notes-editor {
+  min-height: 44cqh;
+  color: var(--notes-ink);
+  font-size: 17px;
+  line-height: 1.72;
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+  white-space: pre-wrap;
+  outline: none;
+}
+
+:host .notes-editor:focus-visible {
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 5px;
+}
+
+:host .notes-editor > p {
+  min-height: 1lh;
+  margin: 0;
+}
+
+:host .notes-editor > p:first-of-type:not(:has(> br.ProseMirror-trailingBreak)),
+:host .notes-editor > p:only-child {
+  margin-bottom: 6px;
+  font-size: 25px;
+  font-weight: 720;
+  letter-spacing: -0.5px;
+  line-height: 1.34;
+}
+
+:host
+  .notes-editor[contenteditable="true"]
+  > p:only-child:has(> br.ProseMirror-trailingBreak)::before {
+  display: block;
+  height: 0;
+  color: var(--notes-ink-faint);
+  pointer-events: none;
+  content: "输入备忘录…";
+}
+
+:host .notes-editor.ProseMirror-hideselection {
+  caret-color: transparent;
+}
+
+:host .notes-editor.ProseMirror-hideselection *::selection {
+  background: transparent;
+}
+
+:host .notes-editor-image {
+  position: relative;
+  margin: 18px 0;
+  padding: 7px;
+  border: 1px solid var(--notes-line);
+  border-radius: 17px;
+  background: #fffdf8;
+  box-shadow: 0 8px 22px #6b53170d;
+  white-space: normal;
+}
+
+:host .notes-editor-image-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 11px;
+  background: var(--notes-paper-deep);
+  color: inherit;
+}
+
+:host .notes-editor-image-open img:not([hidden]) {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+}
+
+:host .notes-editor-image-missing:not([hidden]) {
+  display: grid;
+  min-height: 104px;
+  place-items: center;
+  color: var(--notes-ink-soft);
+  font-size: 13px;
+}
+
+:host .notes-editor-image-remove {
+  position: absolute;
+  z-index: 1;
+  top: 15px;
+  right: 15px;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 999px;
+  background: #241c0ab8;
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+:host .notes-editor[contenteditable="false"] .notes-editor-image-remove {
+  display: none;
+}
+
+:host .notes-editor-image.ProseMirror-selectednode,
+:host .notes-editor-image button:focus-visible {
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 2px;
+}
+
+:host .notes-edit-footer {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px;
+}
+
+:host .notes-edit-tools {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+:host .notes-edit-footer .ios-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 11px;
+  border-radius: 999px;
+  color: var(--notes-ink);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+:host .notes-edit-footer .notes-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--notes-accent-deep);
+}
+
+:host .notes-edit-tool {
+  background: #fff8e5;
+  box-shadow: inset 0 0 0 1px #ecdaa6;
+}
+
+:host .notes-edit-tool[aria-expanded="true"] {
+  background: var(--notes-accent-soft);
+  box-shadow: inset 0 0 0 1px #e6c96f;
+}
+
+:host .notes-edit-tool:active:not(:disabled) {
+  background: var(--notes-pressed);
+}
+
+:host .notes-edit-footer .notes-edit-delete {
+  flex: 0 0 auto;
+  padding-inline: 6px;
+  color: var(--ios-red);
+  font-size: 13px;
+}
+
+:host .notes-edit-footer .notes-edit-delete .notes-icon {
+  color: var(--ios-red);
+}
+
+@media (max-width: 340px) {
+  /* Give the back label its full width on narrow edit screens without moving the title too far. */
+  :host .notes-app .notes-edit-page > .ios-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  :host .notes-edit-body {
+    padding-inline: 12px;
+  }
+
+  :host .notes-editor-surface {
+    padding: 15px;
+    border-radius: 18px;
+  }
+
+  :host .notes-edit-footer {
+    padding-inline: 8px;
+  }
+
+  :host .notes-edit-footer .ios-button {
+    gap: 4px;
+    padding-inline: 8px;
+    font-size: 13px;
+  }
+
+  :host .notes-edit-footer .notes-icon {
+    width: 16px;
+    height: 16px;
+  }
+}

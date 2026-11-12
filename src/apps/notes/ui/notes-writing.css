@@ -1,0 +1,125 @@
+:host .notes-writing {
+  padding: 16px;
+  border: 1px solid #ead9a2;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #fffef9, #fff8e3);
+  box-shadow: var(--notes-card-shadow);
+}
+
+:host .notes-writing-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+:host .notes-writing-mark {
+  display: grid;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  place-items: center;
+  background: var(--notes-accent-soft);
+  color: var(--notes-accent-deep);
+}
+
+:host .notes-writing-mark .notes-icon {
+  width: 18px;
+  height: 18px;
+}
+
+:host .notes-writing h2 {
+  margin: 0;
+  color: var(--notes-ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+:host .notes-writing textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 12px;
+  resize: vertical;
+  border: 1px solid var(--notes-line);
+  border-radius: 14px;
+  background: #fffdf7;
+  color: var(--notes-ink);
+  font: inherit;
+  line-height: 1.55;
+}
+
+:host .notes-writing textarea:focus-visible {
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 1px;
+}
+
+:host .notes-writing > [role="alert"] {
+  margin: 8px 0 0;
+  color: #a83f2c;
+  font-size: 13px;
+}
+
+:host .notes-writing-text {
+  max-height: 34cqh;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid var(--notes-line);
+  border-radius: 14px;
+  background: #fffdf7;
+  color: var(--notes-ink);
+  line-height: 1.72;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+:host .notes-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+:host .notes-actions .ios-button {
+  min-height: 40px;
+  padding-inline: 14px;
+  border-radius: 999px;
+}
+
+:host .notes-writing-primary {
+  background: var(--notes-accent);
+  box-shadow:
+    inset 0 1px 0 #fff9,
+    0 4px 12px #b7830022;
+  color: #4b3500;
+  font-weight: 700;
+}
+
+:host .notes-ai-page .ios-page-content {
+  padding-bottom: 32px;
+}
+
+:host .notes-ai-intro {
+  padding: 18px 18px 12px;
+}
+
+:host .notes-ai-body {
+  padding: 0 18px;
+}
+
+@media (max-width: 340px) {
+  :host .notes-ai-intro {
+    padding-inline: 14px;
+  }
+
+  :host .notes-ai-body {
+    padding-inline: 14px;
+  }
+
+  :host .notes-actions .ios-button {
+    padding-inline: 10px;
+    font-size: 14px;
+  }
+}

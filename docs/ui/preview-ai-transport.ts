@@ -132,6 +132,9 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
           const text =
             campusReply ??
             mapReply ??
+            (app === "notes"
+              ? "周末出门前\n\n带上水杯、雨伞和要归还的书。给自己留一点散步的时间。"
+              : undefined) ??
             (operation === "朋友圈配图提示词"
               ? mode === "invalid"
                 ? "模拟非法 JSON"

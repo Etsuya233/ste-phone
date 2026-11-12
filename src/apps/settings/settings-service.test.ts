@@ -17,6 +17,21 @@ const library = {
   uploadWallpaper: async () => image,
   imageUrl: (path: string) => path,
 };
+const legacyHomeLayout = {
+  grid: [
+    "diary",
+    "wechat",
+    "database",
+    "data-source",
+    "logs",
+    "foundation",
+    "settings",
+    "app-store",
+    "gallery",
+    "image-playground",
+  ],
+  dock: ["stopwatch"],
+};
 test("setting an uploaded wallpaper saves only the selected path and blur, and reconstructs a session", () => {
   let stored: PhoneSettings | undefined;
   let notifications = 0;
@@ -58,12 +73,7 @@ test("version 1 migration discards host backgrounds and external URLs while pres
     });
     assert.deepEqual(service.getState(), {
       ...defaultSettings,
-      homeLayout: {
-        ...defaultSettings.homeLayout,
-        grid: defaultSettings.homeLayout.grid.filter(
-          (id) => id !== "map" && id !== "voice-playground" && id !== "campus-community",
-        ),
-      },
+      homeLayout: legacyHomeLayout,
       wallpaper: { kind: "gradient" },
       blur: true,
       modelConnections: [],
@@ -145,12 +155,7 @@ test("version 2 migration preserves wallpaper and starts without connections", (
   });
   assert.deepEqual(service.getState(), {
     ...defaultSettings,
-    homeLayout: {
-      ...defaultSettings.homeLayout,
-      grid: defaultSettings.homeLayout.grid.filter(
-        (id) => id !== "map" && id !== "voice-playground" && id !== "campus-community",
-      ),
-    },
+    homeLayout: legacyHomeLayout,
     wallpaper: { kind: "image", path: image.path },
     blur: true,
   });

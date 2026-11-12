@@ -1,0 +1,309 @@
+@import "./notes-roles.css";
+
+/* Without a bar title, the back label owns its width instead of the equal-track columns. */
+:host .notes-app .notes-list-page > .ios-nav,
+:host .notes-app .notes-roles-page > .ios-nav,
+:host .notes-app .notes-ai-page > .ios-nav {
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+}
+
+:host .notes-masthead {
+  padding: 18px 18px 12px;
+}
+
+:host .notes-masthead-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 12px;
+}
+
+:host .notes-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 52%;
+  min-height: 44px;
+  padding: 4px 8px 4px 4px;
+  border: 1px solid var(--notes-line);
+  border-radius: 999px;
+  background: var(--notes-card);
+  box-shadow: var(--notes-card-shadow);
+  color: var(--notes-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+:host .notes-role-pill > span:nth-child(2) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host .notes-role-pill .notes-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+}
+
+:host .notes-role-chevron {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  color: var(--notes-ink-faint);
+}
+
+:host .notes-role-pill:active {
+  background: var(--notes-pressed);
+}
+
+:host .notes-search {
+  position: relative;
+  margin: 0 18px 14px;
+}
+
+:host .notes-search-icon {
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  width: 18px;
+  height: 18px;
+  color: var(--notes-ink-faint);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+:host .notes-search input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 14px 8px 38px;
+  border: 1px solid var(--notes-line);
+  border-radius: 999px;
+  background: var(--notes-card);
+  box-shadow: inset 0 1px 2px #6b53170a;
+  color: var(--notes-ink);
+  font: inherit;
+  font-size: 15px;
+}
+
+:host .notes-search input::placeholder {
+  color: var(--notes-ink-faint);
+}
+
+:host .notes-search input:focus-visible {
+  border-color: #e3c46a;
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 1px;
+}
+
+:host .notes-entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 2px 16px 34px;
+  list-style: none;
+}
+
+:host .notes-entry {
+  position: relative;
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  align-items: center;
+  padding: 15px 12px 15px 20px;
+  border: 1px solid var(--notes-line);
+  border-radius: 18px;
+  background: var(--notes-card);
+  box-shadow: var(--notes-card-shadow);
+  color: inherit;
+  text-align: left;
+}
+
+:host .notes-entry::before {
+  content: "";
+  position: absolute;
+  top: 15px;
+  bottom: 15px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--notes-accent);
+}
+
+:host .notes-entry:active {
+  background: var(--notes-pressed);
+  transform: scale(0.994);
+}
+
+:host .notes-entry-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+:host .notes-entry-title {
+  overflow: hidden;
+  color: var(--notes-ink);
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.1px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host .notes-entry-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--notes-ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+:host .notes-entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  color: var(--notes-ink-faint);
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+}
+
+:host .notes-entry-tag {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--notes-accent-soft);
+  color: #7b5600;
+  font-size: 10px;
+  letter-spacing: 0;
+}
+
+:host .notes-entry-chevron {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  color: var(--notes-ink-faint);
+}
+
+:host .notes-empty {
+  display: grid;
+  justify-items: center;
+  padding: 42px 32px 64px;
+  text-align: center;
+}
+
+:host .notes-empty-mark {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--notes-line);
+  border-radius: 21px;
+  place-items: center;
+  background: var(--notes-card);
+  box-shadow: var(--notes-card-shadow);
+  color: var(--notes-accent-deep);
+}
+
+:host .notes-empty-mark .notes-icon {
+  width: 28px;
+  height: 28px;
+}
+
+:host .notes-empty h2 {
+  margin: 16px 0 6px;
+  color: var(--notes-ink);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+:host .notes-empty p {
+  max-width: 240px;
+  margin: 0;
+  color: var(--notes-ink-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+:host .notes-list-footer {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+}
+
+:host .notes-list-total {
+  color: var(--notes-ink-soft);
+  font-size: 12px;
+  font-weight: 550;
+}
+
+:host .notes-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+:host .notes-footer-actions .ios-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 13px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+:host .notes-footer-actions .notes-icon {
+  width: 17px;
+  height: 17px;
+}
+
+:host .notes-footer-ai {
+  background: var(--notes-accent-soft);
+  color: #755200;
+}
+
+:host .notes-footer-create {
+  background: var(--notes-accent);
+  box-shadow:
+    inset 0 1px 0 #fff9,
+    0 4px 14px #b7830029;
+  color: #493400;
+}
+
+:host .notes-footer-actions .ios-button:active {
+  transform: scale(0.97);
+}
+
+@media (max-width: 340px) {
+  :host .notes-masthead {
+    padding-inline: 14px;
+  }
+
+  :host .notes-search {
+    margin-inline: 14px;
+  }
+
+  :host .notes-entry-list {
+    padding-inline: 12px;
+  }
+
+  :host .notes-footer-actions .ios-button {
+    padding-inline: 10px;
+    font-size: 14px;
+  }
+}

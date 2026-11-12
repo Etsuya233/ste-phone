@@ -106,6 +106,16 @@ export function AppIcon({ app }: { app: AppId }) {
       </Icon>
     );
   }
+  if (app === "notes") {
+    return (
+      <Icon appearance="app" className="notes-app-icon">
+        <svg viewBox="0 0 60 60">
+          <path className="notes-icon-header" d="M0 0h60v18H0z" />
+          <path className="notes-icon-lines" d="M0 18h60M0 32h60M0 45h60" />
+        </svg>
+      </Icon>
+    );
+  }
   if (app === "stopwatch") {
     return (
       <Icon appearance="app" className="stopwatch-icon">
