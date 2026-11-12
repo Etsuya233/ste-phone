@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { ReactNode } from "react";
 import type { PhoneSettingsService, Wallpaper, WallpaperImage } from "../settings-service.ts";
 import { NavigationStack } from "../../../frontend/foundation/navigation-stack.tsx";
 import type { Navigation } from "../../../frontend/foundation/navigation-stack.tsx";
@@ -23,17 +24,20 @@ type SettingsRoute =
   | { page: "preview"; wallpaper: Wallpaper }
   | { page: "connections" }
   | { page: "speech" }
+  | { page: "phone-context" }
   | { page: "connection-editor"; connection: ModelConnection | null };
 export function SettingsApp({
   settings,
   testModelConnection,
   speech,
+  renderPhoneContext,
   active,
   onHome,
 }: {
   settings: PhoneSettingsService;
   testModelConnection: TestModelConnection;
   speech: SpeechTransport;
+  renderPhoneContext: (props: { active: boolean; onBack: () => void }) => ReactNode;
   active: boolean;
   onHome: () => void;
 }) {
@@ -50,8 +54,14 @@ export function SettingsApp({
               <ListCell title="壁纸" onClick={() => navigation.push({ page: "wallpapers" })} />
               <ListCell title="模型连接" onClick={() => navigation.push({ page: "connections" })} />
               <ListCell title="语音连接" onClick={() => navigation.push({ page: "speech" })} />
+              <ListCell
+                title="ST 上下文"
+                onClick={() => navigation.push({ page: "phone-context" })}
+              />
             </GroupedList>
           </Page>
+        ) : route.page === "phone-context" ? (
+          renderPhoneContext({ active: active && navigation.current, onBack: navigation.pop })
         ) : route.page === "appearance" ? (
           <AppearancePage appearance={settings.appearance} onBack={navigation.pop} />
         ) : route.page === "speech" ? (

@@ -10,6 +10,10 @@ import { createPreviewCharacterOverrideStorage } from "./preview-character-overr
 import { createPreviewCampusStorage } from "./preview-campus.ts";
 import { createPreviewDiaryStorage } from "./preview-diary-storage.ts";
 import { createPreviewWechatStorage } from "./preview-wechat-storage.ts";
+import {
+  createPreviewPhoneContextStorage,
+  seedPreviewContextWechat,
+} from "./preview-phone-context.ts";
 import { createPreviewWechatStickerStorage } from "./preview-wechat-stickers.ts";
 import { createPhone } from "../../src/bootstrap/create-phone.tsx";
 import { mountPhone } from "../../src/frontend/host/mount-phone.tsx";
@@ -22,6 +26,9 @@ import { previewSpeech } from "./preview-speech.ts";
 import { MemoryDatabaseProvider } from "../../src/infrastructure/ste-memory/memory-database-provider.ts";
 
 const options = new URLSearchParams(window.location.search);
+if (options.has("phone-context-test")) {
+  seedPreviewContextWechat();
+}
 const memory = createPreviewMemory(options.get("data-state"));
 globalThis.STE_MEMORY_API = memory;
 const previewMemoryChatIdentity = memory.getContext().chatIdentity;
@@ -113,6 +120,7 @@ const phone = createPhone({
     options.get("moments-test"),
   ),
   wechatStickerStorage: await createPreviewWechatStickerStorage(),
+  phoneContextStorage: createPreviewPhoneContextStorage(options.get("phone-context-test")),
   logs,
 });
 if (campusPreview) {

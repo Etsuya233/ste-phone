@@ -14,6 +14,7 @@
 @import "../apps/database/ui/database-app.css";
 
 @import "../apps/settings/ui/settings-app.css";
+@import "../apps/phone-context/ui/phone-context.css";
 @import "../apps/diary/ui/diary-app.css";
 @import "../apps/campus-community/ui/campus-community.css";
 @import "../apps/campus-community/ui/campus-feed.css";

@@ -43,6 +43,10 @@ import type {
 } from "../apps/settings/public.ts";
 import { AppStore } from "../apps/app-store/ui/app-store.tsx";
 import { WechatService } from "../apps/wechat/wechat-service.ts";
+import { createWechatContextSource } from "../apps/wechat/public.ts";
+import { PhoneContextService } from "../apps/phone-context/public.ts";
+import { PhoneContextSettings } from "../apps/phone-context/ui/phone-context-settings.tsx";
+import type { PhoneContextStorage } from "../apps/phone-context/ports/context-storage.ts";
 import { WechatApp } from "../apps/wechat/ui/wechat-app.tsx";
 import type { WechatStorage } from "../apps/wechat/ports/wechat-storage.ts";
 import { WechatStickerLibrary } from "../apps/wechat/wechat-sticker-library.ts";
@@ -60,6 +64,7 @@ export interface PhoneRuntime {
   readonly diary: DiaryService;
   readonly wechat: WechatService;
   readonly map: MapService;
+  readonly phoneContext: PhoneContextService;
 }
 
 /** 生产和预览共享组装；页面、后台消费者始终使用同一数据所有者。 */
@@ -75,6 +80,7 @@ export function createPhone(dependencies: {
   mapStorage: MapStorage;
   mapConversations: MapConversationStorage;
   wechatStorage: WechatStorage;
+  phoneContextStorage: PhoneContextStorage;
   wechatStickerStorage: WechatStickerStorage;
   logs: PhoneLog;
   photoStorage: PhotoStorage;
@@ -83,6 +89,11 @@ export function createPhone(dependencies: {
 }): PhoneRuntime {
   const gallery = new GalleryService(dependencies.photoStorage, dependencies.imageHub);
   const settings = new PhoneSettingsService(dependencies.settingsStorage);
+  const phoneContext = new PhoneContextService({
+    chat: dependencies.chat,
+    storage: dependencies.phoneContextStorage,
+    sources: [createWechatContextSource(dependencies.wechatStorage)],
+  });
   const data = new PhoneDataService(
     dependencies.dataProvider,
     dependencies.characterOverrides,
@@ -219,6 +230,7 @@ export function createPhone(dependencies: {
     settings: {
       render: ({ active, onHome }) => (
         <SettingsApp
+          renderPhoneContext={(props) => <PhoneContextSettings service={phoneContext} {...props} />}
           active={active}
           settings={settings}
           testModelConnection={testModelConnection}
@@ -263,5 +275,6 @@ export function createPhone(dependencies: {
     diary,
     wechat,
     map,
+    phoneContext,
   };
 }

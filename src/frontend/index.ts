@@ -12,6 +12,8 @@ import { MemoryDatabaseProvider } from "../infrastructure/ste-memory/memory-data
 import { createStCampusStorage } from "../infrastructure/host/campus-storage.ts";
 import { createStDiaryStorage } from "../infrastructure/host/diary-storage.ts";
 import { createStWechatStorage } from "../infrastructure/host/wechat-storage.ts";
+import { createStPhoneContextStorage } from "../infrastructure/host/phone-context-storage.ts";
+import { registerPhoneContextMacro } from "../infrastructure/host/phone-context-macro.ts";
 import { createStChatMetadataStorage } from "../infrastructure/host/chat-metadata-storage.ts";
 import { createStCharacterOverrideStorage } from "../infrastructure/host/character-override-storage.ts";
 import { createStWechatStickerStorage } from "../infrastructure/host/wechat-stickers.ts";
@@ -20,6 +22,13 @@ import { createPhoneLog } from "../apps/logs/public.ts";
 import type { PhoneLogApp } from "../apps/logs/public.ts";
 
 declare const __STE_PHONE_VERSION__: string;
+declare const toastr: {
+  error(
+    message: string,
+    title: string,
+    options: { escapeHtml: boolean; preventDuplicates: boolean },
+  ): void;
+};
 
 // ST 在加载扩展前创建魔法棒菜单；生产入口需要宿主提供这两个节点。
 const menu = document.getElementById("extensionsMenu");
@@ -56,9 +65,18 @@ const phone = createPhone({
   campusStorage: createStCampusStorage(chatMetadata),
   diaryStorage: createStDiaryStorage(chatMetadata),
   wechatStorage: createStWechatStorage(chatMetadata),
+  phoneContextStorage: createStPhoneContextStorage(chatMetadata),
   wechatStickerStorage: createStWechatStickerStorage(() => window.SillyTavern.getContext()),
   logs,
 });
+registerPhoneContextMacro(
+  () => window.SillyTavern.getContext(),
+  (id) => phone.phoneContext.expand(id),
+  (message) => {
+    logs.error("system", "ST 上下文", message);
+    toastr.error(message, "手机上下文", { escapeHtml: true, preventDuplicates: true });
+  },
+);
 mountPhone({
   apps: phone.apps,
   wallpaper: phone.wallpaper,
