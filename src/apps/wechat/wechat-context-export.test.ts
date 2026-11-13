@@ -5,6 +5,7 @@ import {
   emptyWechat,
   type WechatConversation,
   type WechatData,
+  type WechatGroupConversation,
   type WechatMessage,
 } from "./wechat.ts";
 import type { WechatIntentSelection } from "./wechat-intent.ts";
@@ -143,4 +144,56 @@ test("图片与付款卡片导出可读内容，生图信息和撤回内容不�
   assert.match(result.text, /\[红包：¥6\.01，已领取，生日快乐\]/);
   assert.match(result.text, /\[转账：¥15\.50，已退回，车费\]/);
   assert.doesNotMatch(result.text, /private|撤回的备注/);
+});
+
+test("显式选择同空间群聊，沿用历史发言身份及屏障、时间和条数限制", () => {
+  const group: WechatGroupConversation = {
+    id: "group-1",
+    kind: "group",
+    name: "同名群",
+    description: "",
+    people: [
+      { id: "a", name: "甲", scopeId: "world" },
+      { id: "b", name: "乙", scopeId: "world" },
+      { id: "c", name: "丙", scopeId: "world" },
+    ],
+    memberIds: ["a", "c"],
+    memoryBarriers: [{ id: "wall", enabled: true, afterMessageId: "before" }],
+    messages: [
+      message("before", "a", 4),
+      message("too-old", "a", 31),
+      message("limit-old", "a", 3),
+      message("former-member", "b", 2),
+      {
+        ...message("removed", "a", 1),
+        content: { type: "system", text: "甲将乙移出群聊" },
+      },
+    ],
+  };
+  const f = fixture([
+    conversation("a", "b", [message("direct", "a")]),
+    group,
+    { ...group, id: "group-2", messages: [message("unselected", "a")] },
+  ]);
+  assert.match(f.read().text, /"direct"/);
+  assert.doesNotMatch(f.read().text, /同名群|former-member/);
+  assert.deepEqual(f.source.listScopes("chat")[0]?.groups, [
+    { id: "group-1", name: "同名群" },
+    { id: "group-2", name: "同名群" },
+  ]);
+
+  const groupOnly = { ...selection, personIds: [], groupIds: ["group-1"], limitPerGroup: 2 };
+  const result = f.read(groupOnly);
+  assert.deepEqual(result.excluded, { barrier: 1, time: 1, limit: 1 });
+  assert.equal(result.groupCount, 1);
+  assert.equal(result.itemCount, 2);
+  assert.match(result.text, /群聊 "同名群"/);
+  assert.match(result.text, /"乙".*："former-member"\n.*系统："甲将乙移出群聊"/);
+  assert.doesNotMatch(result.text, /unselected|direct|limit-old|too-old/);
+  assert.equal(f.read({ ...groupOnly, scopeId: "elsewhere" }).text, "");
+  assert.throws(() => f.read({ ...groupOnly, groupIds: ["group-1", "group-1"] }), /群聊选择/);
+
+  f.replace({ ...emptyWechat(), conversations: [{ ...group, name: "改名后" }] });
+  assert.match(f.read(groupOnly).text, /群聊 "改名后"/);
+  assert.deepEqual(f.source.listScopes("chat")[0]?.people, []);
 });

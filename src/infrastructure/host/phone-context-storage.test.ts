@@ -6,6 +6,7 @@ import { createStWechatIntentStorage } from "./wechat-intent-storage.ts";
 import { createStWechatStorage } from "./wechat-storage.ts";
 import { readPhoneIntentBlocks } from "./phone-intent-migration.ts";
 import type { PhoneContextData } from "../../apps/phone-context/public.ts";
+import { emptyWechat } from "../../apps/wechat/wechat.ts";
 
 const selection = {
   scopeId: "space",
@@ -107,13 +108,14 @@ test("Intent 与宏绑定及微信消息并发保存按队列读取最新块，�
   };
   const savingIntent = f.intents.write("chat", intents);
   const savingBinding = f.bindings.write("chat", { version: 2, presets: [] });
-  const savingMessage = f.wechat.write("chat", { version: 5, account: null, conversations: [] });
+  const wechat = emptyWechat();
+  const savingMessage = f.wechat.write("chat", wechat);
   assert.equal(f.submitted.length, 1);
   f.response.resolve(new Response(null, { status: 200 }));
   await Promise.all([savingIntent, savingBinding, savingMessage]);
   assert.deepEqual(f.intents.read("chat"), intents);
   assert.deepEqual(f.bindings.read("chat"), { version: 2, presets: [] });
-  assert.equal(f.wechat.read("chat")?.version, 5);
+  assert.deepEqual(f.wechat.read("chat"), wechat);
   assert.equal(f.submitted.length, 3);
 });
 

@@ -13,6 +13,9 @@ export function editWechatMessage(
     throw new Error("微信消息不存在");
   }
   const target = conversation.messages[index]!;
+  if (target.content.type === "system" && action !== "delete") {
+    throw new Error("系统消息无法撤回");
+  }
   if (action !== "delete") {
     if (target.senderId !== accountId) {
       throw new Error("只能撤回自己的消息或取消撤回");
@@ -50,7 +53,10 @@ export function editWechatMessage(
       ? messages.findIndex((message) => message.id === first.id)
       : messages.length;
     pendingCompletedThrough[id] =
-      messages.slice(0, start).findLast((message) => message.senderId === id)?.id ?? null;
+      messages
+        .slice(0, start)
+        .findLast((message) => message.senderId === id && message.content.type !== "system")?.id ??
+      null;
   }
   return {
     ...conversation,

@@ -4,13 +4,11 @@ import { WechatImageIcon, WechatRedPacketIcon, WechatTransferIcon } from "./wech
 export function WechatChatAttachments({
   disabled,
   onImage,
-  onRedPacket,
-  onTransfer,
+  payments,
 }: {
   disabled: boolean;
   onImage(): void;
-  onRedPacket(): void;
-  onTransfer(): void;
+  payments?: { onRedPacket(): void; onTransfer(): void };
 }) {
   return (
     <section className="wechat-attachment-panel" aria-label="添加附件">
@@ -20,24 +18,28 @@ export function WechatChatAttachments({
         </span>
         <span>图片</span>
       </button>
-      <button type="button" disabled={disabled} onClick={onRedPacket}>
-        <span
-          className="wechat-attachment-icon wechat-attachment-icon--redPacket"
-          aria-hidden="true"
-        >
-          <WechatRedPacketIcon />
-        </span>
-        <span>红包</span>
-      </button>
-      <button type="button" disabled={disabled} onClick={onTransfer}>
-        <span
-          className="wechat-attachment-icon wechat-attachment-icon--transfer"
-          aria-hidden="true"
-        >
-          <WechatTransferIcon />
-        </span>
-        <span>转账</span>
-      </button>
+      {payments ? (
+        <>
+          <button type="button" disabled={disabled} onClick={payments.onRedPacket}>
+            <span
+              className="wechat-attachment-icon wechat-attachment-icon--redPacket"
+              aria-hidden="true"
+            >
+              <WechatRedPacketIcon />
+            </span>
+            <span>红包</span>
+          </button>
+          <button type="button" disabled={disabled} onClick={payments.onTransfer}>
+            <span
+              className="wechat-attachment-icon wechat-attachment-icon--transfer"
+              aria-hidden="true"
+            >
+              <WechatTransferIcon />
+            </span>
+            <span>转账</span>
+          </button>
+        </>
+      ) : null}
     </section>
   );
 }

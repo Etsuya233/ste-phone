@@ -1,6 +1,8 @@
 export interface WechatIntentSelection {
   readonly scopeId: string;
   readonly personIds: readonly string[];
+  /** 旧方案未保存群 ID，只按人物读取单聊。 */
+  readonly groupIds?: readonly string[];
   readonly recentMinutes: number | null;
   readonly limitPerGroup: number;
 }
@@ -9,6 +11,7 @@ export interface WechatIntentScope {
   readonly id: string;
   readonly label: string;
   readonly people: readonly { readonly id: string; readonly name: string }[];
+  readonly groups: readonly { readonly id: string; readonly name: string }[];
 }
 
 export interface WechatIntentResult {
@@ -49,17 +52,31 @@ export function validateWechatIntent(value: unknown): asserts value is WechatInt
   ) {
     throw new Error("微信 App Intent 标识和名称不能为空");
   }
-  const selection = intent.selection;
+  validateWechatIntentSelection(intent.selection);
+}
+
+export function validateWechatIntentSelection(selection: WechatIntentSelection): void {
   if (!selection || typeof selection.scopeId !== "string" || !selection.scopeId) {
     throw new Error("请选择资料空间");
   }
   if (
     !Array.isArray(selection.personIds) ||
-    selection.personIds.length < 2 ||
     selection.personIds.some((id) => typeof id !== "string" || !id) ||
     new Set(selection.personIds).size !== selection.personIds.length
   ) {
-    throw new Error("微信 App Intent 须选择至少两位不同人物");
+    throw new Error("微信 App Intent 人物选择无效或重复");
+  }
+  const { groupIds } = selection;
+  if (
+    groupIds !== undefined &&
+    (!Array.isArray(groupIds) ||
+      groupIds.some((id) => typeof id !== "string" || !id) ||
+      new Set(groupIds).size !== groupIds.length)
+  ) {
+    throw new Error("微信 App Intent 群聊选择无效或重复");
+  }
+  if (selection.personIds.length < 2 && !groupIds?.length) {
+    throw new Error("微信 App Intent 须选择至少两位人物或一个群聊");
   }
   if (
     selection.recentMinutes !== null &&

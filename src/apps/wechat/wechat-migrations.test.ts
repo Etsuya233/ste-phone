@@ -59,9 +59,9 @@ test("微信 v1 所有已发布媒体结构统一升级，保留其他微信字�
   const original = structuredClone(legacy);
   const loaded = readWechatData(legacy);
   const currentImage = { ...image, image: { ...image.image, source: "hub" } };
-  assert.equal(loaded.version, 5);
+  assert.equal(loaded.version, 6);
   assert.deepEqual(legacy, original);
-  assert.deepEqual(loaded.conversations, legacy.conversations);
+  assert.deepEqual(loaded.conversations, [{ ...conversation, kind: "direct" }]);
   assert.deepEqual(loaded.account, author);
   assert.deepEqual(loaded.replyGuidance, legacy.replyGuidance);
   assert.deepEqual(
@@ -84,7 +84,7 @@ test("微信 v1 所有已发布媒体结构统一升级，保留其他微信字�
   assert.deepEqual(readWechatData(loaded), loaded);
 });
 
-test("当前 v5 严格校验，不再转换旧媒体；非法版本与损坏微信字段明确失败", () => {
+test("当前 v6 严格校验，不再转换旧媒体；非法版本与损坏微信字段明确失败", () => {
   const moment = { id: "moment", author, text: "正文", createdAt, comments: [] };
   for (const media of [
     { type: "none" },
@@ -97,7 +97,7 @@ test("当前 v5 严格校验，不再转换旧媒体；非法版本与损坏微�
   }
   for (const data of [
     { account: null, conversations: [] },
-    { ...emptyWechat(), version: 6 },
+    { ...emptyWechat(), version: 7 },
     { ...emptyWechat(), version: "2" },
     { ...emptyWechat(), account: {} },
     { ...emptyWechat(), conversations: {} },
@@ -135,7 +135,7 @@ test("当前 v5 严格校验，不再转换旧媒体；非法版本与损坏微�
   assert.deepEqual(broken, original);
 });
 
-test("预览读取复用迁移链且不写盘，正常保存才持久化 v5", async () => {
+test("预览读取复用迁移链且不写盘，正常保存才持久化 v6", async () => {
   const values = new Map<string, string>();
   const savedDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   let writes = 0;
@@ -155,12 +155,12 @@ test("预览读取复用迁移链且不写盘，正常保存才持久化 v5", as
     values.set(key, original);
     const storage = createPreviewWechatStorage(null);
     const loaded = storage.read("chat")!;
-    assert.equal(loaded.version, 5);
+    assert.equal(loaded.version, 6);
     assert.equal(writes, 0);
     assert.equal(values.get(key), original);
     await storage.write("chat", loaded);
     assert.equal(writes, 1);
-    assert.equal(JSON.parse(values.get(key)!).version, 5);
+    assert.equal(JSON.parse(values.get(key)!).version, 6);
     assert.deepEqual(storage.read("chat"), loaded);
   } finally {
     if (savedDescriptor) {
@@ -174,8 +174,8 @@ test("预览读取复用迁移链且不写盘，正常保存才持久化 v5", as
 test("v4 单聊保持原样，v5 校验图片引用与付款卡片状态", () => {
   const legacy = { version: 4, account: author, conversations: [conversation] };
   const current = readWechatData(legacy);
-  assert.equal(current.version, 5);
-  assert.deepEqual(current.conversations, legacy.conversations);
+  assert.equal(current.version, 6);
+  assert.deepEqual(current.conversations, [{ ...conversation, kind: "direct" }]);
   assert.equal(legacy.version, 4);
 
   const image = { type: "image", description: "海边", prompt: "" };

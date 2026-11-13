@@ -27,8 +27,7 @@ export function WechatComposer({
   onSendSticker,
   onManageStickers,
   onPickImage,
-  onPickRedPacket,
-  onPickTransfer,
+  payments,
 }: {
   value: string;
   disabled: boolean;
@@ -44,8 +43,7 @@ export function WechatComposer({
   onSendSticker(marker: string): void;
   onManageStickers(): void;
   onPickImage(): void;
-  onPickRedPacket(): void;
-  onPickTransfer(): void;
+  payments?: { onRedPacket(): void; onTransfer(): void };
 }) {
   const form = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -135,8 +133,12 @@ export function WechatComposer({
         <WechatChatAttachments
           disabled={disabled}
           onImage={() => pick(onPickImage)}
-          onRedPacket={() => pick(onPickRedPacket)}
-          onTransfer={() => pick(onPickTransfer)}
+          payments={
+            payments && {
+              onRedPacket: () => pick(payments.onRedPacket),
+              onTransfer: () => pick(payments.onTransfer),
+            }
+          }
         />
       )}
     </div>

@@ -13,7 +13,7 @@
   color: var(--ios-red);
   overflow-wrap: anywhere;
 }
-:host .wechat-intent-person {
+:host .wechat-intent-choice {
   position: relative;
   display: flex;
   align-items: center;
@@ -22,7 +22,7 @@
   min-height: var(--control-size);
   cursor: pointer;
 }
-:host .wechat-intent-person input {
+:host .wechat-intent-choice input {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -31,11 +31,11 @@
   opacity: 0;
   cursor: inherit;
 }
-:host .wechat-intent-person span {
+:host .wechat-intent-choice span {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-:host .wechat-intent-person > span:first-of-type {
+:host .wechat-intent-choice > span:first-of-type {
   flex: 1;
 }
 :host .wechat-intent-check {
@@ -43,18 +43,18 @@
   color: var(--ios-blue);
   opacity: 0;
 }
-:host .wechat-intent-person input:checked ~ .wechat-intent-check {
+:host .wechat-intent-choice input:checked ~ .wechat-intent-check {
   opacity: 1;
 }
-:host .wechat-intent-person:has(input:focus-visible) {
+:host .wechat-intent-choice:has(input:focus-visible) {
   outline: var(--ios-focus-width) solid var(--ios-blue);
   outline-offset: var(--ios-focus-offset);
 }
-:host .wechat-intent-person:has(input:disabled) {
+:host .wechat-intent-choice:has(input:disabled) {
   opacity: var(--ios-disabled-opacity);
   cursor: default;
 }
-:host .wechat-intent-person-id {
+:host .wechat-intent-choice-id {
   display: block;
   font-size: var(--ios-caption-size);
   color: var(--ios-secondary-ink);

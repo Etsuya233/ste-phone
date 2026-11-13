@@ -72,7 +72,8 @@ if (options.get("voice-playground") === "1") {
 // 地图入口提供模拟连接，全部请求仍由 preview-ai-transport 截获。
 const campusPreview = options.get("twitter") === "1" || options.get("campus-community") === "1";
 const notesPreview = options.get("notes") === "1";
-if (options.get("map") === "1" || campusPreview || notesPreview) {
+const wechatPreview = options.get("wechat-test") === "group";
+if (options.get("map") === "1" || campusPreview || notesPreview || wechatPreview) {
   const settings = new PhoneSettingsService(settingsStorage);
   if (settings.modelConnections.getSnapshot().connections.length === 0) {
     settings.saveModelConnection({
@@ -85,7 +86,7 @@ if (options.get("map") === "1" || campusPreview || notesPreview) {
     });
   }
   if (
-    (campusPreview || notesPreview) &&
+    (campusPreview || notesPreview || wechatPreview) &&
     !settings.modelConnections.getSnapshot().defaultModelConnectionId
   ) {
     settings.selectDefaultModelConnection(

@@ -9,7 +9,7 @@ import { validateWechatMessageContent } from "./wechat-message-content.ts";
 import type { WechatConversation, WechatData } from "./wechat.ts";
 
 const wechatMigrations: MigrationPlan<WechatData> = {
-  currentVersion: 5,
+  currentVersion: 6,
   steps: [
     {
       from: 1,
@@ -34,6 +34,22 @@ const wechatMigrations: MigrationPlan<WechatData> = {
       },
     },
     { from: 4, to: 5, name: "structured-chat-messages", migrate: object },
+    {
+      from: 5,
+      to: 6,
+      name: "group-conversations",
+      migrate(value) {
+        const data = object(value);
+        if (!Array.isArray(data.conversations)) {
+          throw new Error("微信会话列表无效");
+        }
+        data.conversations = data.conversations.map((item) => ({
+          ...object(item),
+          kind: "direct",
+        }));
+        return data;
+      },
+    },
   ],
   validate: validateWechatData,
 };
@@ -46,7 +62,7 @@ export function readWechatData(value: unknown): WechatData {
 /** 读取和写入共用当前结构校验，旧字段由各版本迁移处理。 */
 export function validateWechatData(value: unknown): asserts value is WechatData {
   const data = object(value);
-  if (data.version !== 5 || !Array.isArray(data.conversations)) {
+  if (data.version !== 6 || !Array.isArray(data.conversations)) {
     throw new Error("微信数据版本或会话列表无效");
   }
   if (data.account !== null) {
@@ -79,17 +95,29 @@ export function validateWechatData(value: unknown): asserts value is WechatData 
 function validateConversation(conversation: Record<string, unknown>): void {
   if (
     !Array.isArray(conversation.people) ||
-    conversation.people.length !== 2 ||
+    !conversation.people.length ||
     !Array.isArray(conversation.messages)
   ) {
     throw new Error("微信会话人物或消息列表无效");
   }
   const people = conversation.people.map(validatePerson);
-  if (people[0]!.id === people[1]!.id || people[0]!.scopeId !== people[1]!.scopeId) {
-    throw new Error("微信单聊须包含同一资料空间的两位人物");
-  }
   const peopleIds = new Set(people.map((person) => person.id));
-  const messages = new Map<string, string>();
+  if (
+    peopleIds.size !== people.length ||
+    people.some(({ scopeId }) => scopeId !== people[0]!.scopeId)
+  ) {
+    throw new Error("微信会话人物须唯一且属于同一资料空间");
+  }
+  const group = conversation.kind === "group";
+  if (group) {
+    validateGroup(conversation, peopleIds);
+  } else if (
+    (conversation.kind !== undefined && conversation.kind !== "direct") ||
+    people.length !== 2
+  ) {
+    throw new Error("微信单聊须包含两位人物");
+  }
+  const messages = new Map<string, string | null>();
   for (const raw of conversation.messages) {
     const message = object(raw);
     nonempty(message.id);
@@ -98,6 +126,19 @@ function validateConversation(conversation: Record<string, unknown>): void {
       throw new Error("微信消息 ID 重复或发言人物无效");
     }
     validateWechatMessageContent(message.content);
+    if (
+      group
+        ? message.content.type === "redPacket" || message.content.type === "transfer"
+        : message.content.type === "system"
+    ) {
+      throw new Error("当前微信会话不支持此类消息");
+    }
+    if (
+      message.content.type === "system" &&
+      (message.recalled !== undefined || message.reply !== undefined)
+    ) {
+      throw new Error("微信系统消息不能撤回或作为 AI 回复");
+    }
     if (typeof message.createdAt !== "string" || !Number.isFinite(Date.parse(message.createdAt))) {
       throw new Error("微信消息时间无效");
     }
@@ -109,12 +150,12 @@ function validateConversation(conversation: Record<string, unknown>): void {
       nonempty(reply.batchId);
       if (reply.triggerMessageId !== undefined) {
         nonempty(reply.triggerMessageId);
-        if (!messages.has(reply.triggerMessageId)) {
+        if (!messages.get(reply.triggerMessageId)) {
           throw new Error("微信回复对应的触发消息不存在或位于回复之后");
         }
       }
     }
-    messages.set(message.id, message.senderId);
+    messages.set(message.id, message.content.type === "system" ? null : message.senderId);
   }
   validatePendingBoundaries(conversation.pendingReplies, peopleIds, messages);
   validatePendingBoundaries(conversation.pendingCompletedThrough, peopleIds, messages, true);
@@ -122,10 +163,24 @@ function validateConversation(conversation: Record<string, unknown>): void {
   wechatMemoryBoundaries(conversation as unknown as WechatConversation);
 }
 
+function validateGroup(group: Record<string, unknown>, people: ReadonlySet<string>): void {
+  nonempty(group.name);
+  const { memberIds, description } = group;
+  if (
+    typeof description !== "string" ||
+    !Array.isArray(memberIds) ||
+    !memberIds.length ||
+    new Set(memberIds).size !== memberIds.length ||
+    memberIds.some((id) => !people.has(id))
+  ) {
+    throw new Error("微信群资料或当前成员无效");
+  }
+}
+
 function validatePendingBoundaries(
   value: unknown,
   people: ReadonlySet<string>,
-  messages: ReadonlyMap<string, string>,
+  messages: ReadonlyMap<string, string | null>,
   allowStart = false,
 ): void {
   if (value === undefined) {

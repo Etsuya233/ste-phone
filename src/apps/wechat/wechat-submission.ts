@@ -47,7 +47,22 @@ export class WechatSubmission {
     validateWechatMessageContent(content);
     const conversation = this.#dependencies.conversation(otherId);
     const message = createWechatMessage(this.#dependencies.snapshot().data.account!.id, content);
-    const next = appendWechatMessage(conversation, message);
+    const next =
+      conversation.kind === "group" && conversation.memberIds.length === 1
+        ? {
+            ...conversation,
+            messages: [...conversation.messages, message],
+            pendingCompletedThrough: {
+              ...conversation.pendingCompletedThrough,
+              [message.senderId]: message.id,
+            },
+            pendingReplies: Object.fromEntries(
+              Object.entries(conversation.pendingReplies ?? {}).filter(
+                ([id]) => id !== message.senderId,
+              ),
+            ),
+          }
+        : appendWechatMessage(conversation, message);
     const operation = this.#dependencies.operation();
     const generation = this.#dependencies.generation();
     const chatId = this.#dependencies.snapshot().chatId;

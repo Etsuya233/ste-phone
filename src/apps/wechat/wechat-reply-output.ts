@@ -105,3 +105,33 @@ function fields(value: Record<string, unknown>, names: readonly string[]): void 
     throw new Error("微信回复字段无效");
   }
 }
+
+/** 所有发言在整批保存前校验，指定模式还要求每位所选人物发言。 */
+export function parseWechatGroupReply(
+  text: string,
+  allowedIds: readonly string[],
+  requireAll: boolean,
+  stickers: Stickers,
+): { senderId: string; content: WechatMessageContent }[] {
+  const value = record(JSON.parse(text));
+  fields(value, ["messages"]);
+  if (!Array.isArray(value.messages) || !value.messages.length) {
+    throw new Error("微信群聊回复须包含至少一条消息");
+  }
+  const spoken = new Set<string>();
+  const replies = value.messages.map((raw: unknown) => {
+    const { senderId, ...message } = record(raw);
+    if (typeof senderId !== "string" || !allowedIds.includes(senderId)) {
+      throw new Error("微信群聊回复包含本轮无权发言的人物");
+    }
+    if (message.type !== "text" && message.type !== "image") {
+      throw new Error("微信群聊回复仅支持文字、表情和图片");
+    }
+    spoken.add(senderId);
+    return { senderId, content: parseMessage(message, stickers) };
+  });
+  if (requireAll && allowedIds.some((id) => !spoken.has(id))) {
+    throw new Error("微信群聊回复缺少本轮指定人物的发言");
+  }
+  return replies;
+}

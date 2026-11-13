@@ -35,7 +35,11 @@ export class WechatChatMedia {
     if (!description.trim()) {
       throw new Error("请先填写图片描述");
     }
-    const { people } = this.#dependencies.conversation(otherId);
+    const conversation = this.#dependencies.conversation(otherId);
+    const people =
+      conversation.kind === "group"
+        ? conversation.people.filter(({ id }) => conversation.memberIds.includes(id))
+        : conversation.people;
     const material = `${description}\n${prompt}`;
     const characters = this.#dependencies
       .snapshot()
@@ -116,7 +120,7 @@ export class WechatChatMedia {
       const index = data.conversations.findIndex((conversation) => conversation.id === id);
       const conversation = data.conversations[index];
       if (!conversation) {
-        throw new Error("单聊不存在");
+        throw new Error("会话不存在");
       }
       return {
         ...data,

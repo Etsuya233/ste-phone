@@ -121,7 +121,14 @@ export function useWechatMemory({
         skippedPending={skippedPending}
         lockReason={lockReason}
         disabled={disabled}
-        onProfile={() => navigation.push({ page: "person", id })}
+        onProfile={() =>
+          navigation.push({ page: conversation?.kind === "group" ? "group-details" : "person", id })
+        }
+        onRound={
+          conversation?.kind === "group" && conversation.memberIds.length > 1
+            ? () => navigation.push({ page: "group-round", id })
+            : undefined
+        }
         onInsert={(after) => void insert(after)}
         onToggle={(barrierId, enabled) => void toggle(barrierId, enabled)}
         onDelete={(barrierId) => void remove(barrierId)}

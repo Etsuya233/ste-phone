@@ -82,7 +82,7 @@ export function buildWechatPrompt(input: {
   });
 }
 
-function promptMessageContent({ recalled, content }: WechatMessage) {
+export function promptMessageContent({ recalled, content }: WechatMessage) {
   if (recalled) {
     return { type: "recalled", text: "消息已撤回" };
   }
@@ -92,12 +92,19 @@ function promptMessageContent({ recalled, content }: WechatMessage) {
   if (content.type === "text") {
     return { text: content.text };
   }
+  if (content.type === "system") {
+    return { type: "system", text: content.text };
+  }
   const { type, amountFen, note, status } = content;
   return { type, amountFen, note, status };
 }
 
 /** 本轮输入与历史来自同一获准序列，交流间隔从首条输入之前计算。 */
-function wechatTimeContext(messages: WechatConversation["messages"], start: number, now: Date) {
+export function wechatTimeContext(
+  messages: WechatConversation["messages"],
+  start: number,
+  now: Date,
+) {
   const previous = messages[start - 1];
   const firstPending = messages[start];
   const last = messages.at(-1);

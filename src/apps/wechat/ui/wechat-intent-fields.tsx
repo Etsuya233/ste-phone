@@ -3,12 +3,13 @@ import { TextField } from "../../../frontend/foundation/text-field.tsx";
 import { SelectField } from "../../../frontend/foundation/select-field.tsx";
 import { GroupedList } from "../../../frontend/foundation/grouped-list.tsx";
 import { Switch } from "../../../frontend/foundation/switch.tsx";
-import { WechatIntentPeople } from "./wechat-intent-people.tsx";
+import { WechatIntentChoices } from "./wechat-intent-choices.tsx";
 
 export interface WechatIntentDraft {
   name: string;
   scopeId: string;
   personIds: readonly string[];
+  groupIds: readonly string[];
   recentMinutes: string;
   unlimitedTime: boolean;
   limitPerGroup: string;
@@ -39,7 +40,9 @@ export function WechatIntentFields({
           label="资料空间"
           value={draft.scopeId}
           disabled={busy}
-          onChange={(event) => onChange({ scopeId: event.target.value, personIds: [] })}
+          onChange={(event) =>
+            onChange({ scopeId: event.target.value, personIds: [], groupIds: [] })
+          }
         >
           <option value="" disabled>
             请选择资料空间
@@ -51,20 +54,30 @@ export function WechatIntentFields({
           ))}
         </SelectField>
       </GroupedList>
-      <WechatIntentPeople
-        scope={scope}
+      <WechatIntentChoices
+        title={`单聊人物 · 已选 ${draft.personIds.length} 人`}
+        description="选中双方才读取单聊，与当前微信帐号无关。"
+        choices={scope?.people ?? []}
         selected={draft.personIds}
         busy={busy}
         onChange={(personIds) => onChange({ personIds })}
       />
+      <WechatIntentChoices
+        title={`群聊 · 已选 ${draft.groupIds.length} 个`}
+        description="只读取勾选的群聊。仅选择群聊时，可以不选单聊人物。"
+        choices={scope?.groups ?? []}
+        selected={draft.groupIds}
+        busy={busy}
+        onChange={(groupIds) => onChange({ groupIds })}
+      />
       {scopes.length === 0 ? (
         <p className="wechat-intent-note">
-          还没有可读取的微信人物。请先在当前聊天中保存微信消息，再重新进入此页。
+          还没有可读取的微信会话。请先在当前聊天中保存微信消息或创建群聊，再重新进入此页。
         </p>
       ) : null}
       <GroupedList
         title="读取范围"
-        description="使用现实发送时间，先应用记忆屏障和时间范围，再保留最近的指定条数。双方消息共同计数，撤回只显示提示。"
+        description="先应用记忆屏障与现实时间范围，再保留每个会话最近的指定条数。系统消息也计数，撤回只显示提示。"
       >
         <Switch
           label="不限时间"

@@ -12,7 +12,7 @@ export function WechatRichBubble({
   recalled,
   onOpen,
 }: {
-  content: Exclude<WechatMessageContent, { type: "text" }>;
+  content: Exclude<WechatMessageContent, { type: "text" | "system" }>;
   recalled?: boolean;
   onOpen(): void;
 }) {

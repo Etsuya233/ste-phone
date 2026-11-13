@@ -2,6 +2,8 @@ import { WechatSendPreferences } from "./wechat-send-preferences.tsx";
 import { useState } from "react";
 import { Page } from "../../../frontend/foundation/page.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
+import { NavBarActionGroup } from "../../../frontend/foundation/nav-bar.tsx";
+import { canReadWechatGroup } from "../wechat-group.ts";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import { GroupedList } from "../../../frontend/foundation/grouped-list.tsx";
 import { Icon } from "../../../frontend/foundation/icon.tsx";
@@ -30,15 +32,18 @@ export function WechatHome({
   const conversations = state.data.conversations
     .filter(
       (item) =>
-        item.messages.length > 0 &&
         account &&
-        item.people.some(
-          (person) => person.id === account.id && person.scopeId === account.scopeId,
-        ),
+        (item.kind === "group"
+          ? canReadWechatGroup(item, account)
+          : item.messages.length > 0 &&
+            item.people.some(
+              (person) => person.id === account.id && person.scopeId === account.scopeId,
+            )),
     )
     .toSorted(
       (left, right) =>
-        Date.parse(right.messages.at(-1)!.createdAt) - Date.parse(left.messages.at(-1)!.createdAt),
+        (Date.parse(right.messages.at(-1)?.createdAt ?? "") || 0) -
+        (Date.parse(left.messages.at(-1)?.createdAt ?? "") || 0),
     );
   return (
     <Page
@@ -46,7 +51,22 @@ export function WechatHome({
         <NavBar
           title={tab}
           back={{ label: "主屏幕", onClick: onHome }}
-          right={<Button onClick={() => void wechat.prepare()}>刷新</Button>}
+          right={
+            account && tab === "微信" ? (
+              <NavBarActionGroup label="会话操作">
+                <Button
+                  aria-label="发起群聊"
+                  disabled={state.loading || !!state.error}
+                  onClick={() => navigation.push({ page: "group-details" })}
+                >
+                  ＋
+                </Button>
+                <Button onClick={() => void wechat.prepare()}>刷新</Button>
+              </NavBarActionGroup>
+            ) : (
+              <Button onClick={() => void wechat.prepare()}>刷新</Button>
+            )
+          }
         />
       }
       footerHeight={50}
@@ -74,7 +94,7 @@ export function WechatHome({
               conversations={conversations}
               people={state.people}
               now={now}
-              onOpen={(id) => navigation.push({ page: "chat", id })}
+              onOpen={(id, group) => navigation.push({ page: group ? "group-chat" : "chat", id })}
             />
           )}
           {tab === "通讯录" && (
@@ -111,42 +131,46 @@ function WechatConversations({
   account: WechatPerson;
   conversations: readonly WechatConversation[];
   people: readonly CharacterProfile[];
-  onOpen(id: string): void;
+  onOpen(id: string, group: boolean): void;
   now: Date;
 }) {
   return (
     <div className="wechat-rows">
       {conversations.length ? (
         conversations.map((conversation) => {
-          const other = conversation.people.find((person) => person.id !== account.id)!;
-          const last = conversation.messages.at(-1)!;
-          const person =
-            other.scopeId === account.scopeId
-              ? people.find((item) => item.id === other.id)
-              : undefined;
-          const name = person?.name ?? other.name;
-          const summary = last.recalled
-            ? "消息已撤回"
-            : last.content.type === "text"
-              ? last.content.text
-              : describeWechatMessageContent(last.content);
+          const group = conversation.kind === "group" ? conversation : undefined;
+          const other = group
+            ? undefined
+            : conversation.people.find((person) => person.id !== account.id);
+          const last = conversation.messages.at(-1);
+          const person = other && people.find((item) => item.id === other.id);
+          const name = group?.name ?? person?.name ?? other!.name;
+          const summary = !last
+            ? ""
+            : last.recalled
+              ? "消息已撤回"
+              : last.content.type === "text"
+                ? last.content.text
+                : describeWechatMessageContent(last.content);
           return (
             <button
               type="button"
               className="wechat-row wechat-row--conversation"
               key={conversation.id}
-              onClick={() => onOpen(other.id)}
+              onClick={() => onOpen(group?.id ?? other!.id, !!group)}
             >
               <PersonAvatar path={person?.avatar?.imagePath} name={name} />
               <span>
                 <span className="wechat-conversation-heading">
                   <strong>{name}</strong>
-                  <time
-                    dateTime={last.createdAt}
-                    title={new Date(last.createdAt).toLocaleString("zh-CN")}
-                  >
-                    {formatWechatTime(last.createdAt, now, true)}
-                  </time>
+                  {last ? (
+                    <time
+                      dateTime={last.createdAt}
+                      title={new Date(last.createdAt).toLocaleString("zh-CN")}
+                    >
+                      {formatWechatTime(last.createdAt, now, true)}
+                    </time>
+                  ) : null}
                 </span>
                 <small>{summary}</small>
               </span>

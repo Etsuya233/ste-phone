@@ -60,7 +60,7 @@ function fixture() {
     readRelatedBackground: async (request) => {
       assert.ok(
         request.participantIds.length >= 1 &&
-          request.participantIds.every((id) => ["a", "b"].includes(id)),
+          request.participantIds.every((id) => people.some((person) => person.id === id)),
       );
       return { relationships: [], heldItems: [], importantEvents: [], otherCharacters: [] };
     },
@@ -1745,4 +1745,135 @@ test("AI card actions cannot bypass the history window, memory barrier or recall
   assert.deepEqual(messages[0]!.content, { ...card.content, status: "returned" });
   assert.deepEqual(messages.at(-1)!.content, { type: "text", text: "转账已退回" });
   f.service.dispose();
+});
+
+test("微信群按成员身份共享历史，独立群 ID，退出成员无权读写且重新加入可读旧历史", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const details = { name: "周末", description: "读书", memberIds: ["a", "b"] };
+  const id = await f.service.saveGroup(details);
+  assert.notEqual(id, await f.service.saveGroup(details));
+  f.preferences.setSendMode("delayed");
+  await f.service.selectAccount("b");
+  await f.service.enqueue(id, "移除前的发言");
+  await f.service.selectAccount("a");
+  await assert.rejects(f.service.saveGroup({ ...details, memberIds: ["b"] }, id), /保留当前帐号/);
+  await f.service.enqueue(id, "群还有两人时的队列");
+  const saveStarted = f.holdNextSave();
+  const saving = f.service.saveGroup({ ...details, memberIds: ["a"] }, id);
+  await saveStarted;
+  await assert.rejects(f.service.enqueue(id, "群资料保存期间发送"), /等待/);
+  f.releaseSave();
+  await saving;
+  await f.service.send(id, "");
+  assert.deepEqual(pendingWechatMessages(f.service.getConversation(id)!, "a"), []);
+  await f.service.send(id, "单人群消息");
+  assert.equal(f.calls, 0);
+  await f.service.selectAccount("b");
+  assert.equal(f.service.getConversation(id), undefined);
+  await assert.rejects(f.service.send(id, "无权发言"));
+  await f.service.selectAccount("a");
+  await f.service.saveGroup(details, id);
+  await f.service.selectAccount("b");
+  const group = f.service.getConversation(id)!;
+  assert.equal(group.kind, "group");
+  assert.ok(
+    group.messages.some(
+      ({ content }) => content.type === "text" && content.text === "移除前的发言",
+    ),
+  );
+  assert.deepEqual(pendingWechatMessages(group, "b"), []);
+  assert.deepEqual(pendingWechatMessages(group, "a"), []);
+});
+
+test("群回复固定一次取材，隔离私聊、其他群和屏障前消息，校验指定人整批并沿用重试参数", async () => {
+  const f = fixture();
+  f.addPerson("c");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.saveReplyGuidance("b", "乙专用指导");
+  await f.service.saveReplyGuidance("c", "丙专用指导");
+  f.preferences.setSendMode("delayed");
+  const details = { name: "周末", description: "读书", memberIds: ["a", "b", "c"] };
+  const id = await f.service.saveGroup(details);
+  const other = await f.service.saveGroup(details);
+  await f.service.enqueue("b", "私聊不外传");
+  await f.service.enqueue(other, "其他群不外传");
+  await f.service.enqueue(id, "屏障以前");
+  await f.service.memory.insert(id, f.service.getConversation(id)!.messages.at(-1)!.id);
+  await f.service.enqueue(id, "屏障以后");
+  const b = { senderId: "b", type: "text", text: "乙回答" };
+  const c = { senderId: "c", type: "image", description: "照片", prompt: "绘图指引" };
+  f.momentOutput({ messages: [b] });
+  await f.service.requestReply(id, { memberIds: ["b", "c"], guidance: "简洁回答" });
+  const failed = f.service.getSnapshot().reply;
+  assert.equal(failed.status, "error");
+  assert.match(failed.status === "error" ? failed.error : "", /缺少本轮指定人物/);
+  assert.equal(f.calls, 1);
+  assert.match(f.prompt, /屏障以后|简洁回答/);
+  assert.match(f.prompt, /乙专用指导/);
+  assert.match(f.prompt, /丙专用指导/);
+  assert.doesNotMatch(f.prompt, /私聊不外传|其他群不外传|屏障以前/);
+  assert.equal(f.service.getConversation(id)!.messages.filter(({ reply }) => reply).length, 0);
+  f.momentOutput({ messages: [c, b] });
+  await f.service.retryReply(id);
+  assert.equal(f.calls, 2);
+  assert.deepEqual(
+    f.service
+      .getConversation(id)!
+      .messages.filter(({ reply }) => reply)
+      .map(({ senderId }) => senderId),
+    ["c", "b"],
+  );
+  assert.deepEqual(pendingWechatMessages(f.service.getConversation(id)!, "a"), []);
+  f.momentOutput({ messages: [b, { ...c, senderId: "a" }] });
+  await f.service.requestReply(id);
+  assert.equal(f.service.getSnapshot().reply.status, "error");
+  assert.equal(f.service.getConversation(id)!.messages.filter(({ reply }) => reply).length, 2);
+});
+
+test("群成员修改在生成和保存期间均被锁定，已发出保存归属原聊天", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const details = { name: "周末", description: "读书", memberIds: ["a", "b"] };
+  const id = await f.service.saveGroup(details);
+  const model = f.holdModel();
+  const save = f.holdNextSave();
+  f.momentOutput({ messages: [{ senderId: "b", type: "text", text: "乙回复" }] });
+  const request = f.service.requestReply(id);
+  await model;
+  await assert.rejects(f.service.saveGroup({ ...details, memberIds: ["a"] }, id), /等待/);
+  f.releaseModel();
+  await save;
+  assert.equal(f.service.getSnapshot().reply.status, "saving");
+  await assert.rejects(f.service.saveGroup({ ...details, memberIds: ["a"] }, id), /等待/);
+  f.switchChat("new-chat");
+  f.releaseSave();
+  await request;
+  assert.equal(f.stored, null);
+  f.switchChat("st-chat");
+  await f.service.prepare();
+  assert.equal(f.service.getConversation(id)!.messages.filter(({ reply }) => reply).length, 1);
+});
+
+test("微信可在缺少 crypto.randomUUID 的 HTTP 环境创建独立群聊", async () => {
+  const original = Object.getOwnPropertyDescriptor(crypto, "randomUUID");
+  Object.defineProperty(crypto, "randomUUID", { configurable: true, value: undefined });
+  try {
+    const { service } = fixture();
+    await service.prepare();
+    await service.selectAccount("a");
+    const details = { name: "HTTP 群聊", description: "", memberIds: ["a", "b"] };
+    const first = await service.saveGroup(details);
+    assert.match(first, /^group:[0-9a-f]{32}$/);
+    assert.notEqual(await service.saveGroup(details), first);
+  } finally {
+    if (original) {
+      Object.defineProperty(crypto, "randomUUID", original);
+    } else {
+      Reflect.deleteProperty(crypto, "randomUUID");
+    }
+  }
 });

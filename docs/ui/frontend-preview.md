@@ -1,5 +1,17 @@
 # 前端开发与验收
 
+## 微信群聊（2026-11-13）
+
+`/?wechat=1&wechat-test=group&data-state=related&responsive=1` 加载多位人物和默认模拟连接。会话列表右上角「＋」创建群，群聊菜单可编辑群资料、设置本轮发言或插入记忆屏障。用 `wechat-test=slow`、`invalid` 或 `slow-save` 检查停止、包含无权发言者的整批拒绝与重试，以及回复保存锁。
+
+Edge 独立预览覆盖 320px 经典和 390px iOS 26。验证同成员创建不同群、一次回复按序发出多人消息、指定单人和本轮指引、图片发送入口、群资料慢保存与指定发言慢提交时返回锁、成员增删与切帐号、重加恢复历史、单人群发送、刷新持久化、屏障、失败重试、停止和保存锁、单聊回归，以及仅选择一群的 App Intent 预览和保存。另验证关闭手机与 Home 返回主屏期间，回复保存继续并可回到原会话。截图已视检。测试脚本与截图位于 `tmp/wechat-group-acceptance.mjs` 和 `tmp/wechat-group-acceptance/`。使用模拟模型，未在真实 ST 或移动真机执行本轮界面验收。395 项全量测试、typecheck、ESLint、生产构建、改动文件 Prettier 和 `git diff --check` 通过。
+
+真实宿主复验使用隔离的 SillyTavern 1.18.0（8172dcd0e）、STE Memory 和最新生产构建。Edge 从魔法棒进入微信，验证建群、一次请求两人回复、指定发言、成员移除与重新加入、单人群无需模型、重新加载后的会话恢复、单聊与群 Intent。模型请求经 ST 生产代理转发至本地 OpenAI 兼容 SSE 测试端点。原生 JSONL 核对了 v6 群记录、ST 正文、其他插件元数据和 Phone 日记元数据，以及另一个 ST 聊天的隔离。截图与持久化报告见 `tmp/wechat-group-host/`。外部模型与移动真机未验收。
+
+补充普通 HTTP 验收。上次宿主验收通过 localhost 访问，浏览器将其视为安全上下文，未覆盖 `crypto.randomUUID` 缺失的情形。群 ID 现使用 `crypto.getRandomValues` 生成的 16 字节随机值。服务回归在屏蔽 `randomUUID` 后走完整建群保存路径。Edge 在非回环 HTTP 上确认 `isSecureContext === false`、`randomUUID` 不可用，运行实际群创建逻辑生成两个不同 ID。
+
+群成员变更集中在 `wechat-group.ts`，群取材在 `wechat-group-prompt.ts`，有序批次的发言身份和消息内容在 `wechat-reply-output.ts` 校验。结构复查保留超过 350 行的 `WechatService`，在同一处维护当前聊天、资料实例、写入锁与异步回复的归属。群成员变更、提示词取材与存储校验各自集中，部分超过 60 行，用于顺序核对身份、读取边界和变更记录。应用根组件和共享聊天菜单保留完整路由分派及菜单配置，输入组件保留连续表单布局。
+
 ## 微信单聊附件（2026-11-13）
 
 在 `/?wechat=1&responsive=1` 选择帐号并进入单聊，输入栏「＋」打开图片、红包和转账入口。图片可发描述占位，也可选图或生成后发送。点击已发图片可补图或查看大图。卡片点击进入详情，长按或点卡片上的操作按钮可打开撤回、删除和屏障菜单。剧情金额按整数分保存，卡片状态由双方帐号共享。

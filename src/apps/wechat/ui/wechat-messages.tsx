@@ -33,6 +33,8 @@ export function WechatMessages({
   onOpenPayment(messageId: string): void;
 }) {
   const now = useWechatClock(active);
+  const profiles = new Map(people.map((person) => [person.id, person]));
+  const identities = new Map(conversation?.people.map((person) => [person.id, person]));
   return (
     <div className="wechat-messages">
       {memory.boundaries
@@ -47,10 +49,8 @@ export function WechatMessages({
           />
         ))}
       {conversation?.messages.map((message, index) => {
-        const person = people.find((person) => person.id === message.senderId);
-        const sender =
-          person?.name ??
-          conversation.people.find((person) => person.id === message.senderId)!.name;
+        const person = profiles.get(message.senderId);
+        const sender = person?.name ?? identities.get(message.senderId)!.name;
         const mine = message.senderId === accountId;
         const { content } = message;
         const sticker =
@@ -72,39 +72,54 @@ export function WechatMessages({
             {message.recalled && (
               <p className="wechat-message-recall">{mine ? "你" : sender}撤回了一条消息</p>
             )}
-            <div
-              className={`wechat-message ${mine ? "wechat-message--mine" : ""}${message.recalled ? " wechat-message--recalled" : ""}`}
-            >
-              <PersonAvatar path={person?.avatar?.imagePath} name={sender} />
-              <WechatMessageBubble
-                index={index}
-                kind={content.type !== "text" ? "rich" : sticker ? "sticker" : "text"}
-                onMenu={() => memory.openMessage(message.id)}
+            {content.type === "system" ? (
+              <button
+                type="button"
+                className="wechat-system-message"
+                onClick={() => memory.openMessage(message.id)}
               >
-                {content.type !== "text" ? (
-                  <WechatRichBubble
-                    content={content}
-                    recalled={message.recalled}
-                    onOpen={() => {
-                      if (content.type === "image") {
-                        onOpenImage(message.id);
-                      } else {
-                        onOpenPayment(message.id);
-                      }
-                    }}
-                  />
-                ) : sticker ? (
-                  <img
-                    className="wechat-message-sticker"
-                    src={stickers.imageUrl(sticker.image)}
-                    alt={content.text}
-                    title={sticker.description}
-                  />
-                ) : (
-                  <p>{content.text}</p>
-                )}
-              </WechatMessageBubble>
-            </div>
+                {content.text}
+              </button>
+            ) : (
+              <div
+                className={`wechat-message ${mine ? "wechat-message--mine" : ""}${message.recalled ? " wechat-message--recalled" : ""}`}
+              >
+                <PersonAvatar path={person?.avatar?.imagePath} name={sender} />
+                <div className="wechat-message-body">
+                  {conversation.kind === "group" ? (
+                    <small className="wechat-message-sender">{sender}</small>
+                  ) : null}
+                  <WechatMessageBubble
+                    index={index}
+                    kind={content.type !== "text" ? "rich" : sticker ? "sticker" : "text"}
+                    onMenu={() => memory.openMessage(message.id)}
+                  >
+                    {content.type !== "text" ? (
+                      <WechatRichBubble
+                        content={content}
+                        recalled={message.recalled}
+                        onOpen={() => {
+                          if (content.type === "image") {
+                            onOpenImage(message.id);
+                          } else {
+                            onOpenPayment(message.id);
+                          }
+                        }}
+                      />
+                    ) : sticker ? (
+                      <img
+                        className="wechat-message-sticker"
+                        src={stickers.imageUrl(sticker.image)}
+                        alt={content.text}
+                        title={sticker.description}
+                      />
+                    ) : (
+                      <p>{content.text}</p>
+                    )}
+                  </WechatMessageBubble>
+                </div>
+              </div>
+            )}
             {memory.boundaries
               .filter((item) => item.position === index + 1)
               .map(({ barrier, position }) => (

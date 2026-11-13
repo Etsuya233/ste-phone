@@ -27,7 +27,13 @@ export interface TransferContent {
   readonly status: "pending" | "received" | "returned";
 }
 
-export type WechatMessageContent = TextContent | ImageContent | RedPacketContent | TransferContent;
+export interface SystemContent {
+  readonly type: "system";
+  readonly text: string;
+}
+
+export type WechatMessageContent =
+  TextContent | ImageContent | RedPacketContent | TransferContent | SystemContent;
 export type WechatPaymentAction = "claim" | "receive" | "return";
 
 export function isWechatAmountFen(value: unknown): value is number {
@@ -57,6 +63,7 @@ export function validateWechatMessageContent(
   const content = value as Record<string, unknown>;
   switch (content.type) {
     case "text":
+    case "system":
       if (typeof content.text === "string" && content.text.trim()) {
         return;
       }
@@ -95,6 +102,9 @@ export function applyWechatPaymentAction(
   messageId: string,
   action: WechatPaymentAction,
 ): WechatConversation {
+  if (conversation.kind === "group") {
+    throw new Error("群聊暂不支持红包和转账");
+  }
   const index = conversation.messages.findIndex((message) => message.id === messageId);
   const target = conversation.messages[index];
   if (!target || target.recalled) {
@@ -145,6 +155,8 @@ export function describeWechatMessageContent(content: WechatMessageContent): str
       const sticker = /^\[\[sticker:([^:]+):(.+)\]\]$/.exec(content.text);
       return sticker ? `[表情：${sticker[1]} / ${sticker[2]}]` : content.text;
     }
+    case "system":
+      return content.text;
     case "image":
       return `[图片：${content.description}]`;
     case "redPacket":

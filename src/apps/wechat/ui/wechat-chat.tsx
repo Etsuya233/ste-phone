@@ -5,27 +5,49 @@ import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Button } from "../../../frontend/foundation/button.tsx";
 import type { WechatPageProps } from "./wechat-page.tsx";
 import { WechatChatComposer } from "./wechat-chat-composer.tsx";
-import { conversationId } from "../wechat.ts";
+import { conversationId, type WechatConversation } from "../wechat.ts";
 import { useWechatMemory } from "./use-wechat-memory.tsx";
 import { WechatMessages } from "./wechat-messages.tsx";
 import { wechatChatWriteBusy } from "./wechat-chat-writing.ts";
 
-export function WechatChat({ ...props }: WechatPageProps & { id: string; active: boolean }) {
+type ChatProps = WechatPageProps & { id: string; active: boolean };
+
+export function WechatChat(props: ChatProps) {
+  const { wechat, state, id } = props;
+  const conversation = wechat.getConversation(id);
+  const person = state.people.find((person) => person.id === id);
+  const saved = conversation?.people.find((person) => person.id === id);
+  const account = state.data.account;
+  return (
+    <WechatChatTimeline
+      {...props}
+      conversation={conversation}
+      name={person?.name ?? saved?.name ?? "人物不可用"}
+      currentId={account ? conversationId(account.scopeId, account.id, id) : null}
+      canSend={!!person && !!account}
+    />
+  );
+}
+
+export function WechatChatTimeline({
+  conversation,
+  name,
+  currentId,
+  canSend,
+  ...props
+}: ChatProps & {
+  conversation?: WechatConversation;
+  name: string;
+  currentId: string | null;
+  canSend: boolean;
+}) {
   const { wechat, state, navigation, id, active, stickers, stickerState } = props;
   const [composerHeight, setComposerHeight] = useState(62);
   const end = useRef<HTMLDivElement>(null);
-  const conversation = wechat.getConversation(id);
   const memory = useWechatMemory({ ...props, conversation, end });
-  const person = state.people.find((person) => person.id === id);
-  const other = conversation?.people.find((person) => person.id === id);
-  const name = person?.name ?? other?.name ?? "人物不可用";
-  const currentId = state.data.account
-    ? conversationId(state.data.account.scopeId, state.data.account.id, id)
-    : null;
   const reply =
     state.reply.status !== "idle" && state.reply.conversationId === currentId ? state.reply : null;
-  const available =
-    !!person && !!state.data.account && !state.error && !state.loading && !memory.error;
+  const available = canSend && !state.error && !state.loading && !memory.error;
   useMessageScroll(end, conversation?.messages.length, active, composerHeight);
   return (
     <>
@@ -51,7 +73,13 @@ export function WechatChat({ ...props }: WechatPageProps & { id: string; active:
         }
         footerHeight={composerHeight}
         footer={
-          <WechatChatComposer {...props} available={available} onHeightChange={setComposerHeight} />
+          <WechatChatComposer
+            {...props}
+            available={available}
+            currentId={currentId}
+            group={conversation?.kind === "group"}
+            onHeightChange={setComposerHeight}
+          />
         }
       >
         <WechatMessages
@@ -76,7 +104,7 @@ export function WechatChat({ ...props }: WechatPageProps & { id: string; active:
             {reply.retry && (
               <Button
                 disabled={!available || wechatChatWriteBusy(state)}
-                onClick={() => void wechat.requestReply(id)}
+                onClick={() => void wechat.retryReply(id)}
               >
                 重试回复
               </Button>

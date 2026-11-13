@@ -1,3 +1,4 @@
+import { previewWechatGroupOutput } from "./preview-wechat-group.ts";
 import { previewCampusOutput } from "./preview-campus.ts";
 import { previewMapReply } from "./preview-map.ts";
 import {
@@ -131,6 +132,9 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
               : undefined;
           const text =
             campusReply ??
+            (context.systemPrompt?.includes("你为微信群聊")
+              ? previewWechatGroupOutput(context.messages, mode)
+              : undefined) ??
             mapReply ??
             (app === "notes"
               ? "周末出门前\n\n带上水杯、雨伞和要归还的书。给自己留一点散步的时间。"

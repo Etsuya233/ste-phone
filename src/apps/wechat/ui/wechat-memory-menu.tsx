@@ -19,6 +19,7 @@ export function WechatMemoryMenu({
   lockReason,
   disabled,
   onProfile,
+  onRound,
   onInsert,
   onToggle,
   onDelete,
@@ -35,6 +36,7 @@ export function WechatMemoryMenu({
   lockReason: string | null;
   disabled: boolean;
   onProfile(): void;
+  onRound?(): void;
   onInsert(after: string | null): void;
   onToggle(id: string, enabled: boolean): void;
   onDelete(id: string): void;
@@ -47,7 +49,7 @@ export function WechatMemoryMenu({
       <ActionSheet
         active={active}
         label="删除消息？"
-        description="这条消息将从双方的聊天记录中删除，无法恢复。"
+        description="这条消息将从共享的聊天记录中删除，无法恢复。"
         actions={[
           {
             label: "确认删除",
@@ -68,7 +70,8 @@ export function WechatMemoryMenu({
   let actions: ActionSheetAction[] = [];
   if (menu.type === "chat") {
     actions = [
-      { label: "资料", onClick: () => onProfile() },
+      { label: conversation?.kind === "group" ? "群资料" : "资料", onClick: onProfile },
+      ...(onRound ? [{ label: "本轮发言设置", disabled, onClick: onRound }] : []),
       { label: "在最前插入记忆屏障", disabled, onClick: () => onInsert(null) },
       {
         label: "在末尾插入记忆屏障",
@@ -81,7 +84,7 @@ export function WechatMemoryMenu({
     const index = messages.findIndex((message) => message.id === menu.id);
     const message = messages[index]!;
     actions = [
-      ...(message.senderId === accountId
+      ...(message.content.type !== "system" && message.senderId === accountId
         ? [
             {
               label: message.recalled ? "取消撤回" : "撤回消息",
