@@ -1,0 +1,69 @@
+:host .wechat-group-fields {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+:host .wechat-group-fields > label {
+  display: grid;
+  gap: 6px;
+}
+
+:host .wechat-group-fields input:not([type="checkbox"], [type="radio"]),
+:host .wechat-group-fields textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 10px;
+  color: inherit;
+  font: inherit;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+:host .wechat-group-fields textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+:host .wechat-group-fields fieldset {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+:host .wechat-group-person {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+:host .wechat-message-body {
+  min-width: 0;
+  max-width: calc(100% - 50px);
+}
+
+:host .wechat-message-body .wechat-message-bubble {
+  max-width: 100%;
+}
+
+:host .wechat-message-sender {
+  display: block;
+  margin: 0 0 3px;
+  color: #68686e;
+}
+
+:host .wechat-message--mine .wechat-message-sender {
+  text-align: right;
+}
+
+:host .wechat-system-message {
+  align-self: center;
+  border: 0;
+  background: transparent;
+  color: #68686e;
+  font: inherit;
+  font-size: 12px;
+  text-align: center;
+}

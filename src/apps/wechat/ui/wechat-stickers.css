@@ -5,15 +5,21 @@
   padding: 12px 16px;
 }
 :host .wechat-sticker-panel {
-  background: var(--ios-surface);
-  border-top: 1px solid var(--ios-line);
+  background: #f7f7f7;
+  border-top: 1px solid #e3e3e4;
+}
+:host [data-system-style="ios26"] .wechat-sticker-panel {
+  background: #f2f2f3;
+}
+:host [data-system-style="ios26"] .wechat-sticker-tile {
+  border-radius: 12px;
 }
 :host .wechat-sticker-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-content: start;
   gap: 8px;
-  height: 176px;
+  height: 188px;
   padding: 12px;
   overflow-y: auto;
 }
@@ -31,13 +37,16 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 4px;
+  padding: 5px 4px;
   border: 0;
-  border-radius: var(--ios-control-radius);
+  border-radius: 8px;
   background: transparent;
   color: var(--ios-ink);
   font: inherit;
   font-size: 12px;
+}
+:host .wechat-sticker-tile:active:not(:disabled) {
+  background: #0000000a;
 }
 :host .wechat-sticker-tile img {
   width: 100%;
@@ -58,49 +67,19 @@
   display: flex;
   gap: 4px;
   padding: 6px 10px;
-  border-top: 1px solid var(--ios-line);
+  border-top: 1px solid #e3e3e4;
   overflow-x: auto;
 }
 :host .wechat-sticker-packs button {
   flex-shrink: 0;
   padding: 8px 10px;
   border: 0;
-  border-radius: var(--ios-control-radius);
+  border-radius: 6px;
   background: transparent;
   color: var(--ios-ink);
   font: inherit;
   font-size: 13px;
 }
 :host .wechat-sticker-packs button[aria-pressed="true"] {
-  background: var(--ios-row-active);
-}
-:host .wechat-message-sticker {
-  width: 112px;
-  height: 112px;
-  max-width: 100%;
-  object-fit: contain;
-}
-:host .wechat-composer .wechat-sticker-toggle {
-  align-self: center;
-  padding: 0;
-  width: 32px;
-  height: 38px;
-  flex-shrink: 0;
-  background: transparent;
-  color: var(--ios-ink);
-  display: grid;
-  place-items: center;
-}
-
-:host .wechat-sticker-toggle svg {
-  width: 30px;
-  height: 30px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-}
-:host .wechat-sticker-toggle .wechat-smile-eye {
-  fill: currentColor;
-  stroke: none;
+  background: #e8e8ea;
 }

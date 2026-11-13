@@ -1,0 +1,192 @@
+:host .wechat-media-page,
+:host .wechat-payment-page {
+  background: #ededed;
+}
+
+:host .wechat-media-form {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+:host .wechat-media-frame {
+  display: grid;
+  place-items: center;
+  min-height: 172px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+:host .wechat-media-preview {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: #f4f4f5;
+  overflow: hidden;
+}
+
+:host .wechat-media-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+}
+
+:host .wechat-media-preview-hint {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #00000066;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+:host .wechat-media-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 24px 12px;
+  color: #a0a0a5;
+  font-size: 13px;
+}
+
+:host .wechat-media-empty svg {
+  width: 36px;
+  height: 36px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:host .wechat-form-field {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+:host .wechat-form-field > span {
+  color: #8a8a8f;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+:host .wechat-form-field textarea,
+:host .wechat-form-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #e4e4e6;
+  border-radius: 6px;
+  background: #fafafa;
+  color: #191919;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+:host .wechat-form-field textarea:focus,
+:host .wechat-form-field input:focus {
+  border-color: #b9e8c8;
+  outline: 0;
+  background: #fff;
+  box-shadow: 0 0 0 2px #07c16026;
+}
+
+:host .wechat-media-caption {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+:host .wechat-media-caption h2 {
+  margin: 0 0 5px;
+  color: #8a8a8f;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+:host .wechat-media-caption p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+:host .wechat-media-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+:host .wechat-media-tools .ios-button {
+  flex: 1 1 132px;
+  min-height: 40px;
+  padding-inline: 10px;
+  border: 1px solid #dcdcde;
+  border-radius: 6px;
+  background: #fff;
+  color: #07a34f;
+  font-size: 14px;
+}
+
+:host .wechat-media-tools .ios-button:active:not(:disabled) {
+  background: #f2f2f3;
+}
+
+:host .wechat-media-submit,
+:host .wechat-payment-submit {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 6px;
+  background: #07c160;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+:host .wechat-form-error {
+  margin: 0;
+  padding: 0 2px;
+  color: #b34034;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+:host [data-system-style="ios26"] .wechat-media-frame,
+:host [data-system-style="ios26"] .wechat-form-field,
+:host [data-system-style="ios26"] .wechat-media-caption {
+  border-radius: 18px;
+}
+
+:host [data-system-style="ios26"] .wechat-media-submit,
+:host [data-system-style="ios26"] .wechat-payment-submit,
+:host [data-system-style="ios26"] .wechat-media-tools .ios-button {
+  border-radius: 999px;
+}
+
+@container (max-width: 340px) {
+  :host .wechat-media-form,
+  :host .wechat-payment-compose {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  :host .wechat-media-frame {
+    min-height: 156px;
+    padding: 10px;
+  }
+}

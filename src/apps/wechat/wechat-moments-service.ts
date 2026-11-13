@@ -19,10 +19,8 @@ import {
 
 import { galleryImageReference, type GalleryImageReference } from "../gallery/public.ts";
 import type { ImageHub } from "../../core/image-hub/public.ts";
-import {
-  generateRefinedMomentImagePrompt,
-  momentImagePromptInput,
-} from "./wechat-moments-image-prompt.ts";
+import { generateRefinedImagePrompt } from "./wechat-image-prompt.ts";
+import { momentImagePromptInput } from "./wechat-moments-image-prompt.ts";
 
 interface Dependencies {
   imageHub: ImageHub;
@@ -225,7 +223,7 @@ export class WechatMomentsService {
     const item = momentImageAt(moment, index);
     const input = momentImagePromptInput(moment, item, snapshot.people, prompt);
     return this.generation.imageTask("image-prompt", account.scopeId, ({ signal }) =>
-      generateRefinedMomentImagePrompt(this.#dependencies, input, signal),
+      generateRefinedImagePrompt(this.#dependencies, "朋友圈配图提示词", input, signal),
     );
   }
 
@@ -267,7 +265,7 @@ export class WechatMomentsService {
       prompt,
     );
     return this.generation.imageTask("image-prompt", account.scopeId, ({ signal }) =>
-      generateRefinedMomentImagePrompt(this.#dependencies, input, signal),
+      generateRefinedImagePrompt(this.#dependencies, "朋友圈配图提示词", input, signal),
     );
   }
 

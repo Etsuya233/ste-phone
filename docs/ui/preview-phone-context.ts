@@ -6,7 +6,11 @@ import {
   readPhoneIntentBlocks,
   type PhoneIntentBlocks,
 } from "../../src/infrastructure/host/phone-intent-migration.ts";
-import type { WechatData, WechatPerson } from "../../src/apps/wechat/wechat.ts";
+import type {
+  WechatData,
+  WechatDirectConversation,
+  WechatPerson,
+} from "../../src/apps/wechat/wechat.ts";
 import { conversationId } from "../../src/apps/wechat/wechat.ts";
 
 /** 一个 localStorage 值原子保存绑定与 Intent；存在新结构后不再读取旧预设。 */
@@ -72,34 +76,58 @@ export function seedPreviewContextWechat(): void {
   }));
   const now = Date.now();
   const data: WechatData = {
-    version: 4,
+    version: 6,
     account: people[3]!,
     conversations: [
-      [0, 1],
-      [0, 2],
-      [1, 2],
-      [0, 3],
-    ].map(([a, b], index) => ({
-      id: conversationId("preview-space", people[a!]!.id, people[b!]!.id),
-      people: [people[a!]!, people[b!]!],
-      messages: [65, 25, 10, 5].map((minutes, message) => ({
-        id: `context-${index}-${message}`,
-        senderId: people[(message % 2 === 0 ? a : b)!]!.id,
-        content: {
-          type: "text",
-          text: `${people[a!]!.name}与${people[b!]!.name}的消息 ${message + 1}`,
-        },
-        createdAt: new Date(now - minutes * 60_000).toISOString(),
-        ...(message === 2 && index === 0 ? { recalled: true as const } : {}),
+      ...[
+        [0, 1],
+        [0, 2],
+        [1, 2],
+        [0, 3],
+      ].map(([a, b], index): WechatDirectConversation => ({
+        id: conversationId("preview-space", people[a!]!.id, people[b!]!.id),
+        people: [people[a!]!, people[b!]!],
+        messages: [65, 25, 10, 5].map((minutes, message) => ({
+          id: `context-${index}-${message}`,
+          senderId: people[(message % 2 === 0 ? a : b)!]!.id,
+          content: {
+            type: "text",
+            text: `${people[a!]!.name}与${people[b!]!.name}的消息 ${message + 1}`,
+          },
+          createdAt: new Date(now - minutes * 60_000).toISOString(),
+          ...(message === 2 && index === 0 ? { recalled: true as const } : {}),
+        })),
+        ...(index === 1
+          ? {
+              memoryBarriers: [
+                { id: "context-barrier", afterMessageId: `context-${index}-1`, enabled: true },
+              ],
+            }
+          : {}),
       })),
-      ...(index === 1
-        ? {
-            memoryBarriers: [
-              { id: "context-barrier", afterMessageId: `context-${index}-1`, enabled: true },
-            ],
-          }
-        : {}),
-    })),
+      {
+        id: "context-demo-group",
+        kind: "group",
+        name: "样例群聊",
+        description: "用于预览 App Intent 群聊筛选。",
+        people: [people[0]!, people[1]!, people[2]!, people[3]!],
+        memberIds: ["red", "blue", "white"],
+        messages: [
+          {
+            id: "context-demo-group-message",
+            senderId: "green",
+            content: { type: "text", text: "群聊的历史消息" },
+            createdAt: new Date(now - 10 * 60_000).toISOString(),
+          },
+          {
+            id: "context-demo-group-system",
+            senderId: "red",
+            content: { type: "system", text: "小红将小绿移出群聊" },
+            createdAt: new Date(now - 5 * 60_000).toISOString(),
+          },
+        ],
+      },
+    ],
   };
   localStorage.setItem(key, JSON.stringify(data));
 }

@@ -15,9 +15,25 @@ function fixture() {
   const listeners = new Set<() => void>();
   const saved = new Map<string, WechatIntentData>();
   const messages: WechatData = {
-    version: 4,
+    version: 6,
     account: null,
     conversations: [
+      {
+        id: "group",
+        kind: "group",
+        name: "测试群",
+        description: "",
+        people: [{ id: "a", scopeId: "space", name: "甲" }],
+        memberIds: ["a"],
+        messages: [
+          {
+            id: "system",
+            senderId: "a",
+            createdAt: "2020-01-01T00:00:00.000Z",
+            content: { type: "system", text: "甲创建了群聊" },
+          },
+        ],
+      },
       {
         id: '["space","a","b"]',
         people: [
@@ -109,5 +125,28 @@ test("微信 Intent 保存切聊天不会污染新聊天，失败保留配置并
   f.setWriting(Promise.resolve());
   await f.service.remove(intent.id);
   assert.deepEqual(f.service.getSnapshot().intents, []);
+  f.service.dispose();
+});
+
+test("群聊 Intent 草稿可单独预览，保存确认后才更新引用的读取范围", async () => {
+  const f = fixture();
+  await f.service.save(intent);
+  const groupIntent = {
+    ...intent,
+    selection: { ...intent.selection, personIds: [], groupIds: ["group"] },
+  };
+  const read = () =>
+    f.service.source.readIntent({ chatId: "a", intentId: intent.id, now: Date.now() });
+  assert.match(f.service.preview(groupIntent).text, /系统："甲创建了群聊"/);
+
+  const pending = Promise.withResolvers<void>();
+  f.setWriting(pending.promise);
+  const writing = f.service.save(groupIntent);
+  assert.match(read(), /已保存消息/);
+  assert.doesNotMatch(read(), /测试群/);
+  pending.resolve();
+  await writing;
+  assert.match(read(), /群聊 "测试群"/);
+  assert.doesNotMatch(read(), /已保存消息/);
   f.service.dispose();
 });

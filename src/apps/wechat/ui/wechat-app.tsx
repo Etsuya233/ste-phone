@@ -7,6 +7,11 @@ import type { WechatService } from "../wechat-service.ts";
 import type { WechatRoute } from "./wechat-page.tsx";
 import { WechatHome } from "./wechat-home.tsx";
 import { WechatAccounts, WechatPerson } from "./wechat-people.tsx";
+import {
+  WechatGroupChat,
+  WechatGroupDetailsPage,
+  WechatGroupRound,
+} from "./wechat-group-pages.tsx";
 import { WechatChat } from "./wechat-chat.tsx";
 import { WechatStickers } from "./wechat-stickers.tsx";
 import type { WechatStickerLibrary } from "../wechat-sticker-library.ts";
@@ -20,6 +25,8 @@ import { WechatMomentCompose } from "./wechat-moment-compose.tsx";
 import { WechatMomentDetail } from "./wechat-moment-detail.tsx";
 import { MomentGenerationNotice, WechatMomentAiAuthor } from "./wechat-moment-ai.tsx";
 import { WechatMomentParticipants } from "./wechat-moment-participants.tsx";
+import { WechatChatImage } from "./wechat-chat-image.tsx";
+import { WechatChatPayment, WechatChatPaymentCompose } from "./wechat-chat-payment.tsx";
 
 export function WechatApp({
   wechat,
@@ -163,10 +170,50 @@ export function WechatApp({
                     active={active && navigation.current}
                   />
                 );
+              case "group-details":
+                return (
+                  <WechatGroupDetailsPage
+                    {...props}
+                    id={route.id}
+                    active={active && navigation.current}
+                  />
+                );
+              case "group-round":
+                return (
+                  <WechatGroupRound
+                    {...props}
+                    id={route.id}
+                    active={active && navigation.current}
+                  />
+                );
+              case "group-chat":
+                return (
+                  <WechatGroupChat {...props} id={route.id} active={active && navigation.current} />
+                );
               case "chat":
                 return (
                   <WechatChat {...props} id={route.id} active={active && navigation.current} />
                 );
+              case "chat-image":
+                return (
+                  <WechatChatImage
+                    {...props}
+                    id={route.id}
+                    messageId={route.messageId}
+                    active={active && navigation.current}
+                  />
+                );
+              case "chat-payment-compose":
+                return (
+                  <WechatChatPaymentCompose
+                    {...props}
+                    id={route.id}
+                    kind={route.kind}
+                    active={active && navigation.current}
+                  />
+                );
+              case "chat-payment":
+                return <WechatChatPayment {...props} id={route.id} messageId={route.messageId} />;
             }
           }}
         </NavigationStack>

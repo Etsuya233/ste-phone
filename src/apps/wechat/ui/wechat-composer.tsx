@@ -1,13 +1,17 @@
 import type { RefObject } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { WechatChatAttachments } from "./wechat-chat-attachments.tsx";
+import { WechatAddIcon, WechatSmileIcon } from "./wechat-chat-icons.tsx";
 import { WechatStickerPanel } from "./wechat-sticker-panel.tsx";
 import type { WechatStickerLibrary } from "../wechat-sticker-library.ts";
 import type { WechatStickerPack } from "../wechat-stickers.ts";
 
-const MIN_HEIGHT = 38;
-const MAX_HEIGHT = 96;
+const MIN_HEIGHT = 40;
+const MAX_HEIGHT = 100;
+type ComposerPanel = "none" | "stickers" | "attachments";
 
 // 输入框随内容长高，底栏高度以实际渲染结果为准，超过上限后改为内部滚动。
+// 表情与附件面板都属于底栏的一部分，打开时由同一个 ResizeObserver 通知页面避让。
 export function WechatComposer({
   value,
   disabled,
@@ -22,6 +26,8 @@ export function WechatComposer({
   stickers,
   onSendSticker,
   onManageStickers,
+  onPickImage,
+  payments,
 }: {
   value: string;
   disabled: boolean;
@@ -36,11 +42,21 @@ export function WechatComposer({
   stickers: WechatStickerLibrary;
   onSendSticker(marker: string): void;
   onManageStickers(): void;
+  onPickImage(): void;
+  payments?: { onRedPacket(): void; onTransfer(): void };
 }) {
   const form = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
-  const [showStickers, setShowStickers] = useState(false);
+  const [panel, setPanel] = useState<ComposerPanel>("none");
   useComposerHeight(textarea, form, value, onHeightChange);
+  const toggle = (next: Exclude<ComposerPanel, "none">) => {
+    textarea.current?.blur();
+    setPanel((current) => (current === next ? "none" : next));
+  };
+  const pick = (open: () => void) => {
+    setPanel("none");
+    open();
+  };
   return (
     <div ref={form}>
       <form
@@ -52,61 +68,77 @@ export function WechatComposer({
           }
         }}
       >
+        <button
+          type="button"
+          className="wechat-composer-icon wechat-attachments-toggle"
+          aria-label="添加附件"
+          aria-expanded={panel === "attachments"}
+          disabled={disabled}
+          onClick={() => toggle("attachments")}
+        >
+          <WechatAddIcon />
+        </button>
         <textarea
           ref={textarea}
           aria-label="消息"
           rows={1}
           value={value}
+          placeholder="发消息"
           onChange={(event) => onChange(event.target.value)}
-          onFocus={() => setShowStickers(false)}
+          onFocus={() => setPanel("none")}
         />
         <button
           type="button"
-          className="wechat-sticker-toggle"
+          className="wechat-composer-icon wechat-sticker-toggle"
           aria-label="表情"
-          aria-expanded={showStickers}
-          onClick={() => {
-            textarea.current!.blur();
-            setShowStickers(!showStickers);
-          }}
+          aria-expanded={panel === "stickers"}
+          onClick={() => toggle("stickers")}
         >
-          {/* 使用矢量笑脸，避免系统将字符渲染为彩色 Emoji。 */}
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="9" />
-            <circle cx="8.5" cy="9" r="1" className="wechat-smile-eye" />
-            <circle cx="15.5" cy="9" r="1" className="wechat-smile-eye" />
-            <path d="M7.5 13.5a4.7 4.7 0 0 0 9 0" />
-          </svg>
+          <WechatSmileIcon />
         </button>
-        {/* 两个动作使用独立节点，避免停止后切回 submit 导致同一次点击提交草稿。 */}
-        {replying ? (
-          <button key="stop" type="button" onClick={onStop}>
-            停止
-          </button>
-        ) : (
-          <button key="send" type="submit" className="wechat-send" disabled={disabled}>
-            发送
-          </button>
-        )}
-        {delayed && (
-          <button
-            type="button"
-            className="wechat-queue-message"
-            aria-label="加入消息队列"
-            disabled={disabled || !value.trim()}
-            onClick={onQueue}
-          >
-            队列
-          </button>
-        )}
+        <div className="wechat-composer-actions">
+          {/* 停止与发送使用独立节点，避免停止后切回 submit 导致同一次点击提交草稿。 */}
+          {replying ? (
+            <button key="stop" type="button" className="wechat-stop" onClick={onStop}>
+              停止
+            </button>
+          ) : (
+            <button key="send" type="submit" className="wechat-send" disabled={disabled}>
+              发送
+            </button>
+          )}
+          {delayed && (
+            <button
+              type="button"
+              className="wechat-queue-message"
+              aria-label="加入消息队列"
+              disabled={disabled || !value.trim()}
+              onClick={onQueue}
+            >
+              队列
+            </button>
+          )}
+        </div>
       </form>
-      {showStickers && (
+      {panel === "stickers" && (
         <WechatStickerPanel
           packs={packs}
           stickers={stickers}
           disabled={disabled}
           onSend={onSendSticker}
           onManage={onManageStickers}
+        />
+      )}
+      {panel === "attachments" && (
+        <WechatChatAttachments
+          disabled={disabled}
+          onImage={() => pick(onPickImage)}
+          payments={
+            payments && {
+              onRedPacket: () => pick(payments.onRedPacket),
+              onTransfer: () => pick(payments.onTransfer),
+            }
+          }
         />
       )}
     </div>

@@ -59,6 +59,7 @@
   fill: currentColor;
 }
 :host .notes-app-icon {
+  overflow: hidden;
   background: #fffdf9;
 }
 :host .notes-app-icon .notes-icon-header {

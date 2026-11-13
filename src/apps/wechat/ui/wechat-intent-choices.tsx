@@ -1,47 +1,45 @@
-import type { WechatIntentScope } from "../wechat-intent.ts";
 import { GroupedList } from "../../../frontend/foundation/grouped-list.tsx";
 import { ListCell } from "../../../frontend/foundation/list-cell.tsx";
 
-export function WechatIntentPeople({
-  scope,
+export function WechatIntentChoices({
+  title,
+  description,
+  choices,
   selected,
   busy,
   onChange,
 }: {
-  scope: WechatIntentScope | undefined;
+  title: string;
+  description: string;
+  choices: readonly { id: string; name: string }[];
   selected: readonly string[];
   busy: boolean;
   onChange(ids: readonly string[]): void;
 }) {
-  const missing = selected.filter((id) => !scope?.people.some((person) => person.id === id));
+  const missing = selected.filter((id) => !choices.some((choice) => choice.id === id));
   return (
-    <GroupedList
-      title={`人物 · 已选 ${selected.length} 人`}
-      description="至少选择 2 人，只读取参与双方均被选中的会话，与当前微信帐号无关。"
-    >
-      {scope?.people.map((person) => (
+    <GroupedList title={title} description={description}>
+      {choices.map((choice) => (
         <ListCell
-          key={person.id}
+          key={choice.id}
           title={
-            <label className="wechat-intent-person">
+            <label className="wechat-intent-choice">
               <input
                 type="checkbox"
-                checked={selected.includes(person.id)}
+                checked={selected.includes(choice.id)}
                 disabled={busy}
                 onChange={(event) =>
                   onChange(
                     event.target.checked
-                      ? [...selected, person.id]
-                      : selected.filter((id) => id !== person.id),
+                      ? [...selected, choice.id]
+                      : selected.filter((id) => id !== choice.id),
                   )
                 }
               />
               <span>
-                {person.name}
-                {scope.people.some(
-                  (other) => other.id !== person.id && other.name === person.name,
-                ) ? (
-                  <small className="wechat-intent-person-id">{person.id}</small>
+                {choice.name}
+                {choices.some((other) => other.id !== choice.id && other.name === choice.name) ? (
+                  <small className="wechat-intent-choice-id">{choice.id}</small>
                 ) : null}
               </span>
               <span className="wechat-intent-check" aria-hidden="true">
@@ -55,7 +53,7 @@ export function WechatIntentPeople({
         <ListCell
           key={id}
           title={
-            <label className="wechat-intent-person">
+            <label className="wechat-intent-choice">
               <input
                 type="checkbox"
                 checked

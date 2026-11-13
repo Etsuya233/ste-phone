@@ -1,17 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { conversationId } from "./wechat.ts";
-import { parseWechatReply, buildWechatPrompt } from "./wechat-prompt.ts";
+import { buildWechatPrompt } from "./wechat-prompt.ts";
+import { parseWechatReply } from "./wechat-reply-output.ts";
 
 test("bidirectional conversation identity retains scope and distinct people", () => {
   assert.equal(conversationId("scope", "A", "B"), conversationId("scope", "B", "A"));
   assert.notEqual(conversationId("scope", "A", "B"), conversationId("other", "A", "B"));
 });
-test("reply boundaries come only from valid explicit text messages", () => {
+test("reply parser preserves explicit message boundaries and rejects invalid output", () => {
   assert.deepEqual(
     parseWechatReply(
       '{"messages":[{"type":"text","text":" 一。二。 "},{"type":"text","text":"三"}]}',
-    ),
+    ).messages,
     [
       { type: "text", text: "一。二。" },
       { type: "text", text: "三" },
@@ -23,6 +24,11 @@ test("reply boundaries come only from valid explicit text messages", () => {
     '{"messages":[]}',
     '{"messages":[{"type":"image","text":"x"}]}',
     '{"messages":[{"type":"text","text":" "}]}',
+    '{"messages":[{"type":"image","description":"海边","prompt":" "}]}',
+    '{"messages":[{"type":"image","description":"海边","prompt":"日落","image":"/forged.png"}]}',
+    '{"messages":[{"type":"redPacket","amountFen":8.88,"note":""}]}',
+    '{"messages":[{"type":"transfer","amountFen":100,"note":"","status":"received"}]}',
+    '{"messages":[],"paymentActions":[{"messageId":"card","action":"receive"},{"messageId":"card","action":"return"}]}',
   ]) {
     assert.throws(() => parseWechatReply(invalid));
   }

@@ -1,16 +1,28 @@
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { ChatContext } from "../../core/chat/public.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
-import type { WechatPreferences } from "../settings/public.ts";
-import type { ModelConnectionsReader } from "../settings/public.ts";
+import type {
+  ModelConnectionsReader,
+  WechatPreferences,
+  WechatSendMode,
+} from "../settings/public.ts";
 import type { WechatStorage } from "./ports/wechat-storage.ts";
 import {
   conversationId,
   emptyWechat,
   type WechatConversation,
   type WechatData,
+  type WechatMessageContent,
   type WechatSnapshot,
 } from "./wechat.ts";
+import {
+  canReadWechatGroup,
+  changeWechatGroup,
+  selectWechatGroupSpeakers,
+  type WechatGroupDetails,
+  type WechatGroupReply,
+} from "./wechat-group.ts";
+import type { WechatReplyInput } from "./wechat-reply.ts";
 import { WechatReplySession } from "./wechat-reply-session.ts";
 import { readWechatRoster } from "./wechat-context.ts";
 import { editWechatMessage, type WechatMessageEdit } from "./wechat-message-edit.ts";
@@ -20,6 +32,7 @@ import { WechatSubmission } from "./wechat-submission.ts";
 import { wechatMemoryBoundaries } from "./wechat-memory.ts";
 import type { WechatStickerLibrary } from "./wechat-sticker-library.ts";
 import { WechatMomentsService } from "./wechat-moments-service.ts";
+import { WechatChatMedia } from "./wechat-chat-media.ts";
 
 import type { ImageHub } from "../../core/image-hub/public.ts";
 
@@ -45,7 +58,9 @@ export class WechatService {
   readonly #writes: WechatWrites;
   readonly memory: WechatMemoryEditor;
   readonly moments: WechatMomentsService;
+  readonly media: WechatChatMedia;
   #operation = 0;
+  #lastGroupRound: WechatGroupReply | undefined;
   #preparation = 0;
   #sourceKey: string;
   #sourceRevision: number;
@@ -64,6 +79,7 @@ export class WechatService {
       error: null,
       reply: { status: "idle" },
       momentGeneration: { status: "idle" },
+      chatMediaBusy: false,
       writeBusy: false,
       barrierSaving: false,
       operationError: null,
@@ -80,7 +96,11 @@ export class WechatService {
       operation: () => this.#operation,
       generation: () => this.#writes.generation,
       replyBusy: () =>
-        this.#replies.busy || this.moments.generation.busy || this.#snapshot.barrierSaving,
+        this.#replies.busy ||
+        this.#writes.busy ||
+        this.moments.generation.busy ||
+        this.#snapshot.barrierSaving ||
+        this.#snapshot.chatMediaBusy,
       conversation: (id) => this.#conversationForSending(id),
       withConversation: (conversation) => this.#dataWithConversation(conversation),
       save: (update) => this.#writes.save(update),
@@ -100,9 +120,18 @@ export class WechatService {
         this.#submission.busy ||
         this.#replies.busy ||
         this.#writes.busy ||
+        this.#snapshot.chatMediaBusy ||
         this.#snapshot.barrierSaving,
       save: (update, generated) => this.#writes.save(update, generated),
       publishGeneration: (momentGeneration) => this.#publish({ momentGeneration }),
+    });
+    this.media = new WechatChatMedia({
+      ...dependencies,
+      snapshot: this.getSnapshot,
+      conversation: (id) => this.#conversationForSending(id),
+      busy: () => this.#chatEditBusy(),
+      save: (update) => this.#writes.save(update),
+      publishBusy: (chatMediaBusy) => this.#publish({ chatMediaBusy }),
     });
     this.#sourceKey = this.#binding();
     this.#sourceRevision = dependencies.data.getSnapshot().revision;
@@ -185,12 +214,34 @@ export class WechatService {
 
   getConversation(otherId: string): WechatConversation | undefined {
     const { account } = this.#snapshot.data;
-    return account
-      ? this.#snapshot.data.conversations.find(
-          (item) => item.id === conversationId(account.scopeId, account.id, otherId),
-        )
-      : undefined;
+    if (!account) {
+      return undefined;
+    }
+    const id = conversationId(account.scopeId, account.id, otherId);
+    return this.#snapshot.data.conversations.find((item) =>
+      item.kind === "group"
+        ? item.id === otherId && canReadWechatGroup(item, account)
+        : item.id === id,
+    );
   }
+
+  async saveGroup(details: WechatGroupDetails, id?: string): Promise<string> {
+    if (this.#chatEditBusy()) {
+      throw new Error("请等待当前消息处理完成，生成中可先停止");
+    }
+    const group = id === undefined ? undefined : this.getConversation(id);
+    if (id !== undefined && group?.kind !== "group") {
+      throw new Error("当前帐号无法编辑该群聊");
+    }
+    const next = changeWechatGroup(
+      this.#snapshot,
+      details,
+      group?.kind === "group" ? group : undefined,
+    );
+    await this.#writes.save(() => this.#dataWithConversation(next));
+    return next.id;
+  }
+
   async saveReplyGuidance(id: string, text: string): Promise<void> {
     if (this.#submission.busy || this.#snapshot.barrierSaving) {
       throw new Error("请等待消息保存完成后再保存回复指导");
@@ -218,12 +269,22 @@ export class WechatService {
   async send(
     otherId: string,
     text: string,
-    options: { onSent?: () => void; preserveDraft?: boolean } = {},
+    options: { onSent?: () => void; preserveDraft?: boolean; round?: WechatGroupReply } = {},
   ): Promise<boolean> {
     const operation = this.#operation;
-    const sent = text.trim() ? await this.#submission.append(otherId, text, options) : true;
+    const value = text.trim();
+    const sent = value
+      ? await this.#submission.append(
+          otherId,
+          { type: "text", text: value },
+          {
+            onSent: options.onSent,
+            draftText: options.preserveDraft ? undefined : text,
+          },
+        )
+      : true;
     if (sent && operation === this.#operation) {
-      await this.requestReply(otherId);
+      await this.requestReply(otherId, options.round);
     }
     return sent;
   }
@@ -237,24 +298,111 @@ export class WechatService {
     if (this.#dependencies.preferences.getSnapshot() !== "delayed") {
       throw new Error("请切换为延迟发送后加入消息队列");
     }
-    return this.#submission.append(otherId, text, options);
+    const value = text.trim();
+    return value
+      ? this.#submission.append(
+          otherId,
+          { type: "text", text: value },
+          {
+            draftText: options.preserveDraft ? undefined : text,
+          },
+        )
+      : false;
   }
 
-  async requestReply(otherId: string): Promise<void> {
+  async sendContent(
+    otherId: string,
+    content: Exclude<WechatMessageContent, { type: "text" | "system" }>,
+    mode: WechatSendMode,
+  ): Promise<boolean> {
+    if (this.#chatEditBusy()) {
+      throw new Error("请等待当前消息处理完成");
+    }
+    if (content.type !== "image" && content.status !== "pending") {
+      throw new Error("新发出的红包或转账须等待接收方处理");
+    }
+    const operation = this.#operation;
+    const conversation = this.#conversationForSending(otherId);
+    if (conversation.kind === "group" && content.type !== "image") {
+      throw new Error("群聊暂不支持红包和转账");
+    }
+    const conversationId = conversation.id;
+    const sent = await this.#submission.append(otherId, content);
+    if (sent && mode === "immediate" && operation === this.#operation) {
+      // 保存成功即返回聊天页；如果回复启动失败，仍只重试回复，避免重发卡片。
+      void this.requestReply(otherId).catch((error: Error) => {
+        if (operation === this.#operation) {
+          this.#publish({
+            reply: { status: "error", conversationId, error: error.message, retry: true },
+          });
+        }
+      });
+    }
+    return sent;
+  }
+
+  async retryReply(id: string): Promise<void> {
+    const reply = this.#snapshot.reply;
+    if (
+      reply.status !== "error" ||
+      !reply.retry ||
+      reply.conversationId !== this.#conversationForSending(id).id
+    ) {
+      throw new Error("当前会话没有可重试的回复");
+    }
+    await this.requestReply(id, this.#lastGroupRound);
+  }
+
+  async requestReply(otherId: string, round?: WechatGroupReply): Promise<void> {
     if (this.#chatEditBusy()) {
       throw new Error("请等待当前消息处理完成");
     }
     const conversation = this.#conversationForSending(otherId);
-    const account = this.#snapshot.data.account!;
-    const sender = this.#snapshot.people.find((person) => person.id === account.id)!;
-    const recipient = this.#snapshot.people.find((person) => person.id === otherId)!;
+    const {
+      data: { account, replyGuidance },
+      people,
+    } = this.#snapshot;
+    const sender = people.find((person) => person.id === account!.id)!;
+    const guidance = replyGuidance?.[account!.scopeId] ?? {};
+    let speakers: WechatReplyInput["speakers"];
+    if (conversation.kind === "group") {
+      this.#lastGroupRound = round;
+      if (conversation.memberIds.length === 1) {
+        return;
+      }
+      try {
+        speakers = {
+          kind: "group",
+          people: selectWechatGroupSpeakers(conversation, sender.id, people, round ?? {}),
+          guidance,
+          roundGuidance: round?.guidance?.trim() ?? "",
+          requireAll: round?.memberIds !== undefined,
+        };
+      } catch (error) {
+        this.#publish({
+          reply: {
+            status: "error",
+            conversationId: conversation.id,
+            error: (error as Error).message,
+            retry: true,
+          },
+        });
+        return;
+      }
+    } else {
+      this.#lastGroupRound = undefined;
+      speakers = {
+        kind: "direct",
+        recipient: people.find((person) => person.id === otherId)!,
+        guidance: guidance[otherId] ?? "",
+      };
+    }
     await this.#replies.generateAndSave({
       conversation,
       sender,
-      recipient,
+      speakers,
       // 在取材前固定本轮指导；生成期间保存的新内容只影响下一轮。
       historyMessageLimit: this.#dependencies.preferences.getHistoryMessageLimit(),
-      replyGuidance: this.#snapshot.data.replyGuidance?.[account.scopeId]?.[otherId] ?? "",
       save: (next, generated) =>
         this.#writes.save(() => this.#dataWithConversation(next), generated),
     });
@@ -287,6 +435,7 @@ export class WechatService {
       this.#submission.busy ||
       this.#replies.busy ||
       this.moments.generation.busy ||
+      this.#snapshot.chatMediaBusy ||
       this.#writes.busy ||
       this.#snapshot.barrierSaving
     );
@@ -294,6 +443,18 @@ export class WechatService {
 
   #conversationForSending(otherId: string): WechatConversation {
     const { account } = this.#snapshot.data;
+    const existing = this.getConversation(otherId);
+    if (existing?.kind === "group") {
+      if (
+        account?.scopeId !== this.#snapshot.scopeId ||
+        this.#snapshot.error ||
+        this.#snapshot.loading
+      ) {
+        throw new Error("当前帐号或群聊资料不可用");
+      }
+      wechatMemoryBoundaries(existing);
+      return existing;
+    }
     const other = this.#snapshot.people.find((person) => person.id === otherId);
     if (
       !account ||
@@ -304,7 +465,8 @@ export class WechatService {
     ) {
       throw new Error("当前帐号或对方人物资料不可用");
     }
-    const conversation = this.getConversation(otherId) ?? {
+    const conversation = existing ?? {
+      kind: "direct" as const,
       id: conversationId(account.scopeId, account.id, otherId),
       people: [account, { id: other.id, name: other.name, scopeId: account.scopeId }],
       messages: [],
@@ -325,6 +487,7 @@ export class WechatService {
 
   cancel(viewChanged = false): void {
     ++this.#operation;
+    this.media.cancel();
     this.moments.generation.cancel(viewChanged);
     if (!this.#submission.busy) {
       this.#replies.cancel(viewChanged);

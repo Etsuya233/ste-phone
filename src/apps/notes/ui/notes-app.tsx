@@ -174,6 +174,7 @@ function NotesAiComposePage({
   ) : (
     <NotesAiNewPage
       notes={props.notes}
+      role={role}
       current={props.navigation.current}
       onBack={props.navigation.pop}
       onOpen={props.onOpen}

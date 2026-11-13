@@ -168,17 +168,21 @@ export class NotesService {
   }
 
   generate(
+    role: NotesRole,
     instruction: string,
     signal: AbortSignal,
     onText: (text: string) => void,
   ): Promise<string> {
-    return generateNoteText(
-      this.dependencies.connections,
-      this.dependencies.transport,
+    const { connections, transport, data } = this.dependencies;
+    return generateNoteText({
+      connections,
+      transport,
+      data,
+      role,
       instruction,
       signal,
       onText,
-    );
+    });
   }
 
   private async commit(data: NotesData): Promise<void> {

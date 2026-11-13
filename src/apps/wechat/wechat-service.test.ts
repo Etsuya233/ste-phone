@@ -3,9 +3,14 @@ import test from "node:test";
 import { WechatService } from "./wechat-service.ts";
 import { WechatStickerLibrary } from "./wechat-sticker-library.ts";
 import { pendingWechatMessages } from "./wechat.ts";
-import type { WechatData } from "./wechat.ts";
+import type { WechatData, WechatMessage } from "./wechat.ts";
 import type { DataAppPublic, DataSourceSnapshot } from "../data-source/public.ts";
 import { createStAiTransport } from "../../infrastructure/host/ai-transport.ts";
+
+function messageText({ content }: WechatMessage): string {
+  assert.equal(content.type, "text");
+  return content.text;
+}
 
 function fixture() {
   const people = [
@@ -55,7 +60,7 @@ function fixture() {
     readRelatedBackground: async (request) => {
       assert.ok(
         request.participantIds.length >= 1 &&
-          request.participantIds.every((id) => ["a", "b"].includes(id)),
+          request.participantIds.every((id) => people.some((person) => person.id === id)),
       );
       return { relationships: [], heldItems: [], importantEvents: [], otherCharacters: [] };
     },
@@ -103,6 +108,8 @@ function fixture() {
   let releaseModel: (() => void) | null = null;
   let modelStarted: (() => void) | null = null;
   let holdModel = false;
+  let releaseImage: (() => void) | null = null;
+  let imageStarted: (() => void) | null = null;
   const stickers = new WechatStickerLibrary({
     read: () => [
       {
@@ -174,15 +181,24 @@ function fixture() {
     },
     imageHub: {
       listImages: async () => [],
-      generate: async ({ prompt }) => [
-        {
-          id: "hub-image",
-          imagePath: "/image.png",
-          prompt,
-          startedAt: "2026-11-04T00:00:00Z",
-          savedAt: "2026-11-04T00:00:01Z",
-        },
-      ],
+      generate: async ({ prompt }) => {
+        if (imageStarted) {
+          imageStarted();
+          imageStarted = null;
+          await new Promise<void>((resolve) => {
+            releaseImage = resolve;
+          });
+        }
+        return [
+          {
+            id: "hub-image",
+            imagePath: "/image.png",
+            prompt,
+            startedAt: "2026-11-04T00:00:00Z",
+            savedAt: "2026-11-04T00:00:01Z",
+          },
+        ];
+      },
     },
     transport: createStAiTransport(() => ({}), {
       fetchImpl: async (_, init) => {
@@ -223,6 +239,14 @@ function fixture() {
     },
     releaseModel() {
       releaseModel?.();
+    },
+    holdImage() {
+      return new Promise<void>((resolve) => {
+        imageStarted = resolve;
+      });
+    },
+    releaseImage() {
+      releaseImage?.();
     },
     preferences,
     stickers,
@@ -324,6 +348,80 @@ test("send persists explicit identities and account switch reads the same two-wa
   f.service.dispose();
 });
 
+test("图片描述可先保存，补图更新原消息并保留草稿和待回复状态", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  f.service.setDraft("b", "文字草稿");
+  const content = { type: "image", description: "窗边的照片", prompt: "" } as const;
+  assert.equal(await f.service.sendContent("b", content, "delayed"), true);
+  const message = f.stored!.conversations[0]!.messages[0]!;
+  assert.deepEqual(message.content, content);
+  assert.equal(f.service.getDraft("b"), "文字草稿");
+  assert.equal(f.calls, 0);
+
+  f.momentOutput({ prompt: "  午后窗边的一张照片  " });
+  const prompt = await f.service.media.refineImagePrompt("b", content.description);
+  assert.equal(prompt, "午后窗边的一张照片");
+  assert.match(f.prompt, /人物甲/);
+  assert.match(f.prompt, /窗边的照片/);
+  const image = await f.service.media.generateChatImage("b", prompt);
+  f.failSave(true);
+  await assert.rejects(f.service.media.setChatImage("b", message.id, image, prompt), /磁盘失败/);
+  assert.deepEqual(f.service.getConversation("b")!.messages[0]!.content, content);
+  f.failSave(false);
+  await f.service.media.setChatImage("b", message.id, image, prompt);
+  const conversation = f.stored!.conversations[0]!;
+  assert.deepEqual(conversation.messages, [{ ...message, content: { ...content, prompt, image } }]);
+  assert.equal(pendingWechatMessages(conversation, "a").length, 1);
+  assert.equal(f.calls, 1);
+  f.service.dispose();
+});
+
+test("切帐号释放图片任务，迟到的图库图片不会返回给已切换的会话", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const started = f.holdImage();
+  const generation = f.service.media.generateChatImage("b", "绘图 Prompt");
+  const canceled = assert.rejects(generation, { name: "AbortError" });
+  await started;
+  assert.equal(f.service.getSnapshot().chatMediaBusy, true);
+  await assert.rejects(f.service.requestReply("b"), /请等待/);
+  assert.equal(await f.service.selectAccount("b"), true);
+  assert.equal(f.service.getSnapshot().chatMediaBusy, false);
+  f.releaseImage();
+  await canceled;
+  assert.deepEqual(f.stored!.conversations, []);
+  f.service.dispose();
+});
+
+test("立即发送在卡片保存后返回，只有接收方能处理同一笔转账", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const started = f.holdModel();
+  const content = { type: "transfer", amountFen: 1250, note: "餐费", status: "pending" } as const;
+  assert.equal(await f.service.sendContent("b", content, "immediate"), true);
+  await started;
+  const [message] = f.stored!.conversations[0]!.messages;
+  assert.deepEqual(message!.content, content);
+  assert.equal(f.service.getSnapshot().reply.status, "running");
+  f.service.cancel();
+  f.releaseModel();
+  await assert.rejects(f.service.media.actOnPayment("b", message!.id, "receive"), /只有接收方/);
+  assert.equal(await f.service.selectAccount("b"), true);
+  await f.service.media.actOnPayment("a", message!.id, "return");
+  await assert.rejects(f.service.media.actOnPayment("a", message!.id, "receive"), /已处理/);
+  assert.deepEqual(f.stored!.conversations[0]!.messages, [
+    {
+      ...message,
+      content: { ...content, status: "returned" },
+    },
+  ]);
+  f.service.dispose();
+});
+
 test("panel send and AI reply persist original stickers, preserve draft and exclude disabled packs", async () => {
   const f = fixture();
   await f.service.prepare();
@@ -333,7 +431,7 @@ test("panel send and AI reply persist original stickers, preserve draft and excl
   await f.service.send("b", "[[sticker:日常:开心]]", { preserveDraft: true });
   assert.equal(f.service.getDraft("b"), "稍后发送的文字");
   assert.deepEqual(
-    f.stored!.conversations[0]!.messages.map((message) => [message.senderId, message.content.text]),
+    f.stored!.conversations[0]!.messages.map((message) => [message.senderId, messageText(message)]),
     [
       ["a", "[[sticker:日常:开心]]"],
       ["b", "一条回复"],
@@ -570,10 +668,7 @@ test("late results cannot overwrite a chat after switching away and back", async
   await f.service.prepare();
   f.releaseModel();
   await replying;
-  assert.deepEqual(
-    f.service.getConversation("b")!.messages.map((message) => message.content.text),
-    ["原聊天消息"],
-  );
+  assert.deepEqual(f.service.getConversation("b")!.messages.map(messageText), ["原聊天消息"]);
   assert.equal(f.service.getSnapshot().reply.status, "idle");
   f.service.dispose();
 });
@@ -592,12 +687,9 @@ test("quitting during a failed user save restores the message and leaves a usabl
   f.releaseSave();
   assert.equal(await sending, false);
   assert.equal(f.service.getDraft("b"), "保存失败的正文");
-  assert.deepEqual(
-    pendingWechatMessages(f.service.getConversation("b")!, "a").map(
-      (message) => message.content.text,
-    ),
-    ["已保存"],
-  );
+  assert.deepEqual(pendingWechatMessages(f.service.getConversation("b")!, "a").map(messageText), [
+    "已保存",
+  ]);
   assert.equal(f.service.getSnapshot().reply.status, "error");
   f.service.dispose();
 });
@@ -610,10 +702,10 @@ test("send submits pending messages with the current text and empty send starts 
   await f.service.enqueue("b", "排队的消息");
   await f.service.send("b", "当前输入框的消息");
   assert.equal(f.calls, 1);
-  assert.deepEqual(
-    f.stored!.conversations[0]!.messages.slice(0, 2).map((message) => message.content.text),
-    ["排队的消息", "当前输入框的消息"],
-  );
+  assert.deepEqual(f.stored!.conversations[0]!.messages.slice(0, 2).map(messageText), [
+    "排队的消息",
+    "当前输入框的消息",
+  ]);
   const before = f.stored!.conversations[0]!.messages.length;
   await f.service.send("b", "");
   assert.equal(f.calls, 2);
@@ -656,7 +748,7 @@ test("a user save completed after switching away and back remains in the active 
   await f.service.prepare();
   f.releaseSave();
   assert.equal(await sending, true);
-  assert.equal(f.service.getConversation("b")!.messages[0]!.content.text, "切换期间保存的消息");
+  assert.equal(messageText(f.service.getConversation("b")!.messages[0]!), "切换期间保存的消息");
   assert.equal(f.calls, 0);
   await f.service.enqueue("b", "下一条消息");
   assert.equal(f.stored!.conversations[0]!.messages.length, 2);
@@ -1484,10 +1576,7 @@ test("删除从共享历史移除消息并原位保留屏障和双方队列", as
   const restored = f.restore();
   await restored.prepare();
   const next = restored.getConversation("a")!;
-  assert.deepEqual(
-    next.messages.map((message) => message.content.text),
-    ["甲的剩余队列", "乙的队列"],
-  );
+  assert.deepEqual(next.messages.map(messageText), ["甲的剩余队列", "乙的队列"]);
   assert.deepEqual(pendingWechatMessages(next, "a"), [next.messages[0]]);
   assert.deepEqual(pendingWechatMessages(next, "b"), [next.messages[1]]);
   assert.deepEqual(next.memoryBarriers, [
@@ -1518,12 +1607,10 @@ test("取消撤回恢复未完成的队列位置，已完成的消息只回到�
   await f.service.selectAccount("a");
   await f.service.editMessage("b", original.id, "restore");
   assert.equal(f.stored!.conversations[0]!.messages[0]!.recalled, undefined);
-  assert.deepEqual(
-    pendingWechatMessages(f.service.getConversation("b")!, "a").map(
-      (message) => message.content.text,
-    ),
-    ["可恢复的消息", "随后入队的消息"],
-  );
+  assert.deepEqual(pendingWechatMessages(f.service.getConversation("b")!, "a").map(messageText), [
+    "可恢复的消息",
+    "随后入队的消息",
+  ]);
 
   await f.service.editMessage("b", original.id, "recall");
   const later = f.service.getConversation("b")!.messages[1]!;
@@ -1554,5 +1641,239 @@ test("wechat recovers the saved account when Memory catches up after a chat swit
     assert.deepEqual(f.service.getSnapshot().data.account, f.stored!.account);
   } finally {
     f.service.dispose();
+  }
+});
+
+test("AI sends images and payment cards in message order; later prompts only see the image description", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  f.momentOutput({
+    messages: [
+      { type: "text", text: "看看这里" },
+      { type: "image", description: "窗边的猫", prompt: "摄影细节不进入微信历史" },
+      { type: "redPacket", amountFen: 888, note: "新年快乐" },
+      { type: "transfer", amountFen: 1500, note: "咖啡" },
+    ],
+  });
+  await f.service.requestReply("b");
+  const messages = f.stored!.conversations[0]!.messages;
+  assert.deepEqual(
+    messages.map(({ content }) => content),
+    [
+      { type: "text", text: "看看这里" },
+      { type: "image", description: "窗边的猫", prompt: "摄影细节不进入微信历史" },
+      { type: "redPacket", amountFen: 888, note: "新年快乐", status: "pending" },
+      { type: "transfer", amountFen: 1500, note: "咖啡", status: "pending" },
+    ],
+  );
+  assert.ok(messages.every((message) => message.reply?.batchId === messages[0]!.id));
+  f.momentOutput({ messages: [{ type: "text", text: "晚点聊" }] });
+  await f.service.requestReply("b");
+  assert.match(f.prompt, /窗边的猫/);
+  assert.doesNotMatch(f.prompt, /摄影细节不进入微信历史/);
+  const history = latestPayload(f.prompt).当前微信历史;
+  assert.equal(history[2].status, "pending");
+  assert.equal(history[3].amountFen, 1500);
+  f.service.dispose();
+});
+
+test("AI-only card action and pending boundary persist together and reject repeated settlement", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.sendContent(
+    "b",
+    { type: "redPacket", amountFen: 888, note: "生日快乐", status: "pending" },
+    "delayed",
+  );
+  const before = f.stored!.conversations[0]!;
+  const card = before.messages[0]!;
+  f.momentOutput({ messages: [], paymentActions: [{ messageId: card.id, action: "claim" }] });
+  f.failSave(true);
+  await f.service.requestReply("b");
+  assert.deepEqual(f.stored!.conversations[0], before);
+  assert.deepEqual(f.service.getConversation("b"), before);
+  assert.equal(f.service.getSnapshot().reply.status, "error");
+  f.failSave(false);
+  await f.service.requestReply("b");
+  const settled = f.stored!.conversations[0]!;
+  assert.equal(settled.messages.length, 1);
+  assert.deepEqual(settled.messages[0]!.content, { ...card.content, status: "claimed" });
+  assert.deepEqual(pendingWechatMessages(settled, "a"), []);
+  await f.service.requestReply("b");
+  assert.equal(f.service.getSnapshot().reply.status, "error");
+  assert.deepEqual(f.stored!.conversations[0], settled);
+  f.service.dispose();
+});
+
+test("AI card actions cannot bypass the history window, memory barrier or recall", async () => {
+  const f = fixture();
+  f.preferences.setSendMode("delayed");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.sendContent(
+    "b",
+    { type: "transfer", amountFen: 1000, note: "", status: "pending" },
+    "delayed",
+  );
+  const card = f.service.getConversation("b")!.messages[0]!;
+  await f.service.requestReply("b");
+  f.momentOutput({
+    messages: [{ type: "text", text: "转账已退回" }],
+    paymentActions: [{ messageId: card.id, action: "return" }],
+  });
+  f.preferences.setHistoryMessageLimit(1);
+  await f.service.requestReply("b");
+  assert.equal(f.service.getSnapshot().reply.status, "error");
+  assert.doesNotMatch(f.prompt, new RegExp(card.id));
+  f.preferences.setHistoryMessageLimit(100);
+  const barrier = await f.service.memory.insert("b", card.id);
+  await f.service.requestReply("b");
+  assert.equal(f.service.getSnapshot().reply.status, "error");
+  assert.doesNotMatch(f.prompt, new RegExp(card.id));
+  await f.service.memory.setEnabled("b", barrier!, false);
+  await f.service.editMessage("b", card.id, "recall");
+  await f.service.requestReply("b");
+  assert.equal(f.service.getSnapshot().reply.status, "error");
+  assert.deepEqual(f.stored!.conversations[0]!.messages[0]!.content, card.content);
+  assert.equal(f.stored!.conversations[0]!.messages.length, 3);
+  await f.service.editMessage("b", card.id, "restore");
+  await f.service.requestReply("b");
+  const messages = f.stored!.conversations[0]!.messages;
+  assert.deepEqual(messages[0]!.content, { ...card.content, status: "returned" });
+  assert.deepEqual(messages.at(-1)!.content, { type: "text", text: "转账已退回" });
+  f.service.dispose();
+});
+
+test("微信群按成员身份共享历史，独立群 ID，退出成员无权读写且重新加入可读旧历史", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const details = { name: "周末", description: "读书", memberIds: ["a", "b"] };
+  const id = await f.service.saveGroup(details);
+  assert.notEqual(id, await f.service.saveGroup(details));
+  f.preferences.setSendMode("delayed");
+  await f.service.selectAccount("b");
+  await f.service.enqueue(id, "移除前的发言");
+  await f.service.selectAccount("a");
+  await assert.rejects(f.service.saveGroup({ ...details, memberIds: ["b"] }, id), /保留当前帐号/);
+  await f.service.enqueue(id, "群还有两人时的队列");
+  const saveStarted = f.holdNextSave();
+  const saving = f.service.saveGroup({ ...details, memberIds: ["a"] }, id);
+  await saveStarted;
+  await assert.rejects(f.service.enqueue(id, "群资料保存期间发送"), /等待/);
+  f.releaseSave();
+  await saving;
+  await f.service.send(id, "");
+  assert.deepEqual(pendingWechatMessages(f.service.getConversation(id)!, "a"), []);
+  await f.service.send(id, "单人群消息");
+  assert.equal(f.calls, 0);
+  await f.service.selectAccount("b");
+  assert.equal(f.service.getConversation(id), undefined);
+  await assert.rejects(f.service.send(id, "无权发言"));
+  await f.service.selectAccount("a");
+  await f.service.saveGroup(details, id);
+  await f.service.selectAccount("b");
+  const group = f.service.getConversation(id)!;
+  assert.equal(group.kind, "group");
+  assert.ok(
+    group.messages.some(
+      ({ content }) => content.type === "text" && content.text === "移除前的发言",
+    ),
+  );
+  assert.deepEqual(pendingWechatMessages(group, "b"), []);
+  assert.deepEqual(pendingWechatMessages(group, "a"), []);
+});
+
+test("群回复固定一次取材，隔离私聊、其他群和屏障前消息，校验指定人整批并沿用重试参数", async () => {
+  const f = fixture();
+  f.addPerson("c");
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  await f.service.saveReplyGuidance("b", "乙专用指导");
+  await f.service.saveReplyGuidance("c", "丙专用指导");
+  f.preferences.setSendMode("delayed");
+  const details = { name: "周末", description: "读书", memberIds: ["a", "b", "c"] };
+  const id = await f.service.saveGroup(details);
+  const other = await f.service.saveGroup(details);
+  await f.service.enqueue("b", "私聊不外传");
+  await f.service.enqueue(other, "其他群不外传");
+  await f.service.enqueue(id, "屏障以前");
+  await f.service.memory.insert(id, f.service.getConversation(id)!.messages.at(-1)!.id);
+  await f.service.enqueue(id, "屏障以后");
+  const b = { senderId: "b", type: "text", text: "乙回答" };
+  const c = { senderId: "c", type: "image", description: "照片", prompt: "绘图指引" };
+  f.momentOutput({ messages: [b] });
+  await f.service.requestReply(id, { memberIds: ["b", "c"], guidance: "简洁回答" });
+  const failed = f.service.getSnapshot().reply;
+  assert.equal(failed.status, "error");
+  assert.match(failed.status === "error" ? failed.error : "", /缺少本轮指定人物/);
+  assert.equal(f.calls, 1);
+  assert.match(f.prompt, /屏障以后|简洁回答/);
+  assert.match(f.prompt, /乙专用指导/);
+  assert.match(f.prompt, /丙专用指导/);
+  assert.doesNotMatch(f.prompt, /私聊不外传|其他群不外传|屏障以前/);
+  assert.equal(f.service.getConversation(id)!.messages.filter(({ reply }) => reply).length, 0);
+  f.momentOutput({ messages: [c, b] });
+  await f.service.retryReply(id);
+  assert.equal(f.calls, 2);
+  assert.deepEqual(
+    f.service
+      .getConversation(id)!
+      .messages.filter(({ reply }) => reply)
+      .map(({ senderId }) => senderId),
+    ["c", "b"],
+  );
+  assert.deepEqual(pendingWechatMessages(f.service.getConversation(id)!, "a"), []);
+  f.momentOutput({ messages: [b, { ...c, senderId: "a" }] });
+  await f.service.requestReply(id);
+  assert.equal(f.service.getSnapshot().reply.status, "error");
+  assert.equal(f.service.getConversation(id)!.messages.filter(({ reply }) => reply).length, 2);
+});
+
+test("群成员修改在生成和保存期间均被锁定，已发出保存归属原聊天", async () => {
+  const f = fixture();
+  await f.service.prepare();
+  await f.service.selectAccount("a");
+  const details = { name: "周末", description: "读书", memberIds: ["a", "b"] };
+  const id = await f.service.saveGroup(details);
+  const model = f.holdModel();
+  const save = f.holdNextSave();
+  f.momentOutput({ messages: [{ senderId: "b", type: "text", text: "乙回复" }] });
+  const request = f.service.requestReply(id);
+  await model;
+  await assert.rejects(f.service.saveGroup({ ...details, memberIds: ["a"] }, id), /等待/);
+  f.releaseModel();
+  await save;
+  assert.equal(f.service.getSnapshot().reply.status, "saving");
+  await assert.rejects(f.service.saveGroup({ ...details, memberIds: ["a"] }, id), /等待/);
+  f.switchChat("new-chat");
+  f.releaseSave();
+  await request;
+  assert.equal(f.stored, null);
+  f.switchChat("st-chat");
+  await f.service.prepare();
+  assert.equal(f.service.getConversation(id)!.messages.filter(({ reply }) => reply).length, 1);
+});
+
+test("微信可在缺少 crypto.randomUUID 的 HTTP 环境创建独立群聊", async () => {
+  const original = Object.getOwnPropertyDescriptor(crypto, "randomUUID");
+  Object.defineProperty(crypto, "randomUUID", { configurable: true, value: undefined });
+  try {
+    const { service } = fixture();
+    await service.prepare();
+    await service.selectAccount("a");
+    const details = { name: "HTTP 群聊", description: "", memberIds: ["a", "b"] };
+    const first = await service.saveGroup(details);
+    assert.match(first, /^group:[0-9a-f]{32}$/);
+    assert.notEqual(await service.saveGroup(details), first);
+  } finally {
+    if (original) {
+      Object.defineProperty(crypto, "randomUUID", original);
+    } else {
+      Reflect.deleteProperty(crypto, "randomUUID");
+    }
   }
 });

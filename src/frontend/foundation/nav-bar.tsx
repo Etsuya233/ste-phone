@@ -16,14 +16,14 @@ export function NavBar({
   right,
 }: {
   title?: string;
-  back?: { label: string; onClick: () => void };
+  back?: { label: string; onClick: () => void; disabled?: boolean };
   right?: ReactNode;
 }) {
   return (
     <header className="ios-nav">
       <div className="ios-nav-side">
         {back ? (
-          <Button onClick={back.onClick}>
+          <Button onClick={back.onClick} disabled={back.disabled}>
             <Icon>
               <svg viewBox="0 0 12 22">
                 <path d="m10 2-8 9 8 9" />

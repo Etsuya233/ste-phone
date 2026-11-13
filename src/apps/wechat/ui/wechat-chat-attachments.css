@@ -1,0 +1,281 @@
+/* 单聊附件面板和消息卡片。 */
+:host .wechat-attachment-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 16px 14px 18px;
+  background: #f7f7f7;
+  animation: wechat-panel-rise 180ms ease-out;
+}
+
+:host .wechat-attachment-panel > button {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #6b6b70;
+  font: inherit;
+  font-size: 12px;
+}
+
+:host .wechat-attachment-panel > button:active:not(:disabled) {
+  background: #00000008;
+}
+
+:host .wechat-attachment-panel > button:disabled {
+  opacity: 0.4;
+}
+
+:host .wechat-attachment-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 1px 3px #00000014;
+}
+
+:host .wechat-attachment-icon svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:host .wechat-attachment-icon--image {
+  color: #3a9ad9;
+}
+
+:host .wechat-attachment-icon--redPacket {
+  color: #e2573c;
+}
+
+:host .wechat-attachment-icon--transfer {
+  color: #df9a32;
+}
+
+:host .wechat-rich-bubble {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: #fff;
+  color: #191919;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+}
+
+:host button.wechat-rich-bubble {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+:host .wechat-rich-bubble--image {
+  display: block;
+  width: 200px;
+  padding: 0;
+  background: #f2f2f2;
+}
+
+:host .wechat-rich-bubble--placeholder {
+  width: 236px;
+}
+
+:host .wechat-rich-media {
+  position: relative;
+  display: block;
+  line-height: 0;
+}
+
+:host .wechat-rich-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #e6e6e8;
+}
+
+:host .wechat-rich-media-hint {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #0000006b;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+:host .wechat-rich-placeholder {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+}
+
+:host .wechat-rich-placeholder-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #eaf3fb;
+  color: #3a9ad9;
+}
+
+:host .wechat-rich-placeholder-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:host .wechat-rich-placeholder-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+:host .wechat-rich-placeholder-copy strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+:host .wechat-rich-placeholder-copy > span {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #66666b;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+/* 红包与转账沿用微信的橙色卡片；状态文案仍由消息内容模块提供。 */
+:host .wechat-rich-bubble--redPacket,
+:host .wechat-rich-bubble--transfer {
+  width: 236px;
+  color: #fff;
+  background: linear-gradient(135deg, #b74c26, #a6371e);
+  box-shadow: 0 1px 2px #00000012;
+}
+
+:host .wechat-rich-bubble--transfer {
+  background: linear-gradient(135deg, #a95317, #914211);
+}
+
+:host .wechat-pay-emblem {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ffffff2b;
+}
+
+:host .wechat-pay-emblem svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:host .wechat-pay-copy {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+  min-width: 0;
+}
+
+:host .wechat-pay-copy strong {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host .wechat-pay-copy > span {
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+:host [data-system-style="ios26"] .wechat-attachment-panel {
+  background: #f2f2f3;
+}
+
+:host [data-system-style="ios26"] .wechat-attachment-icon {
+  border-radius: 18px;
+  background: #ffffffc7;
+}
+
+:host [data-system-style="ios26"] .wechat-rich-bubble {
+  border-radius: 18px;
+}
+
+@container (max-width: 340px) {
+  :host .wechat-attachment-panel {
+    gap: 8px;
+    padding: 14px 10px 16px;
+  }
+
+  :host .wechat-attachment-icon {
+    width: 52px;
+    height: 52px;
+  }
+
+  :host .wechat-rich-bubble--image {
+    width: 180px;
+  }
+
+  :host .wechat-rich-bubble--redPacket,
+  :host .wechat-rich-bubble--transfer,
+  :host .wechat-rich-bubble--placeholder {
+    width: 212px;
+  }
+}
+
+@keyframes wechat-panel-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host .wechat-attachment-panel {
+    animation: none;
+  }
+}

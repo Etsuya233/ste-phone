@@ -1,20 +1,26 @@
 import type { CharacterProfile } from "../data-source/public.ts";
+import type { WechatMessageContent } from "./wechat-message-content.ts";
 import type { WechatMoment } from "./wechat-moments.ts";
 import type { MomentGenerationState } from "./wechat-moments-session.ts";
+
+export type {
+  ImageContent,
+  RedPacketContent,
+  TextContent,
+  TransferContent,
+  WechatMessageContent,
+  WechatPaymentAction,
+} from "./wechat-message-content.ts";
 
 export interface WechatPerson {
   readonly id: string;
   readonly scopeId: string;
   readonly name: string;
 }
-export interface TextContent {
-  readonly type: "text";
-  readonly text: string;
-}
 export interface WechatMessage {
   readonly id: string;
   readonly senderId: string;
-  readonly content: TextContent;
+  readonly content: WechatMessageContent;
   readonly createdAt: string;
   readonly recalled?: true;
   readonly reply?: { readonly batchId: string; readonly triggerMessageId?: string };
@@ -24,9 +30,8 @@ export interface WechatMemoryBarrier {
   readonly afterMessageId: string | null;
   readonly enabled: boolean;
 }
-export interface WechatConversation {
+interface WechatConversationHistory {
   readonly id: string;
-  readonly people: readonly [WechatPerson, WechatPerson];
   readonly messages: readonly WechatMessage[];
   /** 待回复边界按发言人物保存，切帐号后仍能恢复原视角的待回复消息。 */
   readonly pendingReplies?: Readonly<Record<string, string>>;
@@ -34,8 +39,21 @@ export interface WechatConversation {
   readonly pendingCompletedThrough?: Readonly<Record<string, string | null>>;
   readonly memoryBarriers?: readonly WechatMemoryBarrier[];
 }
+export interface WechatDirectConversation extends WechatConversationHistory {
+  readonly kind?: "direct";
+  readonly people: readonly [WechatPerson, WechatPerson];
+}
+export interface WechatGroupConversation extends WechatConversationHistory {
+  readonly kind: "group";
+  readonly people: readonly [WechatPerson, ...WechatPerson[]];
+  readonly memberIds: readonly string[];
+  readonly name: string;
+  readonly description: string;
+}
+export type WechatConversation = WechatDirectConversation | WechatGroupConversation;
+
 export interface WechatData {
-  readonly version: 4;
+  readonly version: 6;
   readonly account: WechatPerson | null;
   readonly conversations: readonly WechatConversation[];
   /** 旧 v1 数据未填写指导；按稳定空间、稳定人物身份保存，所有微信帐号共享。 */
@@ -64,15 +82,19 @@ export interface WechatSnapshot {
   readonly error: string | null;
   readonly reply: ReplyState;
   readonly momentGeneration: MomentGenerationState;
+  readonly chatMediaBusy: boolean;
   readonly writeBusy: boolean;
   readonly barrierSaving: boolean;
   readonly operationError: string | null;
 }
-export const emptyWechat = (): WechatData => ({ version: 4, account: null, conversations: [] });
+export const emptyWechat = (): WechatData => ({ version: 6, account: null, conversations: [] });
 export const conversationId = (scopeId: string, a: string, b: string) =>
   JSON.stringify([scopeId, ...[a, b].sort()]);
 
-export function createWechatMessage(senderId: string, content: TextContent): WechatMessage {
+export function createWechatMessage(
+  senderId: string,
+  content: WechatMessageContent,
+): WechatMessage {
   return {
     id: [...crypto.getRandomValues(new Uint8Array(16))]
       .map((value) => value.toString(16).padStart(2, "0"))
@@ -98,7 +120,13 @@ export function pendingWechatMessages(
     }
     return conversation.messages
       .slice(start)
-      .filter((message) => message.senderId === senderId && (includeRecalled || !message.recalled));
+      .filter(
+        (message) =>
+          message.senderId === senderId &&
+          !message.reply &&
+          message.content.type !== "system" &&
+          (includeRecalled || !message.recalled),
+      );
   }
   const completed = conversation.pendingCompletedThrough?.[senderId];
   if (completed !== undefined) {
@@ -116,8 +144,15 @@ export function pendingWechatMessages(
       .slice(position + 1)
       .filter(
         (message) =>
-          message.senderId === senderId && !message.reply && (includeRecalled || !message.recalled),
+          message.senderId === senderId &&
+          !message.reply &&
+          message.content.type !== "system" &&
+          (includeRecalled || !message.recalled),
       );
+  }
+  // 群聊从 v6 起始终显式记录队列，其他成员的历史发言不推导当前边界。
+  if (conversation.kind === "group") {
+    return [];
   }
   const replied = conversation.messages.findLast(
     (message) => message.senderId !== senderId && message.reply?.triggerMessageId !== undefined,
@@ -132,11 +167,14 @@ export function pendingWechatMessages(
     .slice(boundary + 1)
     .filter(
       (message) =>
-        message.senderId === senderId && !message.reply && (includeRecalled || !message.recalled),
+        message.senderId === senderId &&
+        !message.reply &&
+        message.content.type !== "system" &&
+        (includeRecalled || !message.recalled),
     );
 }
 
-/** 首条待回复消息决定本轮边界，后续文字与表情沿用该边界。 */
+/** 首条待回复消息决定本轮边界，后续消息沿用该边界。 */
 export function appendWechatMessage(
   conversation: WechatConversation,
   message: WechatMessage,
@@ -163,11 +201,16 @@ export function rollbackWechatMessage(
   return {
     ...data,
     conversations:
-      messages.length === 0 && !current.memoryBarriers?.length
+      current.kind !== "group" && messages.length === 0 && !current.memoryBarriers?.length
         ? data.conversations.filter((item) => item.id !== original.id)
         : data.conversations.map((item) =>
             item.id === original.id
-              ? { ...current, messages, pendingReplies: original.pendingReplies }
+              ? {
+                  ...current,
+                  messages,
+                  pendingReplies: original.pendingReplies,
+                  pendingCompletedThrough: original.pendingCompletedThrough,
+                }
               : item,
           ),
   };

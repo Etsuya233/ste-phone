@@ -49,7 +49,7 @@ export class WechatWrites {
         throw new Error("当前聊天已变化，无法保存微信");
       }
       const account = this.#snapshot().data.account;
-      const value = update(this.#snapshot().data);
+      const value: WechatData = { ...update(this.#snapshot().data), version: 6 };
       // 在队列等待期间仍可取消。固定目标的请求发出后才进入保存阶段。
       const writing = this.#storage.write(chatId, value, generated?.signal);
       generated?.onWriting();

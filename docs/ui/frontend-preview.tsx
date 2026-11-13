@@ -74,7 +74,14 @@ if (options.get("voice-playground") === "1") {
 const campusPreview = options.get("twitter") === "1" || options.get("campus-community") === "1";
 const notesPreview = options.get("notes") === "1";
 const browserPreview = options.get("browser") === "1";
-if (options.get("map") === "1" || campusPreview || notesPreview || browserPreview) {
+const wechatPreview = options.get("wechat-test") === "group";
+if (
+  options.get("map") === "1" ||
+  campusPreview ||
+  notesPreview ||
+  browserPreview ||
+  wechatPreview
+) {
   const settings = new PhoneSettingsService(settingsStorage);
   if (settings.modelConnections.getSnapshot().connections.length === 0) {
     settings.saveModelConnection({
@@ -87,7 +94,7 @@ if (options.get("map") === "1" || campusPreview || notesPreview || browserPrevie
     });
   }
   if (
-    (campusPreview || notesPreview) &&
+    (campusPreview || notesPreview || wechatPreview) &&
     !settings.modelConnections.getSnapshot().defaultModelConnectionId
   ) {
     settings.selectDefaultModelConnection(

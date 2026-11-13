@@ -20,6 +20,7 @@ export function useWechatIntentEditor(
     name: preset?.name ?? "",
     scopeId: preset?.selection.scopeId ?? "",
     personIds: preset?.selection.personIds ?? [],
+    groupIds: preset?.selection.groupIds ?? [],
     recentMinutes: String(preset?.selection.recentMinutes ?? 30),
     unlimitedTime: preset?.selection.recentMinutes === null,
     limitPerGroup: String(preset?.selection.limitPerGroup ?? 50),
@@ -53,6 +54,7 @@ export function useWechatIntentEditor(
       selection: {
         scopeId: draft.scopeId,
         personIds: draft.personIds,
+        groupIds: draft.groupIds,
         recentMinutes: draft.unlimitedTime ? null : Number(draft.recentMinutes),
         limitPerGroup: Number(draft.limitPerGroup),
       },

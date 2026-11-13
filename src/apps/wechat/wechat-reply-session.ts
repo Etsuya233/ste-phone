@@ -1,10 +1,9 @@
 import type { AiTransport } from "../../core/ai/public.ts";
-import type { DataAppPublic, CharacterProfile } from "../data-source/public.ts";
+import type { DataAppPublic } from "../data-source/public.ts";
 import type { ModelConnectionsReader } from "../settings/public.ts";
 import type { WechatStickerLibrary } from "./wechat-sticker-library.ts";
 import type { ReplyState, WechatConversation } from "./wechat.ts";
-import { pendingWechatMessages } from "./wechat.ts";
-import { createWechatReplies } from "./wechat-reply.ts";
+import { generateRepliedWechatConversation, type WechatReplyInput } from "./wechat-reply.ts";
 import type { GeneratedWechatWrite } from "./wechat-writes.ts";
 
 interface ReplyTask {
@@ -34,18 +33,15 @@ export class WechatReplySession {
     return this.#task?.committing === true;
   }
 
-  async generateAndSave(input: {
-    conversation: WechatConversation;
-    sender: CharacterProfile;
-    recipient: CharacterProfile;
-    replyGuidance: string;
-    historyMessageLimit: number;
-    save(conversation: WechatConversation, generated: GeneratedWechatWrite): Promise<void>;
-  }): Promise<void> {
+  async generateAndSave(
+    input: WechatReplyInput & {
+      save(conversation: WechatConversation, generated: GeneratedWechatWrite): Promise<void>;
+    },
+  ): Promise<void> {
     if (this.busy) {
       throw new Error("请等待当前回复完成");
     }
-    const { conversation, sender, recipient, save } = input;
+    const { conversation, save } = input;
     const task: ReplyTask = {
       controller: new AbortController(),
       detached: false,
@@ -55,39 +51,20 @@ export class WechatReplySession {
     const { signal } = task.controller;
     this.#dependencies.publish({ status: "running", conversationId: conversation.id });
     try {
-      const messages = await createWechatReplies({
+      const next = await generateRepliedWechatConversation({
         ...this.#dependencies,
-        sender,
-        recipient,
-        replyGuidance: input.replyGuidance,
-        historyMessageLimit: input.historyMessageLimit,
-        conversation,
+        ...input,
         stickerPacks: this.#dependencies.stickers.getSnapshot().packs,
         signal,
       });
       signal.throwIfAborted();
-      const completed = pendingWechatMessages(conversation, sender.id, true).at(-1)?.id;
-      const pendingCompletedThrough = { ...conversation.pendingCompletedThrough };
-      if (completed) {
-        pendingCompletedThrough[sender.id] = completed;
-      }
-      const pendingReplies = { ...conversation.pendingReplies };
-      delete pendingReplies[sender.id];
-      await save(
-        {
-          ...conversation,
-          pendingReplies,
-          pendingCompletedThrough,
-          messages: [...conversation.messages, ...messages],
+      await save(next, {
+        signal,
+        onWriting: () => {
+          task.committing = true;
+          this.#dependencies.publish({ status: "saving", conversationId: conversation.id });
         },
-        {
-          signal,
-          onWriting: () => {
-            task.committing = true;
-            this.#dependencies.publish({ status: "saving", conversationId: conversation.id });
-          },
-        },
-      );
+      });
       if (!task.detached) {
         this.#dependencies.publish({ status: "idle" });
       }
