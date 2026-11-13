@@ -10,7 +10,7 @@ import {
 } from "./wechat-moments-prompt.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
 import type { WechatMoment } from "./wechat-moments.ts";
-import { generateMomentOutput } from "./wechat-moments-generation.ts";
+import { generateWechatOutput } from "./wechat-ai-output.ts";
 import { createStAiTransport } from "../../infrastructure/host/ai-transport.ts";
 import { previewMomentOutput } from "../../../docs/ui/preview-wechat-moments-ai.ts";
 
@@ -319,7 +319,8 @@ test("朋友圈拒绝意外工具调用且不发起后续模型调用", async ()
     },
   });
   await assert.rejects(
-    generateMomentOutput({
+    generateWechatOutput({
+      subject: "朋友圈",
       transport,
       connection: {
         id: "test",

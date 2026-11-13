@@ -135,10 +135,10 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
             (app === "notes"
               ? "周末出门前\n\n带上水杯、雨伞和要归还的书。给自己留一点散步的时间。"
               : undefined) ??
-            (operation === "朋友圈配图提示词"
+            (operation === "朋友圈配图提示词" || operation === "微信图片提示词"
               ? mode === "invalid"
                 ? "模拟非法 JSON"
-                : previewMomentImagePrompt(context.messages)
+                : previewWechatImagePrompt(context.messages)
               : context.systemPrompt?.includes("微信朋友圈内容")
                 ? previewMomentOutput(context.messages, mode)
                 : context.systemPrompt?.includes("微信单聊")
@@ -202,7 +202,7 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
 }
 
 /** 用本次图片描述模拟完善后的独立绘图提示词，便于检查多图是否串位。 */
-function previewMomentImagePrompt(messages: readonly unknown[]): string {
+function previewWechatImagePrompt(messages: readonly unknown[]): string {
   const user = messages.at(-1) as { content: string | { type: string; text?: string }[] };
   const text =
     typeof user.content === "string"

@@ -11,6 +11,7 @@ import type { WechatConversation, WechatPerson } from "../wechat.ts";
 import { PersonAvatar, type WechatPageProps } from "./wechat-page.tsx";
 import { PersonIdentity, ProfilePreview } from "./wechat-profile.tsx";
 import { formatWechatTime } from "../wechat-time.ts";
+import { describeWechatMessageContent } from "../wechat-message-content.ts";
 import { useWechatClock } from "./use-wechat-clock.ts";
 import { WechatDiscover } from "./wechat-discover.tsx";
 
@@ -124,6 +125,11 @@ function WechatConversations({
               ? people.find((item) => item.id === other.id)
               : undefined;
           const name = person?.name ?? other.name;
+          const summary = last.recalled
+            ? "消息已撤回"
+            : last.content.type === "text"
+              ? last.content.text
+              : describeWechatMessageContent(last.content);
           return (
             <button
               type="button"
@@ -142,7 +148,7 @@ function WechatConversations({
                     {formatWechatTime(last.createdAt, now, true)}
                   </time>
                 </span>
-                <small>{last.recalled ? "消息已撤回" : last.content.text}</small>
+                <small>{summary}</small>
               </span>
             </button>
           );

@@ -5,10 +5,11 @@ import {
   validateWechatMoments,
 } from "./wechat-moments-storage.ts";
 import { wechatMemoryBoundaries } from "./wechat-memory.ts";
+import { validateWechatMessageContent } from "./wechat-message-content.ts";
 import type { WechatConversation, WechatData } from "./wechat.ts";
 
 const wechatMigrations: MigrationPlan<WechatData> = {
-  currentVersion: 4,
+  currentVersion: 5,
   steps: [
     {
       from: 1,
@@ -32,6 +33,7 @@ const wechatMigrations: MigrationPlan<WechatData> = {
         return data;
       },
     },
+    { from: 4, to: 5, name: "structured-chat-messages", migrate: object },
   ],
   validate: validateWechatData,
 };
@@ -41,10 +43,10 @@ export function readWechatData(value: unknown): WechatData {
   return migrateData(value, wechatMigrations).data;
 }
 
-/** 当前结构只接受媒体数组；历史字段转换仅允许在 v1 → v2 中执行。 */
+/** 读取和写入共用当前结构校验，旧字段由各版本迁移处理。 */
 export function validateWechatData(value: unknown): asserts value is WechatData {
   const data = object(value);
-  if (data.version !== 4 || !Array.isArray(data.conversations)) {
+  if (data.version !== 5 || !Array.isArray(data.conversations)) {
     throw new Error("微信数据版本或会话列表无效");
   }
   if (data.account !== null) {
@@ -95,15 +97,9 @@ function validateConversation(conversation: Record<string, unknown>): void {
     if (messages.has(message.id) || !peopleIds.has(message.senderId)) {
       throw new Error("微信消息 ID 重复或发言人物无效");
     }
-    const content = object(message.content);
-    if (
-      content.type !== "text" ||
-      typeof content.text !== "string" ||
-      !content.text.trim() ||
-      typeof message.createdAt !== "string" ||
-      !Number.isFinite(Date.parse(message.createdAt))
-    ) {
-      throw new Error("微信消息内容或时间无效");
+    validateWechatMessageContent(message.content);
+    if (typeof message.createdAt !== "string" || !Number.isFinite(Date.parse(message.createdAt))) {
+      throw new Error("微信消息时间无效");
     }
     if (message.recalled !== undefined && message.recalled !== true) {
       throw new Error("微信消息撤回状态无效");

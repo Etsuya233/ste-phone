@@ -1,14 +1,18 @@
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { ChatContext } from "../../core/chat/public.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
-import type { WechatPreferences } from "../settings/public.ts";
-import type { ModelConnectionsReader } from "../settings/public.ts";
+import type {
+  ModelConnectionsReader,
+  WechatPreferences,
+  WechatSendMode,
+} from "../settings/public.ts";
 import type { WechatStorage } from "./ports/wechat-storage.ts";
 import {
   conversationId,
   emptyWechat,
   type WechatConversation,
   type WechatData,
+  type WechatMessageContent,
   type WechatSnapshot,
 } from "./wechat.ts";
 import { WechatReplySession } from "./wechat-reply-session.ts";
@@ -20,6 +24,7 @@ import { WechatSubmission } from "./wechat-submission.ts";
 import { wechatMemoryBoundaries } from "./wechat-memory.ts";
 import type { WechatStickerLibrary } from "./wechat-sticker-library.ts";
 import { WechatMomentsService } from "./wechat-moments-service.ts";
+import { WechatChatMedia } from "./wechat-chat-media.ts";
 
 import type { ImageHub } from "../../core/image-hub/public.ts";
 
@@ -45,6 +50,7 @@ export class WechatService {
   readonly #writes: WechatWrites;
   readonly memory: WechatMemoryEditor;
   readonly moments: WechatMomentsService;
+  readonly media: WechatChatMedia;
   #operation = 0;
   #preparation = 0;
   #sourceKey: string;
@@ -64,6 +70,7 @@ export class WechatService {
       error: null,
       reply: { status: "idle" },
       momentGeneration: { status: "idle" },
+      chatMediaBusy: false,
       writeBusy: false,
       barrierSaving: false,
       operationError: null,
@@ -80,7 +87,10 @@ export class WechatService {
       operation: () => this.#operation,
       generation: () => this.#writes.generation,
       replyBusy: () =>
-        this.#replies.busy || this.moments.generation.busy || this.#snapshot.barrierSaving,
+        this.#replies.busy ||
+        this.moments.generation.busy ||
+        this.#snapshot.barrierSaving ||
+        this.#snapshot.chatMediaBusy,
       conversation: (id) => this.#conversationForSending(id),
       withConversation: (conversation) => this.#dataWithConversation(conversation),
       save: (update) => this.#writes.save(update),
@@ -100,9 +110,18 @@ export class WechatService {
         this.#submission.busy ||
         this.#replies.busy ||
         this.#writes.busy ||
+        this.#snapshot.chatMediaBusy ||
         this.#snapshot.barrierSaving,
       save: (update, generated) => this.#writes.save(update, generated),
       publishGeneration: (momentGeneration) => this.#publish({ momentGeneration }),
+    });
+    this.media = new WechatChatMedia({
+      ...dependencies,
+      snapshot: this.getSnapshot,
+      conversation: (id) => this.#conversationForSending(id),
+      busy: () => this.#chatEditBusy(),
+      save: (update) => this.#writes.save(update),
+      publishBusy: (chatMediaBusy) => this.#publish({ chatMediaBusy }),
     });
     this.#sourceKey = this.#binding();
     this.#sourceRevision = dependencies.data.getSnapshot().revision;
@@ -221,7 +240,17 @@ export class WechatService {
     options: { onSent?: () => void; preserveDraft?: boolean } = {},
   ): Promise<boolean> {
     const operation = this.#operation;
-    const sent = text.trim() ? await this.#submission.append(otherId, text, options) : true;
+    const value = text.trim();
+    const sent = value
+      ? await this.#submission.append(
+          otherId,
+          { type: "text", text: value },
+          {
+            onSent: options.onSent,
+            draftText: options.preserveDraft ? undefined : text,
+          },
+        )
+      : true;
     if (sent && operation === this.#operation) {
       await this.requestReply(otherId);
     }
@@ -237,7 +266,43 @@ export class WechatService {
     if (this.#dependencies.preferences.getSnapshot() !== "delayed") {
       throw new Error("请切换为延迟发送后加入消息队列");
     }
-    return this.#submission.append(otherId, text, options);
+    const value = text.trim();
+    return value
+      ? this.#submission.append(
+          otherId,
+          { type: "text", text: value },
+          {
+            draftText: options.preserveDraft ? undefined : text,
+          },
+        )
+      : false;
+  }
+
+  async sendContent(
+    otherId: string,
+    content: Exclude<WechatMessageContent, { type: "text" }>,
+    mode: WechatSendMode,
+  ): Promise<boolean> {
+    if (this.#chatEditBusy()) {
+      throw new Error("请等待当前消息处理完成");
+    }
+    if (content.type !== "image" && content.status !== "pending") {
+      throw new Error("新发出的红包或转账须等待接收方处理");
+    }
+    const operation = this.#operation;
+    const conversationId = this.#conversationForSending(otherId).id;
+    const sent = await this.#submission.append(otherId, content);
+    if (sent && mode === "immediate" && operation === this.#operation) {
+      // 保存成功即返回聊天页；如果回复启动失败，仍只重试回复，避免重发卡片。
+      void this.requestReply(otherId).catch((error: Error) => {
+        if (operation === this.#operation) {
+          this.#publish({
+            reply: { status: "error", conversationId, error: error.message, retry: true },
+          });
+        }
+      });
+    }
+    return sent;
   }
 
   async requestReply(otherId: string): Promise<void> {
@@ -287,6 +352,7 @@ export class WechatService {
       this.#submission.busy ||
       this.#replies.busy ||
       this.moments.generation.busy ||
+      this.#snapshot.chatMediaBusy ||
       this.#writes.busy ||
       this.#snapshot.barrierSaving
     );
@@ -325,6 +391,7 @@ export class WechatService {
 
   cancel(viewChanged = false): void {
     ++this.#operation;
+    this.media.cancel();
     this.moments.generation.cancel(viewChanged);
     if (!this.#submission.busy) {
       this.#replies.cancel(viewChanged);

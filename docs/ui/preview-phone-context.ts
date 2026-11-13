@@ -72,7 +72,7 @@ export function seedPreviewContextWechat(): void {
   }));
   const now = Date.now();
   const data: WechatData = {
-    version: 4,
+    version: 5,
     account: people[3]!,
     conversations: [
       [0, 1],

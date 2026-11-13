@@ -8,6 +8,7 @@ import { WechatChatComposer } from "./wechat-chat-composer.tsx";
 import { conversationId } from "../wechat.ts";
 import { useWechatMemory } from "./use-wechat-memory.tsx";
 import { WechatMessages } from "./wechat-messages.tsx";
+import { wechatChatWriteBusy } from "./wechat-chat-writing.ts";
 
 export function WechatChat({ ...props }: WechatPageProps & { id: string; active: boolean }) {
   const { wechat, state, navigation, id, active, stickers, stickerState } = props;
@@ -61,6 +62,8 @@ export function WechatChat({ ...props }: WechatPageProps & { id: string; active:
           people={state.people}
           packs={stickerState.packs}
           stickers={stickers}
+          onOpenImage={(messageId) => navigation.push({ page: "chat-image", id, messageId })}
+          onOpenPayment={(messageId) => navigation.push({ page: "chat-payment", id, messageId })}
         />
         {!available && (
           <p className="wechat-notice">
@@ -72,12 +75,7 @@ export function WechatChat({ ...props }: WechatPageProps & { id: string; active:
             <p>{reply.error}</p>
             {reply.retry && (
               <Button
-                disabled={
-                  !available ||
-                  state.barrierSaving ||
-                  state.writeBusy ||
-                  ["running", "saving"].includes(state.momentGeneration.status)
-                }
+                disabled={!available || wechatChatWriteBusy(state)}
                 onClick={() => void wechat.requestReply(id)}
               >
                 重试回复

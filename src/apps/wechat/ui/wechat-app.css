@@ -1,4 +1,8 @@
 @import "./wechat-chat.css";
+@import "./wechat-composer.css";
+@import "./wechat-chat-attachments.css";
+@import "./wechat-chat-image.css";
+@import "./wechat-chat-payment.css";
 @import "./wechat-reply-guidance.css";
 @import "./wechat-moments.css";
 @import "./wechat-moment-comments.css";

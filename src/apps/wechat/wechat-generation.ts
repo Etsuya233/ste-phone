@@ -2,7 +2,8 @@ import { Agent } from "@earendil-works/pi-agent-core";
 import { createCompletionModel, runAgent } from "../../core/ai/agent-run.ts";
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { ModelConnectionSnapshot } from "../settings/public.ts";
-import { wechatSystemPrompt, parseWechatReply } from "./wechat-prompt.ts";
+import { wechatSystemPrompt } from "./wechat-prompt.ts";
+import { parseWechatReply } from "./wechat-reply-output.ts";
 import type { wechatStickerCatalog } from "./wechat-stickers.ts";
 
 export async function generateWechatReply(input: {

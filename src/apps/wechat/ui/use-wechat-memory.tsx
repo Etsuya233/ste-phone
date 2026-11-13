@@ -135,6 +135,9 @@ export function useWechatMemory({
 
 /** 屏障编辑与回复、消息保存共用写入互斥，就地说明当前不能修改的原因。 */
 function memoryLockReason(state: WechatSnapshot): string | null {
+  if (state.chatMediaBusy) {
+    return "图片处理中，暂不可修改";
+  }
   if (state.barrierSaving) {
     return "屏障保存中，暂不可修改";
   }

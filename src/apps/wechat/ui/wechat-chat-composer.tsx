@@ -2,6 +2,7 @@ import { useState } from "react";
 import { WechatComposer } from "./wechat-composer.tsx";
 import { conversationId } from "../wechat.ts";
 import type { WechatPageProps } from "./wechat-page.tsx";
+import { wechatChatWriteBusy } from "./wechat-chat-writing.ts";
 
 /** 草稿留在当前页面；服务负责原归属保存失败后的恢复，表情提交保留文字。 */
 export function WechatChatComposer({
@@ -21,8 +22,6 @@ export function WechatChatComposer({
 }) {
   const [draft, setDraft] = useState(() => wechat.getDraft(id));
   const running = state.reply.status === "running";
-  const sending = state.reply.status === "sending";
-  const momentsBusy = ["running", "saving"].includes(state.momentGeneration.status);
   const account = state.data.account;
   const replying =
     running &&
@@ -38,15 +37,7 @@ export function WechatChatComposer({
   return (
     <WechatComposer
       value={draft}
-      disabled={
-        !available ||
-        running ||
-        sending ||
-        state.writeBusy ||
-        state.reply.status === "saving" ||
-        momentsBusy ||
-        state.barrierSaving
-      }
+      disabled={!available || wechatChatWriteBusy(state)}
       replying={replying}
       onStop={() => wechat.cancel()}
       delayed={sendMode === "delayed"}
@@ -65,6 +56,11 @@ export function WechatChatComposer({
         })
       }
       onManageStickers={() => navigation.push({ page: "stickers" })}
+      onPickImage={() => navigation.push({ page: "chat-image", id })}
+      onPickRedPacket={() =>
+        navigation.push({ page: "chat-payment-compose", id, kind: "redPacket" })
+      }
+      onPickTransfer={() => navigation.push({ page: "chat-payment-compose", id, kind: "transfer" })}
     />
   );
 }

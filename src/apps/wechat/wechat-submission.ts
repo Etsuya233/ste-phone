@@ -1,5 +1,11 @@
 import { createWechatMessage, appendWechatMessage, rollbackWechatMessage } from "./wechat.ts";
-import type { WechatSnapshot, WechatConversation, WechatData } from "./wechat.ts";
+import type {
+  WechatSnapshot,
+  WechatConversation,
+  WechatData,
+  WechatMessageContent,
+} from "./wechat.ts";
+import { validateWechatMessageContent } from "./wechat-message-content.ts";
 interface Dependencies {
   snapshot(): WechatSnapshot;
   operation(): number;
@@ -32,28 +38,22 @@ export class WechatSubmission {
   /** 消息先显示再持久化；失败撤回本条消息，保留原会话和新草稿。 */
   async append(
     otherId: string,
-    text: string,
-    options: { onSent?: () => void; preserveDraft?: boolean } = {},
+    content: WechatMessageContent,
+    options: { onSent?: () => void; draftText?: string } = {},
   ): Promise<boolean> {
     if (this.busy || this.#dependencies.replyBusy()) {
       throw new Error("请等待当前消息处理完成");
     }
-    const value = text.trim();
-    if (!value) {
-      return false;
-    }
+    validateWechatMessageContent(content);
     const conversation = this.#dependencies.conversation(otherId);
-    const message = createWechatMessage(this.#dependencies.snapshot().data.account!.id, {
-      type: "text",
-      text: value,
-    });
+    const message = createWechatMessage(this.#dependencies.snapshot().data.account!.id, content);
     const next = appendWechatMessage(conversation, message);
     const operation = this.#dependencies.operation();
     const generation = this.#dependencies.generation();
     const chatId = this.#dependencies.snapshot().chatId;
     const draftKey = this.#draftKey(otherId);
     this.busy = true;
-    if (!options.preserveDraft) {
+    if (options.draftText !== undefined) {
       this.setDraft(otherId, "");
     }
     this.#dependencies.publish({
@@ -69,8 +69,8 @@ export class WechatSubmission {
       return true;
     } catch (error) {
       // 保存拥有发起时的草稿归属；切聊天或退出应用不能让失败正文丢失。
-      if (!options.preserveDraft && !this.#drafts.get(draftKey)) {
-        this.#drafts.set(draftKey, text);
+      if (options.draftText !== undefined && !this.#drafts.get(draftKey)) {
+        this.#drafts.set(draftKey, options.draftText);
       }
       if (
         this.#dependencies.generation() === generation &&

@@ -21,6 +21,7 @@ function fixture() {
     error: null,
     reply: { status: "idle" },
     momentGeneration: { status: "idle" },
+    chatMediaBusy: false,
     writeBusy: false,
     barrierSaving: false,
     operationError: null,

@@ -1,0 +1,218 @@
+:host .wechat-payment-compose {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+:host .wechat-payment-hero {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 20px 16px 18px;
+  border-radius: 10px;
+  background: #fff;
+}
+
+:host .wechat-payment-emblem {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f6a44c, #e2662e);
+  color: #fff;
+}
+
+:host .wechat-payment-compose--transfer .wechat-payment-emblem {
+  background: linear-gradient(135deg, #f0a34e, #dd7c2b);
+}
+
+:host .wechat-payment-emblem svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:host .wechat-payment-to {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #8a8a8f;
+  font-size: 13px;
+}
+
+:host .wechat-payment-to .wechat-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 11px;
+}
+
+:host .wechat-payment-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  width: 100%;
+  max-width: 260px;
+  padding: 2px 4px 8px;
+  border-bottom: 1px solid #e4e4e6;
+}
+
+:host .wechat-payment-amount > span {
+  color: #191919;
+  font-size: 28px;
+  font-weight: 500;
+}
+
+:host .wechat-payment-amount input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #191919;
+  font: inherit;
+  font-size: 38px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+:host .wechat-payment-amount input::placeholder {
+  color: #d0d0d3;
+}
+
+:host .wechat-payment-amount-hint {
+  margin: 0;
+  color: #a0a0a5;
+  font-size: 12px;
+}
+
+:host .wechat-payment-fields {
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+:host .wechat-payment-fields .wechat-form-field {
+  border-radius: 0;
+}
+
+:host .wechat-payment-detail {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding: 22px 16px;
+}
+
+:host .wechat-payment-card {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 26px 20px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #b74c26, #a6371e);
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 2px 10px #d8691f26;
+}
+
+:host .wechat-payment-card--transfer {
+  background: linear-gradient(135deg, #a95317, #914211);
+}
+
+:host .wechat-payment-card .wechat-payment-emblem {
+  width: 54px;
+  height: 54px;
+  background: #ffffff2e;
+}
+
+:host .wechat-payment-kind {
+  margin: 0;
+  color: #fff;
+  font-size: 13px;
+}
+
+:host .wechat-payment-total {
+  max-width: 100%;
+  font-size: 38px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+:host .wechat-payment-note {
+  margin: 0;
+  color: #fff;
+  font-size: 15px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+:host .wechat-payment-status {
+  margin: 2px 0 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #00000026;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+:host .wechat-payment-actions {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+:host .wechat-payment-actions .ios-button {
+  min-height: 46px;
+  border-radius: 6px;
+  background: #fff;
+  color: #b34034;
+  font-size: 16px;
+}
+
+:host .wechat-payment-actions .ios-button--filled {
+  background: #07c160;
+  color: #fff;
+}
+
+:host [data-system-style="ios26"] .wechat-payment-hero,
+:host [data-system-style="ios26"] .wechat-payment-fields {
+  border-radius: 18px;
+}
+
+:host [data-system-style="ios26"] .wechat-payment-actions .ios-button {
+  border-radius: 999px;
+}
+
+:host [data-system-style="ios26"] .wechat-payment-card {
+  border-radius: 24px;
+}
+
+@container (max-width: 340px) {
+  :host .wechat-payment-hero {
+    padding: 18px 12px 16px;
+  }
+
+  :host .wechat-payment-amount input {
+    font-size: 34px;
+  }
+
+  :host .wechat-payment-card {
+    padding: 22px 16px;
+  }
+
+  :host .wechat-payment-total {
+    font-size: 34px;
+  }
+}

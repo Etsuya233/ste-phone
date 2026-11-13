@@ -10,7 +10,7 @@ import {
   type MomentDraft,
   type MomentComment,
 } from "./wechat-moments.ts";
-import { generateMomentOutput } from "./wechat-moments-generation.ts";
+import { generateWechatOutput } from "./wechat-ai-output.ts";
 import {
   momentInteractionWindow,
   momentSystemPrompt,
@@ -85,7 +85,8 @@ export class WechatMomentsSession {
       const connection = connections.getConnection(connectionId);
       const prompt = await readMomentPrompt(data, fixed);
       signal.throwIfAborted();
-      const output = await generateMomentOutput({
+      const output = await generateWechatOutput({
+        subject: "朋友圈",
         transport,
         connection,
         prompt,

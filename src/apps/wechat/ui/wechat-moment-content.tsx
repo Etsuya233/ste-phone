@@ -24,6 +24,7 @@ export function momentWritingReason(state: WechatSnapshot, scopeId: string): str
   }
   if (
     state.writeBusy ||
+    state.chatMediaBusy ||
     ["running", "saving"].includes(state.momentGeneration.status) ||
     state.barrierSaving ||
     ["sending", "running", "saving"].includes(state.reply.status)

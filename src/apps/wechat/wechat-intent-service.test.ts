@@ -15,7 +15,7 @@ function fixture() {
   const listeners = new Set<() => void>();
   const saved = new Map<string, WechatIntentData>();
   const messages: WechatData = {
-    version: 4,
+    version: 5,
     account: null,
     conversations: [
       {

@@ -4,12 +4,13 @@ import type { AiTransport } from "../../core/ai/public.ts";
 import type { ModelConnectionSnapshot } from "../settings/public.ts";
 
 /** 每次显式动作仅一次模型调用，不注册工具，整次文本完成后才交给协议校验。 */
-export async function generateMomentOutput(input: {
+export async function generateWechatOutput(input: {
   transport: AiTransport;
   connection: ModelConnectionSnapshot;
   prompt: string;
   systemPrompt: string;
   operation: string;
+  subject: string;
   signal: AbortSignal;
 }): Promise<string> {
   const stream = input.transport.createStream(input.connection, {
@@ -35,7 +36,7 @@ export async function generateMomentOutput(input: {
         event.message.role === "assistant" &&
         event.message.content.some((part) => part.type === "toolCall")
       ) {
-        toolError = new Error("朋友圈未注册工具，模型返回了工具调用");
+        toolError = new Error(`${input.subject}未注册工具，模型返回了工具调用`);
         agent.abort();
       }
     },
@@ -45,14 +46,16 @@ export async function generateMomentOutput(input: {
     throw toolError;
   }
   if (timedOut) {
-    throw new Error("朋友圈生成超时");
+    throw new Error(`${input.subject}生成超时`);
   }
   if (reply?.role !== "assistant") {
-    throw new Error("模型未返回朋友圈内容");
+    throw new Error(`模型未返回${input.subject}内容`);
   }
   if (reply.stopReason !== "stop") {
     throw new Error(
-      reply.stopReason === "length" ? "朋友圈生成达到输出上限，未保存部分内容" : reply.errorMessage,
+      reply.stopReason === "length"
+        ? `${input.subject}生成达到输出上限，未保存部分内容`
+        : reply.errorMessage,
       { cause: reply.diagnostics },
     );
   }

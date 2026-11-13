@@ -20,6 +20,8 @@ import { WechatMomentCompose } from "./wechat-moment-compose.tsx";
 import { WechatMomentDetail } from "./wechat-moment-detail.tsx";
 import { MomentGenerationNotice, WechatMomentAiAuthor } from "./wechat-moment-ai.tsx";
 import { WechatMomentParticipants } from "./wechat-moment-participants.tsx";
+import { WechatChatImage } from "./wechat-chat-image.tsx";
+import { WechatChatPayment, WechatChatPaymentCompose } from "./wechat-chat-payment.tsx";
 
 export function WechatApp({
   wechat,
@@ -167,6 +169,26 @@ export function WechatApp({
                 return (
                   <WechatChat {...props} id={route.id} active={active && navigation.current} />
                 );
+              case "chat-image":
+                return (
+                  <WechatChatImage
+                    {...props}
+                    id={route.id}
+                    messageId={route.messageId}
+                    active={active && navigation.current}
+                  />
+                );
+              case "chat-payment-compose":
+                return (
+                  <WechatChatPaymentCompose
+                    {...props}
+                    id={route.id}
+                    kind={route.kind}
+                    active={active && navigation.current}
+                  />
+                );
+              case "chat-payment":
+                return <WechatChatPayment {...props} id={route.id} messageId={route.messageId} />;
             }
           }}
         </NavigationStack>

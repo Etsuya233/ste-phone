@@ -3,8 +3,7 @@ import type { DataAppPublic, CharacterProfile } from "../data-source/public.ts";
 import type { ModelConnectionsReader } from "../settings/public.ts";
 import type { WechatStickerLibrary } from "./wechat-sticker-library.ts";
 import type { ReplyState, WechatConversation } from "./wechat.ts";
-import { pendingWechatMessages } from "./wechat.ts";
-import { createWechatReplies } from "./wechat-reply.ts";
+import { generateRepliedWechatConversation } from "./wechat-reply.ts";
 import type { GeneratedWechatWrite } from "./wechat-writes.ts";
 
 interface ReplyTask {
@@ -55,7 +54,7 @@ export class WechatReplySession {
     const { signal } = task.controller;
     this.#dependencies.publish({ status: "running", conversationId: conversation.id });
     try {
-      const messages = await createWechatReplies({
+      const next = await generateRepliedWechatConversation({
         ...this.#dependencies,
         sender,
         recipient,
@@ -66,28 +65,13 @@ export class WechatReplySession {
         signal,
       });
       signal.throwIfAborted();
-      const completed = pendingWechatMessages(conversation, sender.id, true).at(-1)?.id;
-      const pendingCompletedThrough = { ...conversation.pendingCompletedThrough };
-      if (completed) {
-        pendingCompletedThrough[sender.id] = completed;
-      }
-      const pendingReplies = { ...conversation.pendingReplies };
-      delete pendingReplies[sender.id];
-      await save(
-        {
-          ...conversation,
-          pendingReplies,
-          pendingCompletedThrough,
-          messages: [...conversation.messages, ...messages],
+      await save(next, {
+        signal,
+        onWriting: () => {
+          task.committing = true;
+          this.#dependencies.publish({ status: "saving", conversationId: conversation.id });
         },
-        {
-          signal,
-          onWriting: () => {
-            task.committing = true;
-            this.#dependencies.publish({ status: "saving", conversationId: conversation.id });
-          },
-        },
-      );
+      });
       if (!task.detached) {
         this.#dependencies.publish({ status: "idle" });
       }

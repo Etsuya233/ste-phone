@@ -7,6 +7,7 @@ import type { WechatStorage } from "./ports/wechat-storage.ts";
 import type { WechatConversation, WechatMessage } from "./wechat.ts";
 import { pendingWechatMessages } from "./wechat.ts";
 import { wechatMemoryBoundaries } from "./wechat-memory.ts";
+import { describeWechatMessageContent } from "./wechat-message-content.ts";
 
 function validateWechatSelection(selection: WechatIntentSelection): void {
   if (selection.personIds.length < 2) {
@@ -30,12 +31,9 @@ function messageLine(
   pending: Set<string>,
 ): string {
   const person = conversation.people.find(({ id }) => id === message.senderId)!;
-  const sticker = /^\[\[sticker:([^:]+):(.+)\]\]$/.exec(message.content.text);
   const content = message.recalled
     ? "[撤回了一条消息]"
-    : sticker
-      ? `[表情：${sticker[1]} / ${sticker[2]}]`
-      : message.content.text;
+    : describeWechatMessageContent(message.content);
   const state = !message.recalled && pending.has(message.id) ? " [待回复]" : "";
   return `${message.createdAt} ${quote(person.name)}${state}：${quote(content)}`;
 }

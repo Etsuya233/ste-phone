@@ -9,6 +9,9 @@ import type { WechatStickerLibrary } from "../wechat-sticker-library.ts";
 export type WechatRoute =
   | { page: "home" | "accounts" | "stickers" | "settings" | "intents" }
   | { page: "chat" | "person" | "reply-guidance"; id: string }
+  | { page: "chat-image"; id: string; messageId?: string }
+  | { page: "chat-payment-compose"; id: string; kind: "redPacket" | "transfer" }
+  | { page: "chat-payment"; id: string; messageId: string }
   | { page: "moments" | "moment-ai-author"; scopeId: string }
   | { page: "moment-compose"; scopeId: string; onPublished(): void }
   | { page: "moment-detail"; scopeId: string; id: string }

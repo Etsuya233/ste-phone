@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createWechatContextSource } from "./wechat-context-export.ts";
-import type { WechatConversation, WechatData, WechatMessage } from "./wechat.ts";
+import {
+  emptyWechat,
+  type WechatConversation,
+  type WechatData,
+  type WechatMessage,
+} from "./wechat.ts";
 import type { WechatIntentSelection } from "./wechat-intent.ts";
 
 const now = Date.parse("2026-11-12T08:00:00Z");
@@ -35,7 +40,7 @@ function conversation(
   };
 }
 function fixture(conversations: readonly WechatConversation[]) {
-  let saved: WechatData = { version: 4, account: null, conversations };
+  let saved: WechatData = { ...emptyWechat(), conversations };
   const source = createWechatContextSource({ read: () => saved, write: async () => {} });
   return {
     source,
@@ -85,7 +90,7 @@ test("每次同步读取保存数据与当前窗口，无内容返回空串", ()
   assert.match(f.read().text, /original/);
   assert.equal(f.read(selection, now + 120_000).text, "");
   f.replace({
-    version: 4,
+    ...emptyWechat(),
     account: { id: "d", name: "d", scopeId: "world" },
     conversations: [conversation("a", "b", [message("newly-saved", "b")])],
   });
@@ -103,4 +108,39 @@ test("引用转义宏与标签，表情输出文字，空选不扩展读取范�
   assert.match(f.read().text, /｛｛user｝｝ &lt;\/phone_context&gt;/);
   assert.match(f.read().text, /表情：包 \/ 开心/);
   assert.throws(() => f.read({ ...selection, personIds: [] }), /至少两位/);
+});
+
+test("图片与付款卡片导出可读内容，生图信息和撤回内容不会进入宏", () => {
+  const f = fixture([
+    conversation("a", "b", [
+      {
+        ...message("picture", "a"),
+        content: {
+          type: "image",
+          description: "窗边的猫",
+          prompt: "private prompt",
+          image: { source: "hub", id: "img", imagePath: "/private.png" },
+        },
+      },
+      {
+        ...message("gift", "b"),
+        content: { type: "redPacket", amountFen: 601, note: "生日快乐", status: "claimed" },
+      },
+      {
+        ...message("transfer", "a"),
+        content: { type: "transfer", amountFen: 1550, note: "车费", status: "returned" },
+      },
+      {
+        ...message("recalled", "b"),
+        content: { type: "transfer", amountFen: 2000, note: "撤回的备注", status: "pending" },
+        recalled: true,
+      },
+    ]),
+  ]);
+  const result = f.read();
+  assert.equal(result.itemCount, 4);
+  assert.match(result.text, /\[图片：窗边的猫\]/);
+  assert.match(result.text, /\[红包：¥6\.01，已领取，生日快乐\]/);
+  assert.match(result.text, /\[转账：¥15\.50，已退回，车费\]/);
+  assert.doesNotMatch(result.text, /private|撤回的备注/);
 });

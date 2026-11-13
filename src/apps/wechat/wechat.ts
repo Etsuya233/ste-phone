@@ -1,20 +1,26 @@
 import type { CharacterProfile } from "../data-source/public.ts";
+import type { WechatMessageContent } from "./wechat-message-content.ts";
 import type { WechatMoment } from "./wechat-moments.ts";
 import type { MomentGenerationState } from "./wechat-moments-session.ts";
+
+export type {
+  ImageContent,
+  RedPacketContent,
+  TextContent,
+  TransferContent,
+  WechatMessageContent,
+  WechatPaymentAction,
+} from "./wechat-message-content.ts";
 
 export interface WechatPerson {
   readonly id: string;
   readonly scopeId: string;
   readonly name: string;
 }
-export interface TextContent {
-  readonly type: "text";
-  readonly text: string;
-}
 export interface WechatMessage {
   readonly id: string;
   readonly senderId: string;
-  readonly content: TextContent;
+  readonly content: WechatMessageContent;
   readonly createdAt: string;
   readonly recalled?: true;
   readonly reply?: { readonly batchId: string; readonly triggerMessageId?: string };
@@ -35,7 +41,7 @@ export interface WechatConversation {
   readonly memoryBarriers?: readonly WechatMemoryBarrier[];
 }
 export interface WechatData {
-  readonly version: 4;
+  readonly version: 5;
   readonly account: WechatPerson | null;
   readonly conversations: readonly WechatConversation[];
   /** 旧 v1 数据未填写指导；按稳定空间、稳定人物身份保存，所有微信帐号共享。 */
@@ -64,15 +70,19 @@ export interface WechatSnapshot {
   readonly error: string | null;
   readonly reply: ReplyState;
   readonly momentGeneration: MomentGenerationState;
+  readonly chatMediaBusy: boolean;
   readonly writeBusy: boolean;
   readonly barrierSaving: boolean;
   readonly operationError: string | null;
 }
-export const emptyWechat = (): WechatData => ({ version: 4, account: null, conversations: [] });
+export const emptyWechat = (): WechatData => ({ version: 5, account: null, conversations: [] });
 export const conversationId = (scopeId: string, a: string, b: string) =>
   JSON.stringify([scopeId, ...[a, b].sort()]);
 
-export function createWechatMessage(senderId: string, content: TextContent): WechatMessage {
+export function createWechatMessage(
+  senderId: string,
+  content: WechatMessageContent,
+): WechatMessage {
   return {
     id: [...crypto.getRandomValues(new Uint8Array(16))]
       .map((value) => value.toString(16).padStart(2, "0"))
@@ -136,7 +146,7 @@ export function pendingWechatMessages(
     );
 }
 
-/** 首条待回复消息决定本轮边界，后续文字与表情沿用该边界。 */
+/** 首条待回复消息决定本轮边界，后续消息沿用该边界。 */
 export function appendWechatMessage(
   conversation: WechatConversation,
   message: WechatMessage,

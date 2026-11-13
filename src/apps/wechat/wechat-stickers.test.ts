@@ -8,7 +8,7 @@ import {
   wechatStickerCatalog,
   type WechatStickerPack,
 } from "./wechat-stickers.ts";
-import { parseWechatReply } from "./wechat-prompt.ts";
+import { parseWechatReply } from "./wechat-reply-output.ts";
 
 const gif = Uint8Array.from(
   Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64"),
@@ -86,18 +86,20 @@ test("pack toggle changes rendering and model choices while retaining original m
   await f.library.importArchive(await archive());
   const raw = "[[sticker:日常:开心]]";
   assert.equal(findWechatSticker(f.library.getSnapshot().packs, raw)?.description, "开心地挥手");
-  const contents = parseWechatReply(
+  const { messages: contents } = parseWechatReply(
     JSON.stringify({ messages: [{ type: "text", text: raw }] }),
     wechatStickerCatalog(f.library.getSnapshot().packs),
   );
   f.library.setEnabled("日常", false);
   assert.equal(findWechatSticker(f.library.getSnapshot().packs, raw), undefined);
   assert.deepEqual(wechatStickerCatalog(f.library.getSnapshot().packs), []);
-  assert.equal(contents[0]!.text, raw);
+  const [reply] = contents;
+  assert.equal(reply?.type, "text");
+  assert.equal(reply.text, raw);
   assert.equal(new WechatStickerLibrary(f.storage).getSnapshot().packs[0]!.enabled, false);
   assert.throws(() => parseWechatReply(JSON.stringify({ messages: contents }), []), /不可用/);
   f.library.setEnabled("日常", true);
-  assert.ok(findWechatSticker(f.library.getSnapshot().packs, contents[0]!.text));
+  assert.ok(findWechatSticker(f.library.getSnapshot().packs, reply.text));
   assert.equal(
     findWechatSticker(f.library.getSnapshot().packs, "[[sticker:不存在:开心]]"),
     undefined,
