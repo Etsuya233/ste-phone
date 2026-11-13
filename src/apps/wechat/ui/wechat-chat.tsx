@@ -43,6 +43,13 @@ export function WechatChatTimeline({
 }) {
   const { wechat, state, navigation, id, active, stickers, stickerState } = props;
   const [composerHeight, setComposerHeight] = useState(62);
+  const [draft, setDraft] = useState(() => wechat.getDraft(id));
+  useEffect(() => {
+    // 指定发言页也可提交草稿，回到当前聊天时同步保存结果。
+    if (active) {
+      setDraft(wechat.getDraft(id));
+    }
+  }, [active, id, wechat]);
   const end = useRef<HTMLDivElement>(null);
   const memory = useWechatMemory({ ...props, conversation, end });
   const reply =
@@ -78,6 +85,8 @@ export function WechatChatTimeline({
             available={available}
             currentId={currentId}
             group={conversation?.kind === "group"}
+            draft={draft}
+            setDraft={setDraft}
             onHeightChange={setComposerHeight}
           />
         }
@@ -90,6 +99,11 @@ export function WechatChatTimeline({
           people={state.people}
           packs={stickerState.packs}
           stickers={stickers}
+          onMention={(sender) => {
+            const text = `${wechat.getDraft(id)}@${sender}`;
+            setDraft(text);
+            wechat.setDraft(id, text);
+          }}
           onOpenImage={(messageId) => navigation.push({ page: "chat-image", id, messageId })}
           onOpenPayment={(messageId) => navigation.push({ page: "chat-payment", id, messageId })}
         />

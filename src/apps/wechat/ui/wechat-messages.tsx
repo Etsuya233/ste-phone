@@ -10,6 +10,7 @@ import { WechatMessageBubble } from "./wechat-message-bubble.tsx";
 import type { useWechatMemory } from "./use-wechat-memory.tsx";
 import { useWechatClock } from "./use-wechat-clock.ts";
 import { WechatRichBubble } from "./wechat-rich-bubble.tsx";
+import { WechatMentionAvatar } from "./wechat-mention-avatar.tsx";
 
 export function WechatMessages({
   conversation,
@@ -21,6 +22,7 @@ export function WechatMessages({
   memory,
   onOpenImage,
   onOpenPayment,
+  onMention,
 }: {
   conversation: WechatConversation | undefined;
   accountId: string | undefined;
@@ -31,6 +33,7 @@ export function WechatMessages({
   memory: ReturnType<typeof useWechatMemory>;
   onOpenImage(messageId: string): void;
   onOpenPayment(messageId: string): void;
+  onMention(name: string): void;
 }) {
   const now = useWechatClock(active);
   const profiles = new Map(people.map((person) => [person.id, person]));
@@ -84,7 +87,16 @@ export function WechatMessages({
               <div
                 className={`wechat-message ${mine ? "wechat-message--mine" : ""}${message.recalled ? " wechat-message--recalled" : ""}`}
               >
-                <PersonAvatar path={person?.avatar?.imagePath} name={sender} />
+                {conversation.kind === "group" ? (
+                  <WechatMentionAvatar
+                    path={person?.avatar?.imagePath}
+                    name={sender}
+                    active={active}
+                    onMention={onMention}
+                  />
+                ) : (
+                  <PersonAvatar path={person?.avatar?.imagePath} name={sender} />
+                )}
                 <div className="wechat-message-body">
                   {conversation.kind === "group" ? (
                     <small className="wechat-message-sender">{sender}</small>

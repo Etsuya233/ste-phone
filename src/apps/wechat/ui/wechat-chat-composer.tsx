@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { WechatComposer } from "./wechat-composer.tsx";
 import type { WechatPageProps } from "./wechat-page.tsx";
 import { wechatChatWriteBusy } from "./wechat-chat-writing.ts";
 
-/** 草稿留在当前页面；服务负责原归属保存失败后的恢复，表情提交保留文字。 */
+/** 草稿由聊天页面持有；服务负责原归属保存失败后的恢复，表情提交保留文字。 */
 export function WechatChatComposer({
   wechat,
   state,
@@ -15,7 +15,8 @@ export function WechatChatComposer({
   available,
   currentId,
   group,
-  active,
+  draft,
+  setDraft,
   onHeightChange,
 }: WechatPageProps & {
   id: string;
@@ -23,17 +24,12 @@ export function WechatChatComposer({
   currentId: string | null;
   group: boolean;
   active: boolean;
+  draft: string;
+  setDraft: Dispatch<SetStateAction<string>>;
   onHeightChange(height: number): void;
 }) {
-  const [draft, setDraft] = useState(() => wechat.getDraft(id));
   const running = state.reply.status === "running";
   const replying = running && state.reply.conversationId === currentId;
-  useEffect(() => {
-    // 指定发言页也可提交当前会话草稿；回到聊天时同步其保存结果。
-    if (active) {
-      setDraft(wechat.getDraft(id));
-    }
-  }, [active, id, wechat]);
   async function submit(action: "send" | "enqueue") {
     const text = draft;
     setDraft("");
