@@ -1,0 +1,336 @@
+/* Shared controls keep their native inputs, focus and event handling in every style. */
+:host [data-system-style="material3"] .ios-nav {
+  padding-inline: 8px;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+  gap: 8px;
+  border-bottom: 0;
+  backdrop-filter: none;
+}
+:host [data-system-style="material3"] .ios-nav h1 {
+  font-size: 22px;
+  font-weight: 400;
+  text-align: start;
+}
+:host [data-system-style="material3"] .ios-nav .ios-button {
+  justify-content: center;
+}
+:host [data-system-style="material3"] .ios-nav .ios-nav-back .ios-icon,
+:host [data-system-style="material3"] .ios-nav .ios-nav-back-label {
+  display: none;
+}
+:host [data-system-style="material3"] .ios-nav .ios-nav-back .ios-nav-back-arrow {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+}
+:host [data-system-style="material3"] .ios-footer {
+  backdrop-filter: none;
+}
+:host [data-system-style="material3"] .ios-group {
+  margin-inline: 12px;
+}
+:host [data-system-style="material3"] .ios-group-rows {
+  display: grid;
+  gap: 2px;
+  border: 0;
+  background: transparent;
+}
+/* Each direct child draws one surface, including a row that contains multiple controls. */
+:host [data-system-style="material3"] .ios-group-rows > * {
+  min-width: 0;
+  border-radius: var(--md-shape-small);
+  background-color: var(--ios-row-surface);
+}
+:host [data-system-style="material3"] .ios-group-rows > :first-child {
+  border-start-start-radius: var(--md-shape-large);
+  border-start-end-radius: var(--md-shape-large);
+}
+:host [data-system-style="material3"] .ios-group-rows > :last-child {
+  border-end-start-radius: var(--md-shape-large);
+  border-end-end-radius: var(--md-shape-large);
+}
+:host [data-system-style="material3"] .ios-group-title,
+:host [data-system-style="material3"] .ios-group-description {
+  margin-inline: 12px;
+}
+:host [data-system-style="material3"] .ios-group-title {
+  margin-bottom: 8px;
+  color: var(--md-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+:host [data-system-style="material3"] .ios-cell {
+  min-height: 56px;
+}
+:host
+  [data-system-style="material3"]
+  :is(
+    .ios-cell + .ios-cell,
+    .model-connection-header + .model-connection-header,
+    .model-connection-header + .model-connection-wide-action
+  ) {
+  border-top: 0;
+}
+:host [data-system-style="material3"] .ios-cell:has(.appearance-choice) {
+  padding-block: 0;
+}
+:host [data-system-style="material3"] .ios-cell:has(.appearance-choice input:checked) {
+  background-color: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
+:host [data-system-style="material3"] .ios-button {
+  border: 0;
+  border-radius: var(--md-shape-full);
+  font-size: 14px;
+  font-weight: 500;
+}
+:host [data-system-style="material3"] .ios-button--filled:disabled {
+  background-color: var(--md-surface-container-highest);
+  color: var(--md-on-surface-variant);
+}
+@media (hover: hover) {
+  :host
+    [data-system-style="material3"]
+    :is(.ios-button, .ios-cell--action, .ios-alert-action, .ios-action-sheet-action):hover:not(
+      :disabled,
+      [aria-disabled="true"]
+    ) {
+    background-image: linear-gradient(var(--md-state-hover), var(--md-state-hover));
+  }
+}
+:host
+  [data-system-style="material3"]
+  :is(.ios-button, .ios-cell--action, .ios-alert-action, .ios-action-sheet-action):active:not(
+    :disabled,
+    [aria-disabled="true"]
+  ) {
+  background-image: linear-gradient(var(--md-state-pressed), var(--md-state-pressed));
+  opacity: 1;
+}
+:host [data-system-style="material3"] .ios-text-field {
+  padding-block: 10px 6px;
+}
+:host [data-system-style="material3"] .ios-text-field-label {
+  padding-inline: 8px;
+}
+:host [data-system-style="material3"] :is(.ios-text-field input, .ios-select-field select) {
+  padding-inline: 8px;
+  border: 0;
+  border-radius: var(--md-shape-small);
+  background-color: transparent;
+}
+:host [data-system-style="material3"] .ios-text-field + .ios-text-field {
+  border: 0;
+}
+:host [data-system-style="material3"] :is(input[type="search"], .map-search-field) {
+  border: 0;
+  border-radius: var(--md-shape-full);
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface);
+}
+:host [data-system-style="material3"] .ios-switch-track {
+  display: flex;
+  align-items: center;
+  border-color: var(--md-outline);
+  background-color: var(--md-surface-container-highest);
+}
+:host [data-system-style="material3"] .ios-switch-track::after {
+  width: 16px;
+  height: 16px;
+  background-color: var(--md-outline);
+  transform: translateX(6px);
+  transition:
+    width var(--ios-control-duration),
+    height var(--ios-control-duration),
+    transform var(--ios-control-duration);
+}
+:host [data-system-style="material3"] .ios-switch input:checked + .ios-switch-track::after {
+  width: 24px;
+  height: 24px;
+  background-color: var(--md-on-primary);
+  transform: translateX(22px);
+}
+@media (prefers-reduced-motion: reduce) {
+  :host [data-system-style="material3"] .ios-switch-track::after {
+    transition: none;
+  }
+}
+:host [data-system-style="material3"] .ios-segmented-options {
+  gap: 2px;
+  border: 0;
+}
+:host [data-system-style="material3"] .ios-segment + .ios-segment {
+  border: 0;
+}
+:host [data-system-style="material3"] .ios-segment span {
+  border-radius: 6px;
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface);
+  font-size: 14px;
+  font-weight: 500;
+}
+:host [data-system-style="material3"] .ios-segment:first-child span {
+  border-start-start-radius: var(--md-shape-full);
+  border-end-start-radius: var(--md-shape-full);
+}
+:host [data-system-style="material3"] .ios-segment:last-child span {
+  border-start-end-radius: var(--md-shape-full);
+  border-end-end-radius: var(--md-shape-full);
+}
+:host [data-system-style="material3"] .ios-segment input:checked + span {
+  border-radius: var(--md-shape-full);
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
+:host [data-system-style="material3"] .ios-segment input:checked + span::before {
+  content: "";
+  width: 6px;
+  height: 10px;
+  margin-inline-end: 8px;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: translateY(-1px) rotate(45deg);
+}
+
+:host [data-system-style="material3"] .ios-alert-overlay {
+  /* Keep the dialog's preferred width from enlarging the grid on narrow screens. */
+  grid-template-columns: minmax(0, 1fr);
+}
+:host [data-system-style="material3"] .ios-alert {
+  background-color: var(--md-surface-container-high);
+  color: var(--md-on-surface);
+  text-align: start;
+  backdrop-filter: none;
+}
+:host [data-system-style="material3"] .ios-alert-title {
+  margin-bottom: 12px;
+  font-size: 24px;
+  font-weight: 400;
+}
+:host [data-system-style="material3"] .ios-alert-message {
+  color: var(--md-on-surface-variant);
+}
+:host [data-system-style="material3"] .ios-alert-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px;
+  border: 0;
+  padding: 0 16px 16px;
+}
+:host [data-system-style="material3"] .ios-alert-action {
+  flex: 0 1 auto;
+  padding-inline: 12px;
+  color: var(--md-primary);
+  border-radius: var(--md-shape-full);
+  font-size: 14px;
+  font-weight: 500;
+}
+:host [data-system-style="material3"] .ios-alert-action + .ios-alert-action {
+  border: 0;
+}
+:host [data-system-style="material3"] .ios-action-sheet-layer {
+  padding: 0;
+}
+:host [data-system-style="material3"] .ios-action-sheet {
+  max-height: calc(100% - var(--status-height));
+  overflow: auto;
+  padding: 16px 16px calc(var(--safe-bottom) + 16px);
+  border-radius: var(--md-shape-extra-large) var(--md-shape-extra-large) 0 0;
+  background-color: var(--md-surface-container-high);
+}
+:host [data-system-style="material3"] .ios-action-sheet::before {
+  content: "";
+  flex: 0 0 4px;
+  width: 32px;
+  align-self: center;
+  border-radius: var(--md-shape-full);
+  margin-bottom: 8px;
+  background: var(--md-outline-variant);
+}
+:host [data-system-style="material3"] .ios-action-sheet-group {
+  border-radius: var(--md-shape-large);
+  background-color: var(--md-surface);
+  backdrop-filter: none;
+}
+:host [data-system-style="material3"] .ios-action-sheet-action {
+  text-align: start;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Tonal focus fills the control itself; forced colors restore a system-drawn focus mark. */
+:host
+  [data-system-style="material3"]
+  :is(
+    .ios-button:focus-visible,
+    .ios-cell--action:focus-visible,
+    .ios-alert-action:focus-visible,
+    .ios-action-sheet-action:focus-visible,
+    .ios-text-field input:focus-visible,
+    .ios-select-field select:focus-visible,
+    input[type="search"]:focus-visible,
+    .map-search-field:has(input:focus-visible),
+    .ios-segment input:focus-visible + span,
+    .ios-switch input:focus-visible + .ios-switch-track,
+    .appearance-choice:has(input:focus-visible),
+    .model-connection-choice:has(input:focus-visible)
+  ) {
+  outline: none;
+}
+:host
+  [data-system-style="material3"]
+  :is(
+    .ios-button--plain:focus-visible,
+    .ios-cell--action:focus-visible,
+    .ios-alert-action:focus-visible,
+    .ios-action-sheet-action:focus-visible,
+    .ios-text-field input:focus-visible,
+    .ios-select-field select:focus-visible,
+    input[type="search"]:focus-visible,
+    .map-search-field:has(input:focus-visible),
+    .ios-segment input:focus-visible + span,
+    .ios-cell:has(:is(.appearance-choice, .model-connection-choice) input:focus-visible)
+  ) {
+  background-color: var(--md-focus-container);
+  color: var(--md-on-focus-container);
+}
+:host
+  [data-system-style="material3"]
+  .ios-text-field:has(input:focus-visible)
+  .ios-text-field-label {
+  color: var(--md-primary);
+  font-weight: 600;
+}
+:host
+  [data-system-style="material3"]
+  .ios-button:focus-visible:not(.ios-button--plain, .ios-button--filled),
+:host [data-system-style="material3"] .ios-switch input:focus-visible + .ios-switch-track {
+  background-image: linear-gradient(var(--md-state-focus), var(--md-state-focus));
+}
+:host [data-system-style="material3"] .ios-button--filled:focus-visible {
+  background-color: var(--md-focus-primary);
+  background-image: none;
+}
+:host [data-system-style="material3"] .ios-switch:has(input:focus-visible) > span:first-child {
+  color: var(--md-primary);
+  font-weight: 600;
+}
+
+@media (forced-colors: active) {
+  :host
+    [data-system-style="material3"]
+    :is(
+      button:focus-visible,
+      .ios-text-field input:focus-visible,
+      .ios-select-field select:focus-visible,
+      input[type="search"]:focus-visible,
+      .map-search-field:has(input:focus-visible),
+      .ios-segment input:focus-visible + span,
+      .ios-switch input:focus-visible + .ios-switch-track,
+      .appearance-choice:has(input:focus-visible),
+      .model-connection-choice:has(input:focus-visible)
+    ) {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}

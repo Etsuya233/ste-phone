@@ -1,3 +1,4 @@
+import { isSystemStyle } from "./public.ts";
 import { validateSpeechConnection, type SpeechConnection } from "../../core/speech/public.ts";
 import type {
   AppearanceSettings,
@@ -72,7 +73,7 @@ export class PhoneSettingsService {
       this.save({ ...this.state, appearance: { ...this.state.appearance, deviceModel } });
     },
     setSystemStyle: (systemStyle) => {
-      if (systemStyle !== "classic" && systemStyle !== "ios26") {
+      if (!isSystemStyle(systemStyle)) {
         throw new Error("不支持的系统风格");
       }
       this.save({ ...this.state, appearance: { ...this.state.appearance, systemStyle } });

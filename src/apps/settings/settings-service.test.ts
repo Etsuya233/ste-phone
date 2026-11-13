@@ -379,6 +379,17 @@ test("appearance choices combine independently, persist and keep snapshots stabl
     deviceModel: "iphone-6s",
     systemStyle: "ios26",
   });
+  service.appearance.setSystemStyle("material3");
+  assert.deepEqual(new PhoneSettingsService(storage).appearance.getSnapshot(), {
+    deviceModel: "iphone-6s",
+    systemStyle: "material3",
+  });
+  service.appearance.setDeviceModel("iphone-17");
+  assert.deepEqual(service.appearance.getSnapshot(), {
+    deviceModel: "iphone-17",
+    systemStyle: "material3",
+  });
+
   assert.deepEqual(
     new PhoneSettingsService(storage).appearance.getSnapshot(),
     service.appearance.getSnapshot(),
@@ -397,7 +408,7 @@ test("failed appearance saves retain the applied choices and do not notify subsc
   let notifications = 0;
   service.appearance.subscribe(() => notifications++);
   assert.throws(() => service.appearance.setDeviceModel("iphone-17"), /storage denied/);
-  assert.throws(() => service.appearance.setSystemStyle("ios26"), /storage denied/);
+  assert.throws(() => service.appearance.setSystemStyle("material3"), /storage denied/);
   assert.equal(service.appearance.getSnapshot(), initial);
   assert.equal(notifications, 0);
 });

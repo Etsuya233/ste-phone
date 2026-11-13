@@ -26,7 +26,7 @@
 
 声乐园从浏览器直连 Speech 接口，跨域时由接口网关允许 CORS。使用 Realtime 适配器时填入 HTTPS Speech 地址、`gpt-realtime-2.1-mini` 和独立的 `BRIDGE_TOKEN`。默认与临时朗读风格通过 `instructions` 发送，由支持该字段的服务应用。独立预览 `/?voice-playground=1` 使用模拟音频。
 
-「设置 → 外观」可分别选择手机外形（iPhone 6s / iPhone 17）与系统风格（经典 iOS / iOS 26），支持四种自由组合，选择后立即应用并跨聊天保存。旧配置升级后保留经典 iPhone 6s；切换外观保留应用页面、草稿和后台任务。iPhone 17 使用全面屏、灵动岛与底部 Home 条；从条快速上滑松手返回主屏，上滑减速定住后松手或按住停留约 240ms 查看后台，锁屏时上滑解锁。iPhone 6s 亮起锁屏后长按 Home 600ms 解锁。交互跟随手机外形，iOS 26 风格提供大圆角分组、胶囊控件、顶部渐隐导航、无边框模糊 Dock。
+「设置 → 外观」可分别选择手机外形（iPhone 6s / iPhone 17）与系统风格（经典 iOS / iOS 26 / Material 3），支持六种自由组合，选择后立即应用并跨聊天保存。旧配置升级后保留经典 iPhone 6s；切换外观保留应用页面、草稿和后台任务。iPhone 17 使用全面屏、灵动岛与底部 Home 条；从条快速上滑松手返回主屏，上滑减速定住后松手或按住停留约 240ms 查看后台，锁屏时上滑解锁。iPhone 6s 亮起锁屏后长按 Home 600ms 解锁。交互跟随手机外形，iOS 26 风格提供大圆角分组、胶囊控件、顶部渐隐导航、无边框模糊 Dock。Material 3 使用薄荷色表面、森林绿强调色、胶囊控件、圆角弹窗和实色 Dock。
 
 面向 SillyTavern 的小手机插件。使用 React、TypeScript、普通 CSS 和 esbuild，提供 iPhone 6s / iPhone 17 风格外壳、主屏幕、秒表、Foundation 组件、资料应用、Fake DBeaver 数据库应用、日志查看和壁纸设置。公共数据源连接 STE Memory，将 Phone 定义的标准视图注册到 Memory 已提交数据库，供当前人物、纪要、物品和世界状态查询。
 

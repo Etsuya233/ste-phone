@@ -12,6 +12,7 @@ const deviceChoices: { value: DeviceModel; label: string; detail: string }[] = [
 const systemChoices: { value: SystemStyle; label: string; detail: string }[] = [
   { value: "classic", label: "经典 iOS", detail: "简洁的平面控件与导航" },
   { value: "ios26", label: "iOS 26", detail: "圆润分组与玻璃质感" },
+  { value: "material3", label: "Material 3", detail: "薄荷色界面、胶囊控件与圆角面板" },
 ];
 
 export function AppearancePage({

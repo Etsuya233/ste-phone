@@ -70,7 +70,7 @@ export function Expose({
     }
     gesture.current = null;
     onDrag({ x: 0, y: 0, app: null });
-  }, [visible, blocked, onDrag, layout.style]);
+  }, [visible, blocked, onDrag, layout.arrangement]);
   const select = (index: number) => onSelect(Math.max(0, Math.min(apps.length - 1, index)));
   const start = (event: PointerEvent<HTMLDivElement>) => {
     if (blocked || !event.isPrimary || event.button !== 0) {
@@ -192,7 +192,7 @@ export function Expose({
             style={
               {
                 width: card.width,
-                height: card.height + (layout.style === "classic" ? 104 : 0),
+                height: card.height + (layout.arrangement === "carousel" ? 104 : 0),
                 left: card.left,
                 top: card.top + (drag.app === app ? drag.y : 0),
                 zIndex: card.zIndex,
@@ -205,7 +205,7 @@ export function Expose({
               tabIndex={current ? 0 : -1}
               aria-label={`打开${appNames[app]}预览`}
               aria-current={current ? "true" : undefined}
-              style={layout.style === "classic" ? { height: card.height } : undefined}
+              style={layout.arrangement === "carousel" ? { height: card.height } : undefined}
               onClick={() => onOpen(app)}
             />
             <button

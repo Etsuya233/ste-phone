@@ -58,7 +58,12 @@ export interface WechatPreferences {
 }
 
 export type DeviceModel = "iphone-6s" | "iphone-17";
-export type SystemStyle = "classic" | "ios26";
+export const systemStyles = ["classic", "ios26", "material3"] as const;
+export type SystemStyle = (typeof systemStyles)[number];
+
+export function isSystemStyle(value: unknown): value is SystemStyle {
+  return systemStyles.some((style) => style === value);
+}
 export interface AppearanceSnapshot {
   readonly deviceModel: DeviceModel;
   readonly systemStyle: SystemStyle;

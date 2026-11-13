@@ -19,6 +19,17 @@ test("classic cards retain a centered row and positive navigation direction", ()
   assert.equal(placeExposeCard(layout, 2, 1, 0).left - current.left, layout.stride);
 });
 
+test("Material 3 cards and swipe navigation share the carousel layout", () => {
+  const screen = { width: 402, height: 874, bottom: 34, status: 62 };
+  const layout = createExposeLayout(screen, "material3");
+  const current = placeExposeCard(layout, 1, 1, 0);
+  const adjacent = placeExposeCard(layout, 2, 1, 0);
+  assert.equal(layout.arrangement, "carousel");
+  assert.equal(adjacent.left, current.left + layout.stride);
+  assert.equal(adjacent.width, current.width);
+  assert.equal(exposeSwipeSteps(layout, -layout.stride, -5), 1);
+});
+
 test("modern cards overlap in history order and drag continuously into the selected position", () => {
   const layout = createExposeLayout({ width: 402, height: 874, bottom: 34, status: 62 }, "ios26");
   const selected = placeExposeCard(layout, 1, 1, 0);

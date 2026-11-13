@@ -7,7 +7,7 @@ export interface ExposeDrag {
   app: AppId | null;
 }
 export interface ExposeLayout {
-  style: SystemStyle;
+  arrangement: "carousel" | "stack";
   scale: number;
   width: number;
   height: number;
@@ -22,7 +22,7 @@ export function exposeSwipeSteps(layout: ExposeLayout, distance: number, velocit
     return 0;
   }
   const direction = Math.sign(distance);
-  if (layout.style === "classic") {
+  if (layout.arrangement === "carousel") {
     return -direction;
   }
   // Project briefly in the drag direction, adding at most one card of travel.
@@ -42,7 +42,7 @@ export function createExposeLayout(
   const width = screen.width * scale;
   const height = screen.height * scale;
   return {
-    style,
+    arrangement: modern ? "stack" : "carousel",
     scale,
     width,
     height,
@@ -62,7 +62,7 @@ export function placeExposeCard(
   selectedIndex: number,
   dragX: number,
 ) {
-  if (layout.style === "classic") {
+  if (layout.arrangement === "carousel") {
     return {
       left: layout.left + (index - selectedIndex) * layout.stride + dragX,
       top: layout.top,

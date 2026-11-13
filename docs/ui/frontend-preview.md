@@ -64,6 +64,16 @@ Edge 独立预览覆盖 320px 经典和 390px iOS 26。验证同成员创建不�
 
 Edge 独立预览覆盖 320px 经典与 390px iOS 26 的图片 Prompt 完善、模拟生图、图库选图、原消息补图、两种发送模式、收款与退回、草稿保留、刷新恢复和卡片菜单。另验收生图失败后可发占位、保存失败保留金额和备注，以及滚动时菜单位于导航栏下方。使用模拟模型和 Image Hub，未执行真实 ST 界面或移动真机验收。
 
+## Material 3 系统风格（2026-11-13）
+
+从 `/?settings=1&responsive=1` 打开「外观」，检查 Material 3 与两种机型的组合、刷新后恢复选项，以及与经典 iOS 和 iOS 26 双向切换后草稿仍在。通过 `/?foundation=1&responsive=1` 检查圆角分组、按钮、开关、分段选中、焦点和禁用态；打开资料检查搜索，打开日记详情检查操作菜单和确认弹窗。回主屏检查实色 Dock 和安全区，通过 Home 操作检查后台横向卡片与原页面恢复。视觉参考 [Material 3 颜色系统](https://m3.material.io/styles/color/the-color-system/) 和 [Material Design 3 in Compose](https://developer.android.com/develop/ui/compose/designsystems/material3)。
+
+Edge 独立预览在 320×568、390×844 验证两种机型的外观切换、刷新恢复、Foundation 控件、三级导航、Dock 和后台上滑退出。设置模型连接弹窗在 320px 下两侧各留 16px，验证 Tab、Escape 与焦点恢复；设置输入和微信聊天通过窄屏检查；从 Material 3 切回经典 iOS 后，微信单聊路由与输入草稿均保留。截图保存在忽略目录 `tmp/material3-qa/`。本轮未验收真实 ST 或移动真机。
+
+同日调整列表和焦点。设置列表及模型连接输入使用 2px 间隙、6px 内角、16px 外角。输入与按钮使用无描边填充，键盘焦点通过填充和文字强调呈现。Edge 在相同两种窄屏尺寸检查了模型连接输入、微信搜索、Foundation 按钮与弹窗焦点，并确认经典 iOS 和 iOS 26 的焦点轮廓保留。对照截图为 `tmp/material3-qa/390-polish-input.png`、`390-polish-settings.png`。
+
+类型检查、lint、修改文件格式检查和 `git diff --check` 通过。全量测试 379 项通过，离线发版测试因 Windows 拒绝 esbuild 写入临时目录而失败，标准生产构建同样受影响。使用原生产配置在内存中构建并由 Node 写出 JS、CSS 和 manifest 成功。
+
 ## 备忘录（2026-11-12）
 
 `/?notes=1&notes-test=demo&responsive=1` 打开两位角色的备忘录样例。普通入口可验收首次选角，`notes-test=slow/error/length/save-error` 可验收生成取消、生成失败、截断和首次保存失败。预览使用独立存储和模拟模型。
