@@ -47,7 +47,7 @@ export function NotesEditPage({
   const [showWriting, setShowWriting] = useState(false);
   const [confirmation, setConfirmation] = useState<keyof typeof confirmations | null>(null);
   const editing = useNoteDraft(notes, draft, navigation);
-  const writing = useNotesWriting(notes);
+  const writing = useNotesWriting(notes, draft.role);
   const writingLocked = writing.state.stage !== "prompt";
   const readonly = editing.busy || writingLocked;
   const blocksQuit = editing.phase !== "leaving" && (editing.changed || writingLocked);

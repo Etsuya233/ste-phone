@@ -4,6 +4,7 @@ import { Button } from "../../../frontend/foundation/button.tsx";
 import { NavBar } from "../../../frontend/foundation/nav-bar.tsx";
 import { Page } from "../../../frontend/foundation/page.tsx";
 import type { NotesService } from "../notes-service.ts";
+import type { NotesRole } from "../notes.ts";
 import { NotesSparkleIcon } from "./notes-icons.tsx";
 import { useNotesWriting } from "./use-notes-writing.ts";
 import { useLayoutEffect, useState, type RefObject } from "react";
@@ -93,6 +94,7 @@ export function NotesWriting({
 
 export function NotesAiNewPage({
   notes,
+  role,
   current,
   onBack,
   onOpen,
@@ -100,13 +102,14 @@ export function NotesAiNewPage({
   quitBlocked,
 }: {
   notes: NotesService;
+  role: NotesRole;
   current: boolean;
   onBack: () => void;
   onOpen: (app: AppId) => void;
   onAccept: (text: string) => void;
   quitBlocked: RefObject<boolean>;
 }) {
-  const writing = useNotesWriting(notes);
+  const writing = useNotesWriting(notes, role);
   const [confirm, setConfirm] = useState(false);
   const hasResult = writing.state.stage !== "prompt";
   useLayoutEffect(() => {

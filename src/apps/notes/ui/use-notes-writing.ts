@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { NotesService } from "../notes-service.ts";
+import type { NotesRole } from "../notes.ts";
 
 type WritingState =
   { stage: "prompt"; error?: string } | { stage: "generating" | "preview"; text: string };
 
-export function useNotesWriting(notes: NotesService) {
+export function useNotesWriting(notes: NotesService, role: NotesRole) {
   const [instruction, setInstruction] = useState("");
   const [state, setState] = useState<WritingState>({ stage: "prompt" });
   const request = useRef<AbortController | null>(null);
@@ -19,7 +20,7 @@ export function useNotesWriting(notes: NotesService) {
     request.current = controller;
     setState({ stage: "generating", text: "" });
     try {
-      const text = await notes.generate(instruction, controller.signal, (text) => {
+      const text = await notes.generate(role, instruction, controller.signal, (text) => {
         if (!controller.signal.aborted) {
           setState({ stage: "generating", text });
         }
