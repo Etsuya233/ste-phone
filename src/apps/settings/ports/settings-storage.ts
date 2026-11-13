@@ -13,6 +13,7 @@ export interface PhoneSettings {
   modelConnections: ModelConnection[];
   defaultModelConnectionId: string | null;
   mapModelConnectionId: string | null;
+  browserModelConnectionId?: string;
   homeLayout: HomeLayout;
   speechConnection?: SpeechConnection;
 }

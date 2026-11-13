@@ -6,6 +6,7 @@ import type {
   WallpaperSnapshot,
   ModelConnectionsReader,
   MapModelPreference,
+  BrowserModelPreference,
   ModelConnectionsSnapshot,
   HomeScreenSettings,
   WechatPreferences,
@@ -144,6 +145,16 @@ export class PhoneSettingsService {
   readonly wallpaper: WallpaperReader = {
     getSnapshot: () => this.wallpaperSnapshot,
     subscribe: (listener) => this.subscribe(listener),
+  };
+  readonly browserModelPreference: BrowserModelPreference = {
+    getSnapshot: () => this.state.browserModelConnectionId ?? null,
+    subscribe: (listener) => this.subscribe(listener),
+    select: (id) => {
+      if (!this.state.modelConnections.some((connection) => connection.id === id)) {
+        throw new Error("浏览器模型连接不存在");
+      }
+      this.save({ ...this.state, browserModelConnectionId: id });
+    },
   };
   readonly mapModelPreference: MapModelPreference = {
     getSnapshot: () => this.state.mapModelConnectionId,

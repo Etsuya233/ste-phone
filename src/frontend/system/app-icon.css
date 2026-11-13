@@ -47,6 +47,17 @@
   fill: var(--diary-icon-ribbon);
 }
 
+:host .browser-app-icon {
+  background: var(--store-icon-fill);
+}
+:host .browser-app-icon svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+}
+:host .browser-app-icon path {
+  fill: currentColor;
+}
 :host .notes-app-icon {
   background: #fffdf9;
 }

@@ -77,7 +77,7 @@ export function createStAiTransport(
     options.log ??
     ((entry: Readonly<Record<string, unknown>>) => console.info("[STE Phone AI]", entry));
   return {
-    createStream(input, diagnostics) {
+    createStream(input, diagnostics, request) {
       const connection: AiConnection = {
         ...input,
         customHeaders: Object.fromEntries(
@@ -140,6 +140,12 @@ export function createStAiTransport(
               throw new Error("请通过连接快照提供模型鉴权和请求头");
             }
             const messages = completionMessages(context);
+            const customBody = {
+              ...(options?.reasoning ? { reasoning_effort: options.reasoning } : {}),
+              ...(request?.outputFormat === "json-object"
+                ? { response_format: { type: "json_object" } }
+                : {}),
+            };
             // 输入快照与实际发送共用同一份协议载荷；鉴权只在 fetch 边界加入。
             requestInput = JSON.parse(
               JSON.stringify({
@@ -165,11 +171,9 @@ export function createStAiTransport(
                     }
                   : {}),
                 include_reasoning: true,
-                ...(options?.reasoning
-                  ? {
-                      reasoning_effort: options.reasoning,
-                      custom_include_body: JSON.stringify({ reasoning_effort: options.reasoning }),
-                    }
+                ...(options?.reasoning ? { reasoning_effort: options.reasoning } : {}),
+                ...(Object.keys(customBody).length
+                  ? { custom_include_body: JSON.stringify(customBody) }
                   : {}),
               }),
             ) as Record<string, unknown>;

@@ -31,6 +31,11 @@ export interface ModelConnectionsSnapshot {
   readonly connections: readonly ModelConnectionSummary[];
   readonly defaultModelConnectionId: string | null;
 }
+export interface BrowserModelPreference {
+  getSnapshot(): string | null;
+  subscribe(listener: () => void): () => void;
+  select(id: string): void;
+}
 export interface MapModelPreference {
   getSnapshot(): string | null;
   subscribe(listener: () => void): () => void;

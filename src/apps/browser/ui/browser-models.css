@@ -1,0 +1,98 @@
+:host .browser-models {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 16px 40px;
+}
+
+:host .browser-model-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+:host .browser-model-intro-mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 15px;
+  place-items: center;
+  background: linear-gradient(#e7f0ff, #d5e6ff);
+  box-shadow: 0 6px 16px #0a6cff12;
+  color: var(--browser-accent);
+}
+
+:host .browser-model-intro-mark .browser-icon {
+  width: 24px;
+  height: 24px;
+}
+
+:host .browser-model-intro h2 {
+  margin: 1px 0 3px;
+  color: var(--browser-ink);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+:host .browser-model-intro p {
+  margin: 0;
+  color: var(--browser-soft);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+:host .browser-model-card {
+  overflow: hidden;
+  border: 1px solid var(--browser-line);
+  border-radius: var(--browser-radius);
+  background: var(--browser-card);
+  box-shadow: var(--browser-shadow);
+}
+
+:host .browser-model-picker {
+  display: grid;
+}
+
+:host .browser-model-picker .ios-text-field {
+  padding-block: 10px;
+}
+
+:host .browser-model-picker .ios-select-field select {
+  font-weight: 600;
+}
+
+:host .browser-model-open {
+  min-height: 42px;
+  margin: 0 14px 10px;
+  border: 1px solid var(--browser-line);
+  border-radius: var(--browser-action-radius);
+  background: var(--browser-tint);
+  color: var(--browser-accent-deep);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+:host .browser-model-error {
+  margin: 0;
+  padding: 0 14px 10px;
+  color: var(--ios-red);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+:host .browser-model-footnote {
+  margin: 0;
+  padding: 0 2px;
+  color: var(--browser-faint);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+@media (max-width: 340px) {
+  :host .browser-models {
+    padding-inline: 12px;
+  }
+}

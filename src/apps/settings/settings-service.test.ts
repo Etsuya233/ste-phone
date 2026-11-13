@@ -469,3 +469,31 @@ test("failed map model selection preserves the previously persisted choice", () 
   assert.equal(stored.mapModelConnectionId, connection.id);
   assert.equal(notifications, 0);
 });
+
+test("browser remembers its explicit connection independently of the default and map", () => {
+  let stored: PhoneSettings = {
+    ...defaultSettings,
+    modelConnections: [connection, { ...connection, id: "browser-only" }],
+    defaultModelConnectionId: connection.id,
+    mapModelConnectionId: connection.id,
+  };
+  const storage: SettingsStorage = {
+    ...library,
+    read: () => stored,
+    save: (settings) => {
+      stored = settings;
+    },
+  };
+  const service = new PhoneSettingsService(storage);
+  assert.equal(service.browserModelPreference.getSnapshot(), null);
+  service.browserModelPreference.select("browser-only");
+  assert.equal(
+    new PhoneSettingsService(storage).browserModelPreference.getSnapshot(),
+    "browser-only",
+  );
+  assert.equal(service.defaultModelConnection().id, connection.id);
+  assert.equal(service.mapModelPreference.getSnapshot(), connection.id);
+  service.deleteModelConnection("browser-only");
+  assert.equal(service.browserModelPreference.getSnapshot(), "browser-only");
+  assert.throws(() => service.browserModelPreference.select("browser-only"), /连接不存在/);
+});

@@ -1,3 +1,4 @@
+import { previewWebsiteReply } from "./preview-browser.ts";
 import { previewCampusOutput } from "./preview-campus.ts";
 import { previewMapReply } from "./preview-map.ts";
 import {
@@ -77,8 +78,11 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
             }
           }
           let contentIndex = output.content.length;
-          if (app === "map") {
-            const thinking = "先读取当前地图与剧情资料，再按指令修改草稿并检查引用。";
+          if (app === "map" || app === "browser") {
+            const thinking =
+              app === "browser"
+                ? "模拟过程：核对当前源码，再根据创作指令更新网页。"
+                : "先读取当前地图与剧情资料，再按指令修改草稿并检查引用。";
             output.content.push({ type: "thinking", thinking: "" });
             stream.push({ type: "thinking_start", contentIndex, partial: output });
             output.content[contentIndex] = { type: "thinking", thinking };
@@ -129,7 +133,19 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
                   mode,
                 )
               : undefined;
+          const browserReply =
+            app === "browser" && campusMessage?.role === "user"
+              ? previewWebsiteReply(
+                  typeof campusMessage.content === "string"
+                    ? campusMessage.content
+                    : campusMessage.content
+                        .flatMap((part) => (part.type === "text" ? [part.text] : []))
+                        .join(""),
+                  mode,
+                )
+              : undefined;
           const text =
+            browserReply ??
             campusReply ??
             mapReply ??
             (app === "notes"

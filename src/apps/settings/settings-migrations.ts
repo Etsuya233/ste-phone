@@ -96,6 +96,13 @@ function validatePhoneSettings(value: unknown): asserts value is PhoneSettings {
   ) {
     throw new Error("地图模型连接设置无效");
   }
+  if (
+    settings.browserModelConnectionId !== undefined &&
+    (typeof settings.browserModelConnectionId !== "string" ||
+      !settings.browserModelConnectionId.trim())
+  ) {
+    throw new Error("浏览器模型连接设置无效");
+  }
   validateWechatHistoryLimit(settings.wechatHistoryMessageLimit as number);
   const appearance = settingsRecord(settings.appearance);
   if (appearance.deviceModel !== "iphone-6s" && appearance.deviceModel !== "iphone-17") {

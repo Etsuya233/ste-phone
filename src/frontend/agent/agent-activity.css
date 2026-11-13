@@ -5,7 +5,7 @@
   align-items: flex-start;
 }
 
-:host .map-app .agent-run-trigger {
+:host :is(.map-app, .browser-conversation-page) .agent-run-trigger {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -22,16 +22,16 @@
   text-align: left;
 }
 
-:host .map-app .agent-run-trigger:hover {
+:host :is(.map-app, .browser-conversation-page) .agent-run-trigger:hover {
   color: var(--ios-ink);
 }
 
-:host .map-app .agent-run-trigger:focus-visible {
+:host :is(.map-app, .browser-conversation-page) .agent-run-trigger:focus-visible {
   outline: 2px solid var(--ios-blue);
   outline-offset: 2px;
 }
 
-:host .map-app .agent-run[data-status="error"] .agent-run-trigger {
+:host :is(.map-app, .browser-conversation-page) .agent-run[data-status="error"] .agent-run-trigger {
   color: var(--ios-red);
 }
 

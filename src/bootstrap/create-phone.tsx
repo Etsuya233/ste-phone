@@ -32,6 +32,9 @@ import type { ChatContext } from "../core/chat/public.ts";
 import type { AppDefinition } from "../frontend/device/app-lifecycle.ts";
 import type { AppId } from "../frontend/device/app-session.ts";
 import type { DataAppPublic } from "../apps/data-source/public.ts";
+import { BrowserService } from "../apps/browser/browser-service.ts";
+import type { BrowserStorage } from "../apps/browser/browser.ts";
+import { BrowserApp } from "../apps/browser/ui/browser-app.tsx";
 import { DiaryService } from "../apps/diary/diary-service.ts";
 import type { DiaryStorage } from "../apps/diary/ports/diary-storage.ts";
 import { DiaryApp } from "../apps/diary/ui/diary-app.tsx";
@@ -81,6 +84,7 @@ export function createPhone(dependencies: {
   aiTransport: AiTransport;
   chat: ChatContext;
   diaryStorage: DiaryStorage;
+  browserStorage: BrowserStorage;
   notesStorage: NotesStorage;
   campusStorage: CampusStorage;
   mapStorage: MapStorage;
@@ -114,6 +118,13 @@ export function createPhone(dependencies: {
   );
   const database = new DatabaseWorkspace(data);
   const testModelConnection = createModelConnectionTest(dependencies.aiTransport);
+  const browser = new BrowserService({
+    storage: dependencies.browserStorage,
+    data,
+    chat: dependencies.chat,
+    connections: settings.modelConnections,
+    transport: dependencies.aiTransport,
+  });
   const diary = new DiaryService({
     imageHub: dependencies.imageHub,
     storage: dependencies.diaryStorage,
@@ -228,6 +239,21 @@ export function createPhone(dependencies: {
         return true;
       },
       onQuit: () => campus.quit(),
+    },
+    browser: {
+      render: ({ active, onHome, onOpen }) => (
+        <BrowserApp
+          service={browser}
+          active={active}
+          onHome={onHome}
+          models={{
+            connections: settings.modelConnections,
+            preference: settings.browserModelPreference,
+            onSettings: () => onOpen("settings"),
+          }}
+        />
+      ),
+      onQuit: browser.stop,
     },
     diary: {
       render: ({ active, onHome }) => (

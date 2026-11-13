@@ -1,0 +1,164 @@
+:host .browser-source-page .ios-page-content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+:host .browser-source {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 12px 10px;
+}
+
+:host .browser-source-head {
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--browser-line);
+  border-radius: var(--browser-radius);
+  background: var(--browser-card);
+  box-shadow: 0 6px 18px #20304d0d;
+}
+
+:host .browser-source-head .ios-text-field {
+  padding-block: 8px;
+}
+
+:host .browser-source-head .ios-text-field-label {
+  font-size: 10px;
+}
+
+:host .browser-source-head .ios-text-field input {
+  min-height: 32px;
+  background: transparent;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+:host .browser-source-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-top: 1px solid var(--browser-line);
+  color: var(--browser-faint);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+:host .browser-source .ios-segmented {
+  flex: 0 0 auto;
+  padding: 0;
+}
+
+:host .browser-source .ios-segmented legend {
+  padding: 0 2px 6px;
+  font-size: 10px;
+}
+
+:host .browser-source .browser-alert {
+  flex: 0 0 auto;
+  max-height: 22%;
+  overflow: auto;
+}
+
+:host .browser-code-shell {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #1f2b3d;
+  border-radius: var(--browser-radius);
+  background: #0f1622;
+  box-shadow: var(--browser-shadow);
+}
+
+:host .browser-code-bar {
+  display: flex;
+  min-height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-bottom: 1px solid #1e2a3c;
+  background: #151f2e;
+  color: #9fb0c9;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+
+:host .browser-code-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #8bbcff;
+}
+
+:host .browser-code-dot--html {
+  background: #ff9b6b;
+}
+
+:host .browser-code-dot--css {
+  background: #6fa8ff;
+}
+
+:host .browser-code-dot--js {
+  background: #f3d36b;
+}
+
+:host .browser-code-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host .browser-code-lines {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: #72839d;
+}
+
+:host .browser-code {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  caret-color: #8bbcff;
+  color: #dbe7ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 16px;
+  line-height: 1.5;
+  resize: none;
+  tab-size: 2;
+}
+
+:host .browser-code[readonly] {
+  color: #91a2bb;
+}
+
+:host .browser-code:focus-visible {
+  outline: 2px solid #6a9df3;
+  outline-offset: -2px;
+}
+
+:host .browser-code::placeholder {
+  color: #7e8da5;
+}
+
+@media (max-width: 340px) {
+  :host .browser-source {
+    padding-inline: 8px;
+  }
+
+  :host .browser-code {
+    padding-inline: 10px;
+  }
+}

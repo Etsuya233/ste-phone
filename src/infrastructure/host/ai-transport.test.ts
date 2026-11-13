@@ -211,3 +211,32 @@ test("transport propagates caller cancellation and timeout to pending reads", as
     }
   }
 });
+
+test("JSON object mode is explicit per stream and preserves reasoning parameters", async () => {
+  const bodies: Record<string, unknown>[] = [];
+  const transport = createStAiTransport(() => ({}), {
+    log() {},
+    fetchImpl: async (_, options) => {
+      bodies.push(JSON.parse(options!.body as string));
+      return new Response(wire);
+    },
+  });
+  const connection = { baseUrl: "https://example.com/v1", apiKey: "", customHeaders: {} };
+  const json = transport.createStream(
+    connection,
+    { operation: "网页创作", app: "browser" },
+    {
+      outputFormat: "json-object",
+    },
+  );
+  const plain = transport.createStream(connection);
+  await (await json(model, { messages: [] }, { reasoning: "low" })).result();
+  await (await plain(model, { messages: [] }, { reasoning: "low" })).result();
+  assert.deepEqual(JSON.parse(bodies[0]!.custom_include_body as string), {
+    reasoning_effort: "low",
+    response_format: { type: "json_object" },
+  });
+  assert.deepEqual(JSON.parse(bodies[1]!.custom_include_body as string), {
+    reasoning_effort: "low",
+  });
+});

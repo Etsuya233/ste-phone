@@ -10,5 +10,6 @@ export interface AiTransport {
   createStream(
     connection: AiConnection,
     diagnostics?: { readonly operation: string; readonly app: AppId },
+    request?: { readonly outputFormat?: "json-object" },
   ): StreamFn;
 }

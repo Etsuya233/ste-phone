@@ -10,6 +10,16 @@ import { Icon } from "../foundation/icon.tsx";
 export function AppIcon({ app }: { app: AppId }) {
   const maskId = `app-icon-mask-${useId().replace(/:/g, "")}`;
 
+  if (app === "browser") {
+    return (
+      <Icon appearance="app" className="browser-app-icon">
+        <svg viewBox="0 0 60 60" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <circle cx="30" cy="30" r="19" />
+          <path d="m38 22-5 11-11 5 5-11 11-5Z" fill="currentColor" />
+        </svg>
+      </Icon>
+    );
+  }
   if (app === "map") {
     return (
       <Icon appearance="app" className="map-app-icon">

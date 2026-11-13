@@ -111,6 +111,7 @@ test("moving between home and dock, uninstalling and reinstalling survive a new 
       "map",
       "voice-playground",
       "campus-community",
+      "browser",
       "database",
     ],
     dock: ["settings"],

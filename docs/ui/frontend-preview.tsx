@@ -8,6 +8,7 @@ import { createPreviewAiTransport } from "./preview-ai-transport.ts";
 import { createPreviewChatContext } from "./preview-chat-context.ts";
 import { createPreviewCharacterOverrideStorage } from "./preview-character-overrides.ts";
 import { createPreviewCampusStorage } from "./preview-campus.ts";
+import { createPreviewBrowserStorage } from "./preview-browser.ts";
 import { createPreviewDiaryStorage } from "./preview-diary-storage.ts";
 import { createPreviewNotesStorage } from "./preview-notes-storage.ts";
 import { createPreviewWechatStorage } from "./preview-wechat-storage.ts";
@@ -72,7 +73,8 @@ if (options.get("voice-playground") === "1") {
 // 地图入口提供模拟连接，全部请求仍由 preview-ai-transport 截获。
 const campusPreview = options.get("twitter") === "1" || options.get("campus-community") === "1";
 const notesPreview = options.get("notes") === "1";
-if (options.get("map") === "1" || campusPreview || notesPreview) {
+const browserPreview = options.get("browser") === "1";
+if (options.get("map") === "1" || campusPreview || notesPreview || browserPreview) {
   const settings = new PhoneSettingsService(settingsStorage);
   if (settings.modelConnections.getSnapshot().connections.length === 0) {
     settings.saveModelConnection({
@@ -99,7 +101,8 @@ const phone = createPhone({
   imageHub: createPreviewImageHub(options.get("image-test")),
   settingsStorage,
   aiTransport: createPreviewAiTransport(
-    options.get("campus-test") ??
+    options.get("browser-test") ??
+      options.get("campus-test") ??
       options.get("notes-test") ??
       options.get("map-test") ??
       options.get("moments-test") ??
@@ -118,6 +121,7 @@ const phone = createPhone({
   ),
   mapStorage: createPreviewMapStorage(options.get("map-test")),
   campusStorage: createPreviewCampusStorage(options.get("campus-test")),
+  browserStorage: createPreviewBrowserStorage(options.get("browser-test")),
   diaryStorage: createPreviewDiaryStorage(options.get("diary-test")),
   notesStorage: createPreviewNotesStorage(options.get("notes-test")),
   wechatStorage: createPreviewWechatStorage(
@@ -129,7 +133,13 @@ const phone = createPhone({
   wechatIntentStorage: intentStores.intents,
   logs,
 });
-const shortcut = notesPreview ? "notes" : campusPreview ? "campus-community" : null;
+const shortcut = browserPreview
+  ? "browser"
+  : notesPreview
+    ? "notes"
+    : campusPreview
+      ? "campus-community"
+      : null;
 if (shortcut) {
   // A stored desktop layout can predate the shortcut. Install before mounting so
   // Home and Expose can reopen the same app through the regular launcher.
