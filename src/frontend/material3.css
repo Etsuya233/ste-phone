@@ -1,0 +1,104 @@
+@import "./material3-components.css";
+
+/* Map Material color roles to Foundation's shared tokens; device sizes stay with the shell. */
+:host [data-system-style="material3"] {
+  --md-primary: #006c4c;
+  --md-on-primary: #fff;
+  --md-primary-container: #a2f2cc;
+  --md-on-primary-container: #002116;
+  --md-secondary-container: #cce9db;
+  --md-on-secondary-container: #0c1f17;
+  --md-surface: #f4fbf6;
+  --md-surface-container: #e8f2eb;
+  --md-surface-container-high: #e2ece5;
+  --md-surface-container-highest: #dbe7df;
+  --md-on-surface: #171e1a;
+  --md-on-surface-variant: #404943;
+  --md-outline: #707a73;
+  --md-outline-variant: #becac1;
+  --md-error: #ba1a1a;
+  --md-focus-primary: #004b35;
+  --md-focus-container: #b7e1ce;
+  --md-on-focus-container: #073526;
+  --md-state-focus: color-mix(in srgb, currentColor 20%, transparent);
+  --md-shape-small: 6px;
+  --md-state-hover: color-mix(in srgb, currentColor 8%, transparent);
+  --md-state-pressed: color-mix(in srgb, currentColor 12%, transparent);
+  --md-shape-full: 999px;
+  --md-shape-large: 16px;
+  --md-shape-extra-large: 28px;
+  --ios-font: Roboto, Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
+  --ios-ink: var(--md-on-surface);
+  --ios-blue: var(--md-primary);
+  --ios-green: var(--md-primary);
+  --ios-red: var(--md-error);
+  --ios-on-accent: var(--md-on-primary);
+  --ios-surface: var(--md-surface);
+  --ios-row-surface: var(--md-surface-container);
+  --ios-row-active: var(--md-surface-container-highest);
+  --ios-muted-fill: var(--md-surface-container-high);
+  --ios-muted-ink: var(--md-on-surface-variant);
+  --ios-secondary-ink: var(--md-on-surface-variant);
+  --ios-accessory-ink: var(--md-outline);
+  --ios-line: var(--md-outline-variant);
+  --ios-start-ink: var(--md-primary);
+  --ios-start-fill: var(--md-primary-container);
+  --ios-stop-fill: #ffdad6;
+  --ios-bar: var(--md-surface);
+  --ios-footer-surface: var(--md-surface-container);
+  --ios-alert-surface: var(--md-surface-container-high);
+  --ios-alert-radius: var(--md-shape-extra-large);
+  --ios-alert-width: 312px;
+  --ios-alert-padding: 24px;
+  --ios-alert-message-size: 14px;
+  --ios-body-size: 16px;
+  --ios-control-radius: var(--md-shape-full);
+  --ios-app-icon-radius: 20px;
+  --ios-app-icon-shadow: 0 1px 3px #0003;
+  --ios-focus-width: 2px;
+  --ios-focus-offset: 2px;
+  --ios-switch-width: 52px;
+  --ios-switch-height: 32px;
+  --ios-switch-shadow: none;
+  --nav-height: 64px;
+  --ios-wallpaper:
+    radial-gradient(ellipse at 95% 15%, #689b7c, transparent 60%),
+    radial-gradient(ellipse at 0% 100%, #175747, transparent 70%),
+    linear-gradient(155deg, #204a3a, #0c3027);
+  color: var(--ios-ink);
+  font-family: var(--ios-font);
+}
+
+/* Wallpaper uploads and each device's status and Home insets continue to come from the shell. */
+:host [data-system-style="material3"] .home-screen .ios-footer {
+  inset-inline: 12px;
+  bottom: calc(var(--safe-bottom) + 8px);
+  border-radius: var(--md-shape-extra-large);
+  background-color: var(--md-surface-container-high);
+  backdrop-filter: none;
+}
+:host [data-system-style="material3"] .home-layer--covered .home-screen .ios-footer {
+  background-color: transparent;
+}
+:host [data-system-style="material3"] .home-page-indicator {
+  bottom: calc(var(--page-bottom) + 23px);
+}
+:host [data-system-style="material3"] .home-dock {
+  padding-inline: 8px;
+}
+:host [data-system-style="material3"] .home-dock .home-app {
+  justify-content: center;
+}
+:host [data-system-style="material3"] .app-layer--preview,
+:host [data-system-style="material3"] .expose-preview {
+  border-radius: var(--md-shape-large);
+}
+:host [data-system-style="material3"] .lock-screen-clock time {
+  font-size: 23cqw;
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+:host [data-system-style="material3"] .lock-screen-hint {
+  font-size: 4.5cqw;
+  font-weight: 500;
+}

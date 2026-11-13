@@ -1,3 +1,4 @@
+import { isSystemStyle } from "./public.ts";
 import type { MigrationPlan } from "../../core/storage/migrations.ts";
 import type { PhoneSettings } from "./ports/settings-storage.ts";
 import { validateSpeechConnection } from "../../core/speech/public.ts";
@@ -101,7 +102,7 @@ function validatePhoneSettings(value: unknown): asserts value is PhoneSettings {
   if (appearance.deviceModel !== "iphone-6s" && appearance.deviceModel !== "iphone-17") {
     throw new Error("不支持的手机外形");
   }
-  if (appearance.systemStyle !== "classic" && appearance.systemStyle !== "ios26") {
+  if (!isSystemStyle(appearance.systemStyle)) {
     throw new Error("不支持的系统风格");
   }
 }

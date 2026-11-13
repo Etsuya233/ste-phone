@@ -23,13 +23,18 @@ export function NavBar({
     <header className="ios-nav">
       <div className="ios-nav-side">
         {back ? (
-          <Button onClick={back.onClick}>
+          <Button className="ios-nav-back" aria-label={back.label} onClick={back.onClick}>
             <Icon>
               <svg viewBox="0 0 12 22">
                 <path d="m10 2-8 9 8 9" />
               </svg>
             </Icon>
-            <span>{back.label}</span>
+            <Icon className="ios-nav-back-arrow">
+              <svg viewBox="0 0 24 24">
+                <path d="M20 12H4m7-7-7 7 7 7" />
+              </svg>
+            </Icon>
+            <span className="ios-nav-back-label">{back.label}</span>
           </Button>
         ) : null}
       </div>

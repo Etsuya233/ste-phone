@@ -34,6 +34,8 @@ Foundation 组件应用位于 `src/apps/foundation/ui/`，可从主屏打开，�
 
 手机外形和系统风格分别由设置模块的 `AppearanceSettings` 提供，`PhoneApp` 订阅后在 panel 上声明 `data-device` 与 `data-system-style`，不改变 App key 或导航栈。机型几何集中在 `device/device-models.ts`，窗口缩放与 CSS 变量使用同一份尺寸；iPhone 17 的状态栏与安全区随外形变化，系统视觉集中在 `ios26.css`，支持经典机身搭配新系统；iOS 26 顶栏采用渐隐材质，Dock 使用无边框背景模糊，底部 Home 条使用局部背景模糊，样式不得引入覆盖应用的整块不透明底板。设置 v7 增加 `appearance`，历史迁移保留既有 v1–v5 → v6 路径，再追加 v6 → v7，默认经典 iPhone 6s。外观保存失败保留当前生效选项并在页面显示错误。
 
+Material 3 的颜色和形状角色集中于 `src/frontend/material3.css`，通过 Foundation token 映射给现有页面；共享控件的形状、布局和交互状态由 `src/frontend/material3-components.css` 定义。分组的直接子项各自绘制填充表面，内侧小圆角、外侧大圆角，避免把一项中的输入和操作按钮拆成多个卡片。普通模式以填充色和文字强调标记键盘焦点，系统强制配色模式使用系统焦点轮廓。Material 3 后台沿用横向卡片布局，卡片尺寸、拖动、点击区域共用 `ExposeLayout.arrangement`。所有风格沿用同一套控件语义与事件处理，外观设置数据继续使用现有版本。
+
 锁屏属于设备内存会话，`device/use-screen-lock.ts` 持有 `unlocked / asleep / locked / unlocking` 状态。电源键从使用中或锁屏进入黑屏，点击黑屏、电源键或短按 Home 只唤醒到锁屏。解锁方式跟随手机外形：iPhone 17 在锁屏上滑，iPhone 6s 长按实体或软件 Home 600ms。Home 在亮起锁屏页不导航；长按取消与短按都不能绕过解锁。右侧电源键在两种机型的完整机身及响应式模式均可使用，6s 响应式模式另有底部锁形按钮，17 底部只保留 Home 条，关闭按钮统一在顶部。黑屏隐藏屏幕内的状态栏和软件控件，外层关闭按钮仍可用。关闭重开保留熄屏或锁屏，刷新结束会话。应用保持挂载，锁屏时工作区设为 inert 并关闭前台显示副作用，已有生成任务沿用后台规则；解锁恢复原页面及锁屏前焦点。
 
 `device/lock-screen.tsx` 展示当前壁纸、现实本地时间与中文日期；`device/use-unlock-swipe.ts` 集中管理全面屏锁屏的 pointer capture、设备缩放和取消。拖动只移动时钟、日期和解锁提示共用的内容层，壁纸和状态栏保持原位；不足阈值或取消时回弹。6s 锁屏不接受滑动解锁，长按计时归 Home 控制器；聚焦 Home 后按住 Enter 或空格与指针长按共用 600ms 计时，松开或失焦取消。17 锁屏保留 Enter/空格解锁。成功进入 `unlocking` 后，锁屏以 300ms 淡出，内容层按当前机型的解锁方向离开；原页面为主屏时复用 `home-layer--covered` 的缩放与透明度过渡，原页面为应用或 Expose 时恢复对应页面。过渡期间保持工作区 inert，根锁屏 opacity 过渡完成才恢复前台和焦点。关闭或切换减少动态效果会完成这次解锁，再次锁屏后忽略旧过渡结束事件；减少动态效果下直接完成。锁屏提示与无障碍名称需随机型同步更新。`system/use-local-time.ts` 为锁屏和状态栏共用分钟边界校时，锁屏状态栏隐藏自己的时间并停用计时器，熄屏不运行锁屏时钟。
