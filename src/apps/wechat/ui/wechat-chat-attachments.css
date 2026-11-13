@@ -87,13 +87,13 @@
 
 :host .wechat-rich-bubble--image {
   display: block;
-  width: min(200px, 100%);
+  width: 200px;
   padding: 0;
   background: #f2f2f2;
 }
 
 :host .wechat-rich-bubble--placeholder {
-  width: min(236px, 100%);
+  width: 236px;
 }
 
 :host .wechat-rich-media {
@@ -128,7 +128,7 @@
   align-items: flex-start;
   gap: 10px;
   width: 100%;
-  padding: 11px 32px 11px 12px;
+  padding: 11px 12px;
 }
 
 :host .wechat-rich-placeholder-icon {
@@ -177,8 +177,7 @@
 /* 红包与转账沿用微信的橙色卡片；状态文案仍由消息内容模块提供。 */
 :host .wechat-rich-bubble--redPacket,
 :host .wechat-rich-bubble--transfer {
-  width: min(236px, 100%);
-  padding-right: 32px;
+  width: 236px;
   color: #fff;
   background: linear-gradient(135deg, #b74c26, #a6371e);
   box-shadow: 0 1px 2px #00000012;
@@ -253,18 +252,14 @@
     height: 52px;
   }
 
-  :host .wechat-rich-bubble--redPacket,
-  :host .wechat-rich-bubble--transfer {
-    width: min(212px, 100%);
-    padding-right: 30px;
-  }
-
   :host .wechat-rich-bubble--image {
-    width: min(180px, 100%);
+    width: 180px;
   }
 
+  :host .wechat-rich-bubble--redPacket,
+  :host .wechat-rich-bubble--transfer,
   :host .wechat-rich-bubble--placeholder {
-    width: min(212px, 100%);
+    width: 212px;
   }
 }
 

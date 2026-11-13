@@ -43,6 +43,16 @@
   max-width: calc(100% - 50px);
 }
 
+:host .wechat-message-bubble--rich {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+:host .wechat-message--mine .wechat-message-bubble--rich {
+  flex-direction: row-reverse;
+}
+
 /* 文本气泡保留微信的小尾巴，表情和卡片只保留内容本身。 */
 :host .wechat-message-bubble--text > p {
   position: relative;
@@ -145,6 +155,14 @@
 :host .wechat-message-menu::before {
   content: "⋯";
   transform: translateY(-1px);
+}
+
+:host .wechat-message-bubble--rich .wechat-message-menu {
+  /* 菜单参与排版，始终跟在气泡远离头像的一侧。 */
+  position: relative;
+  inset: auto;
+  flex: none;
+  margin-top: 2px;
 }
 
 :host .wechat-message-bubble:hover .wechat-message-menu,
