@@ -57,7 +57,7 @@ export async function generateWebsite(input: {
     author: { name: author.name, profileText: author.profileText },
     title: work.title,
     files: ["index.html", "style.css", "script.js"],
-    turns: work.turns,
+    turns: work.turns.map(({ instruction, reply }) => ({ instruction, reply })),
     instruction,
   });
   const record = websiteSteps(signal, onStep);

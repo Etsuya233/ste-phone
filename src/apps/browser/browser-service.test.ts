@@ -1,3 +1,4 @@
+import { BrowserConversations } from "./browser-conversations.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -170,10 +171,27 @@ function setup() {
       };
     },
   };
-  const service = new BrowserService({ chat: chats, data, storage, transport, connections });
+  const local = new Map<string, string>();
+  const conversations = new BrowserConversations({
+    getItem: (key) => local.get(key) ?? null,
+    setItem: (key, value) => {
+      local.set(key, value);
+    },
+  });
+  const service = new BrowserService({
+    chat: chats,
+    data,
+    storage,
+    transport,
+    connections,
+    conversations,
+  });
   const create = () => service.create(author, service.getSnapshot().authorRevision);
   return {
     service,
+    conversations,
+    reload: () =>
+      new BrowserService({ chat: chats, data, storage, transport, connections, conversations }),
     create,
     saved,
     storage,
@@ -212,11 +230,13 @@ test("生成固定连接快照且无工具也可回复，仅显式保存确认�
   await service.save(id);
   const work = saved.get("a")!.works[0]!;
   assert.equal(work.versions.length, 1);
-  assert.deepEqual(work.turns, [{ instruction: "更新标题", reply: "已修改" }]);
+  assert.deepEqual(work.turns, []);
+  const turns = service.getSnapshot().saved.works[0]!.turns;
+  assert.equal(turns[0]!.instruction, "更新标题");
   service.edit(id, { source: { ...source, html: "新版的手动修改" } });
   service.restore(id, work.versions[0]!);
   assert.deepEqual(service.getSnapshot().drafts.get(id)?.source, source);
-  assert.deepEqual(service.getSnapshot().drafts.get(id)?.turns, work.turns);
+  assert.deepEqual(service.getSnapshot().drafts.get(id)?.turns, turns);
   service.discard(id);
   assert.equal(service.getSnapshot().drafts.has(id), false);
 });
@@ -449,4 +469,37 @@ test("取消后晚到的写入工具不会修改作品或发起后续模型请�
   assert.equal(requests.length, 1);
   assert.equal(service.getSnapshot().drafts.get(id)?.source, source);
   assert.deepEqual(service.getSnapshot().activities.get(id)?.steps, []);
+});
+
+test("本机会话刷新保留所有轮次过程，清空不影响源码版本且不再发送历史", async () => {
+  const { service, create, requests, saved, reload } = setup();
+  const id = create();
+  service.edit(id, { source });
+  for (const instruction of ["第一轮", "第二轮"]) {
+    service.setInstruction(id, instruction);
+    const task = service.generate(id, "browser");
+    await nextTick();
+    requests.at(-1)!.think("检查源码");
+    requests.at(-1)!.finish();
+    assert.equal(await task, true);
+  }
+  await service.save(id);
+  assert.deepEqual(saved.get("a")!.works[0]!.turns, []);
+  const restored = reload();
+  const work = restored.getSnapshot().saved.works[0]!;
+  assert.equal(work.turns.length, 2);
+  assert.ok(work.turns.every((turn) => turn.steps?.some((step) => step.kind === "thinking")));
+  restored.clearConversation(id);
+  assert.deepEqual(restored.getSnapshot().saved.works[0], { ...work, turns: [] });
+  assert.equal(restored.getSnapshot().drafts.size, 0);
+  const cleared = reload();
+  assert.deepEqual(cleared.getSnapshot().saved.works[0]!.turns, []);
+  assert.equal(cleared.getSnapshot().activities.size, 0);
+  cleared.setInstruction(id, "重新开始");
+  const task = cleared.generate(id, "browser");
+  await nextTick();
+  assert.deepEqual(JSON.parse(requests.at(-1)!.prompt).turns, []);
+  assert.throws(() => cleared.clearConversation(id), /等待/);
+  requests.at(-1)!.finish();
+  await task;
 });

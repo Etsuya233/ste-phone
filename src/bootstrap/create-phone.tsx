@@ -1,3 +1,4 @@
+import { BrowserConversations } from "../apps/browser/browser-conversations.ts";
 import { CampusService } from "../apps/campus-community/campus-service.ts";
 import type { CampusStorage } from "../apps/campus-community/campus-domain.ts";
 import { CampusApp } from "../apps/campus-community/ui/campus-app.tsx";
@@ -120,6 +121,7 @@ export function createPhone(dependencies: {
   const testModelConnection = createModelConnectionTest(dependencies.aiTransport);
   const browser = new BrowserService({
     storage: dependencies.browserStorage,
+    conversations: new BrowserConversations(localStorage),
     data,
     chat: dependencies.chat,
     connections: settings.modelConnections,

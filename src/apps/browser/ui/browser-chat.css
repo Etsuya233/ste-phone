@@ -68,47 +68,13 @@
   color: #fff;
 }
 
-:host .browser-author-turn {
-  display: flex;
-  max-width: 94%;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-:host .browser-chat-avatar {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  margin-top: 2px;
-  border-radius: 9px;
-  place-items: center;
-  background: linear-gradient(#cfe2ff, #9dc4ff);
-  color: #0b4fa8;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-:host .browser-bubble--author {
-  min-width: 0;
-  border: 1px solid var(--browser-line);
-  border-bottom-left-radius: 5px;
-  background: var(--browser-card);
-  box-shadow: 0 6px 16px #20304d0a;
-  color: var(--browser-ink);
-}
-
-:host .browser-bubble-name {
-  display: block;
-  margin-bottom: 2px;
-  color: var(--browser-faint);
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-:host .browser-bubble--author p {
+:host .browser-turn-answer {
   margin: 0;
+  color: var(--ios-ink);
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 :host .browser-bubble--typing {

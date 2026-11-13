@@ -1,3 +1,4 @@
+import type { BrowserConversations } from "./browser-conversations.ts";
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { ChatContext } from "../../core/chat/public.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
@@ -56,6 +57,7 @@ const emptyWorkspace: Workspace = {
 interface BrowserDependencies {
   readonly chat: ChatContext;
   readonly storage: BrowserStorage;
+  readonly conversations: BrowserConversations;
   readonly data: DataAppPublic;
   readonly connections: ModelConnectionsReader;
   readonly transport: AiTransport;
@@ -115,14 +117,38 @@ export class BrowserService {
 
   discard(workId: string): void {
     const chatId = this.#activeChat();
-    this.#editableWork(workId);
+    const work = this.#editableWork(workId);
+    const saved = {
+      ...this.#snapshot.saved,
+      works: this.#snapshot.saved.works.map((item) =>
+        item.id === workId ? { ...item, turns: work.turns } : item,
+      ),
+    };
     const drafts = new Map(this.#snapshot.drafts);
     const instructions = new Map(this.#snapshot.instructions);
     const activities = new Map(this.#snapshot.activities);
     drafts.delete(workId);
     instructions.delete(workId);
     activities.delete(workId);
-    this.#update(chatId, { drafts, instructions, activities, error: null });
+    this.#update(chatId, { saved, drafts, instructions, activities, error: null });
+  }
+
+  clearConversation(workId: string): void {
+    const chatId = this.#activeChat();
+    const work = this.#editableWork(workId);
+    const drafts = new Map(this.#snapshot.drafts);
+    if (drafts.has(workId)) {
+      drafts.set(workId, { ...work, turns: [] });
+    }
+    const saved = {
+      ...this.#snapshot.saved,
+      works: this.#snapshot.saved.works.map((item) =>
+        item.id === workId ? { ...item, turns: [] } : item,
+      ),
+    };
+    const activities = new Map(this.#snapshot.activities);
+    activities.delete(workId);
+    this.#update(chatId, { saved, drafts, activities, error: null });
   }
 
   restore(workId: string, version: WebsiteVersion): void {
@@ -192,7 +218,11 @@ export class BrowserService {
       if (this.#generation !== task) {
         return false;
       }
-      this.#editDraft(chatId, { ...work, ...result });
+      const steps = this.#snapshot.activities.get(workId)!.steps;
+      const turns = result.turns.map((turn, index) =>
+        index === result.turns.length - 1 ? { ...turn, steps } : turn,
+      );
+      this.#editDraft(chatId, { ...work, ...result, turns });
       this.setInstruction(workId, "");
       this.#activity(task, { status: "done" });
       return true;
@@ -253,7 +283,11 @@ export class BrowserService {
     };
     this.#update(chatId, { saving: workId, error: null });
     try {
-      await this.#dependencies.storage.write(chatId, next);
+      // 宿主只保存网页及版本，对话与过程由本机存储拥有。
+      await this.#dependencies.storage.write(chatId, {
+        ...next,
+        works: next.works.map((item) => ({ ...item, turns: [] })),
+      });
       // 保存已经绑定原聊天；切换聊天后仍只更新原聊天的作品。
       const drafts = new Map(this.#workspaces.get(chatId)!.drafts);
       drafts.delete(workId);
@@ -320,7 +354,10 @@ export class BrowserService {
     if (chatId && !this.#workspaces.has(chatId)) {
       try {
         const saved = this.#dependencies.storage.read(chatId) ?? emptyBrowserData;
-        this.#workspaces.set(chatId, { ...emptyWorkspace, saved });
+        this.#workspaces.set(chatId, {
+          ...emptyWorkspace,
+          ...this.#dependencies.conversations.restore(chatId, saved),
+        });
       } catch (cause) {
         this.#workspaces.set(chatId, { ...emptyWorkspace, readError: (cause as Error).message });
       }
@@ -329,7 +366,15 @@ export class BrowserService {
   };
 
   #update(chatId: string, changes: Partial<Workspace>): void {
-    this.#workspaces.set(chatId, { ...this.#workspaces.get(chatId)!, ...changes });
+    const workspace = { ...this.#workspaces.get(chatId)!, ...changes };
+    if (changes.drafts || changes.activities || changes.saved) {
+      const works = new Map(workspace.saved.works.map((work) => [work.id, work]));
+      for (const [id, work] of workspace.drafts) {
+        works.set(id, work);
+      }
+      this.#dependencies.conversations.write(chatId, [...works.values()], workspace.activities);
+    }
+    this.#workspaces.set(chatId, workspace);
     if (this.#snapshot.chatId === chatId) {
       this.#publish(chatId);
     }

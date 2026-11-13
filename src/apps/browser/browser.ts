@@ -1,3 +1,5 @@
+import type { BrowserStep } from "./browser-generation.ts";
+
 export type WebsiteSource = Readonly<{ html: string; css: string; js: string }>;
 
 export interface WebsiteAuthor {
@@ -16,6 +18,7 @@ export interface WebsiteVersion {
 export interface WebsiteTurn {
   readonly instruction: string;
   readonly reply: string;
+  readonly steps?: readonly BrowserStep[];
 }
 
 export interface WebsiteWork {

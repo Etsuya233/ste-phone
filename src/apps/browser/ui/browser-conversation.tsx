@@ -5,7 +5,7 @@ import {
   AgentThinking,
   AgentToolCall,
 } from "../../../frontend/agent/agent-activity.tsx";
-import { Button, NavBar, Page } from "../../../frontend/foundation/foundation.tsx";
+import { ActionSheet, Button, NavBar, Page } from "../../../frontend/foundation/foundation.tsx";
 import type { BrowserActivity, BrowserService, BrowserSnapshot } from "../browser-service.ts";
 import type { WebsiteWork } from "../browser.ts";
 import { BrowserCompassIcon } from "./browser-icons.tsx";
@@ -27,124 +27,164 @@ export function BrowserConversation({
   const { connection } = useBrowserModel(models);
   const instruction = snapshot.instructions.get(work.id) ?? "";
   const [error, setError] = useState("");
+  const [clearing, setClearing] = useState(false);
   const activity = snapshot.activities.get(work.id);
   const generating = snapshot.generation?.workId === work.id;
   const otherGenerating = snapshot.generation !== null && snapshot.generation.workId !== work.id;
   const message = error || snapshot.error;
   return (
-    <Page
-      className="browser-page browser-conversation-page"
-      navBar={<NavBar title="创作对话" back={{ label: "预览", onClick: onBack }} />}
-      footerHeight={88}
-      footer={
-        <form
-          className="browser-composer"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!connection) {
-              return;
+    <>
+      <Page
+        inert={clearing}
+        className="browser-page browser-conversation-page"
+        navBar={
+          <NavBar
+            title="创作对话"
+            back={{ label: "预览", onClick: onBack }}
+            right={
+              <Button
+                aria-label="清空当前会话"
+                disabled={generating || !!snapshot.saving || (!work.turns.length && !activity)}
+                onClick={() => setClearing(true)}
+              >
+                清空
+              </Button>
             }
-            setError("");
-            void service
-              .generate(work.id, connection.id)
-              .catch((cause: Error) => setError(cause.message));
-          }}
-        >
-          <textarea
-            aria-label="创作指令"
-            rows={2}
-            placeholder={`告诉${work.author.name}要做什么网页`}
-            value={instruction}
-            readOnly={generating}
-            onChange={(event) => service.setInstruction(work.id, event.target.value)}
           />
-          {generating ? (
-            <Button
-              variant="danger"
-              className="browser-composer-action"
-              onClick={(event) => {
-                // 停止会同步换回提交按钮，当前点击不能触发该按钮的提交动作。
-                event.preventDefault();
-                service.stop();
-              }}
-            >
-              停止
-            </Button>
-          ) : (
-            <Button
-              type="submit"
-              variant="filled"
-              className="browser-composer-action"
-              disabled={
-                !connection || !instruction.trim() || !!snapshot.generation || !!snapshot.saving
+        }
+        footerHeight={88}
+        footer={
+          <form
+            className="browser-composer"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!connection) {
+                return;
               }
-            >
-              生成
-            </Button>
-          )}
-        </form>
-      }
-    >
-      <section className="browser-chat">
-        <div className="browser-chat-model">
-          <BrowserModelPicker models={models} />
-        </div>
-        {!connection ? (
-          <p className="browser-chat-hint">先选择模型连接，再开始创作。</p>
-        ) : otherGenerating ? (
-          <p className="browser-chat-hint">另一个作品正在创作，完成或停止后才能继续。</p>
-        ) : snapshot.saving ? (
-          <p className="browser-chat-hint">正在保存作品，保存完成后可以继续创作。</p>
-        ) : null}
+              setError("");
+              void service
+                .generate(work.id, connection.id)
+                .catch((cause: Error) => setError(cause.message));
+            }}
+          >
+            <textarea
+              aria-label="创作指令"
+              rows={2}
+              placeholder={`告诉${work.author.name}要做什么网页`}
+              value={instruction}
+              readOnly={generating}
+              onChange={(event) => service.setInstruction(work.id, event.target.value)}
+            />
+            {generating ? (
+              <Button
+                variant="danger"
+                className="browser-composer-action"
+                onClick={(event) => {
+                  // 停止会同步换回提交按钮，当前点击不能触发该按钮的提交动作。
+                  event.preventDefault();
+                  service.stop();
+                }}
+              >
+                停止
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                variant="filled"
+                className="browser-composer-action"
+                disabled={
+                  !connection || !instruction.trim() || !!snapshot.generation || !!snapshot.saving
+                }
+              >
+                生成
+              </Button>
+            )}
+          </form>
+        }
+      >
+        <section className="browser-chat">
+          <div className="browser-chat-model">
+            <BrowserModelPicker models={models} />
+          </div>
+          {!connection ? (
+            <p className="browser-chat-hint">先选择模型连接，再开始创作。</p>
+          ) : otherGenerating ? (
+            <p className="browser-chat-hint">另一个作品正在创作，完成或停止后才能继续。</p>
+          ) : snapshot.saving ? (
+            <p className="browser-chat-hint">正在保存作品，保存完成后可以继续创作。</p>
+          ) : null}
 
-        {message ? (
-          <p className="browser-alert" role="alert">
-            {message}
-          </p>
-        ) : null}
-        {activity?.status === "stopped" ? (
-          <p className="browser-stopped" role="status">
-            已停止本次创作，现有内容没有改动。
-          </p>
-        ) : null}
+          {message ? (
+            <p className="browser-alert" role="alert">
+              {message}
+            </p>
+          ) : null}
+          {activity?.status === "stopped" ? (
+            <p className="browser-stopped" role="status">
+              已停止本次创作，现有内容没有改动。
+            </p>
+          ) : null}
 
-        {work.turns.length ? (
-          <div className="browser-chat-log" role="log" aria-label="创作对话">
-            {work.turns.map((turn, index) => (
-              <div className="browser-turn" key={index}>
-                <p className="browser-bubble browser-bubble--user">{turn.instruction}</p>
-                {activity?.status === "done" && activity.turnIndex === index ? (
-                  <BrowserCreationActivity key={activity.runId} activity={activity} />
-                ) : null}
-                <div className="browser-author-turn">
-                  <span className="browser-chat-avatar" aria-hidden="true">
-                    {work.author.name.trim().slice(0, 1) || "?"}
-                  </span>
-                  <div className="browser-bubble browser-bubble--author">
-                    <span className="browser-bubble-name">{work.author.name}</span>
-                    <p>{turn.reply}</p>
-                  </div>
+          {work.turns.length ? (
+            <div className="browser-chat-log" role="log" aria-label="创作对话">
+              {work.turns.map((turn, index) => (
+                <div className="browser-turn" key={index}>
+                  <p className="browser-bubble browser-bubble--user">{turn.instruction}</p>
+                  {turn.steps ? (
+                    <BrowserCreationActivity
+                      activity={{
+                        runId: index,
+                        turnIndex: index,
+                        instruction: turn.instruction,
+                        steps: turn.steps,
+                        status: "done",
+                      }}
+                    />
+                  ) : null}
+                  <p className="browser-turn-answer">{turn.reply}</p>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : !activity ? (
-          <div className="browser-chat-empty">
-            <span className="browser-chat-empty-mark" aria-hidden="true">
-              <BrowserCompassIcon />
-            </span>
-            <h2>和{work.author.name}一起做网页</h2>
-            <p>描述页面内容、风格或交互，也可以直接说要改哪里。</p>
-          </div>
-        ) : null}
-        {activity && activity.status !== "done" ? (
-          <div className="browser-turn">
-            <p className="browser-bubble browser-bubble--user">{activity.instruction}</p>
-            <BrowserCreationActivity key={activity.runId} activity={activity} />
-          </div>
-        ) : null}
-      </section>
-    </Page>
+              ))}
+            </div>
+          ) : !activity ? (
+            <div className="browser-chat-empty">
+              <span className="browser-chat-empty-mark" aria-hidden="true">
+                <BrowserCompassIcon />
+              </span>
+              <h2>和{work.author.name}一起做网页</h2>
+              <p>描述页面内容、风格或交互，也可以直接说要改哪里。</p>
+            </div>
+          ) : null}
+          {activity && activity.status !== "done" ? (
+            <div className="browser-turn">
+              <p className="browser-bubble browser-bubble--user">{activity.instruction}</p>
+              <BrowserCreationActivity key={activity.runId} activity={activity} />
+            </div>
+          ) : null}
+        </section>
+      </Page>
+      {clearing ? (
+        <ActionSheet
+          active={true}
+          label="清空当前会话"
+          description="删除本机保存的当前作品对话、思考与工具记录。网页源码和版本保留，后续创作不再携带这些对话。"
+          onDismiss={() => setClearing(false)}
+          actions={[
+            {
+              label: "清空当前会话",
+              destructive: true,
+              onClick: () => {
+                try {
+                  service.clearConversation(work.id);
+                  setError("");
+                } catch (cause) {
+                  setError((cause as Error).message);
+                }
+              },
+            },
+          ]}
+        />
+      ) : null}
+    </>
   );
 }
 
