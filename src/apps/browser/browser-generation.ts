@@ -1,15 +1,28 @@
-import { Agent } from "@earendil-works/pi-agent-core";
+import { Agent, type AgentEvent } from "@earendil-works/pi-agent-core";
 import { createCompletionModel, runAgent } from "../../core/ai/agent-run.ts";
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { ModelConnectionSnapshot } from "../settings/public.ts";
 import type { BrowserAuthor } from "./browser-authors.ts";
+import { websiteWorkspace } from "./browser-files.ts";
 import type { WebsiteWork } from "./browser.ts";
 
 const systemPrompt = `你是网页作者。参考人物资料，以该人物的视角回应用户的创作要求。
-返回单个 JSON 对象，字段为 title、reply、html、css、js，五个字段均为字符串。回答以该 JSON 对象开始并结束，不输出代码围栏、额外说明或 Memory 附录。
-reply 用于创作对话，说明这轮做了什么。html、css、js 分别为三个文件的完整内容，即使某个文件未改也要原样返回。
-当前源码是唯一有效版本，包含用户的手动修改。历史创作对话仅用于理解上下文。
-网页会在手机屏幕内打开，适应窄屏。使用原生浏览器能力，将 CSS 和普通 JavaScript 放进各自字段，不引用本地文件或 npm 包。`;
+用 read_file 查看当前源码（含用户手动修改），用 write_file 或 edit_file 修改作品。为新作品命名时可在 write_file 提供 title。
+作品在手机屏幕内打开，适应窄屏。使用原生浏览器能力，分别编辑 HTML、CSS 和普通 JavaScript。
+预览会自动注入 style.css，script.js 作为普通脚本在正文后运行。HTML 中无需引用这三个工作区文件的相对地址，作品无需 npm 构建。
+做完后用自然语言简述结果，别贴源码、输出协议块或 Memory 附录。若用户只是咨询，可以直接回答。`;
+
+export type BrowserStep =
+  | { kind: "text"; id: string; text: string }
+  | { kind: "thinking"; id: string; text: string; running: boolean }
+  | {
+      kind: "tool";
+      id: string;
+      label: string;
+      status: "running" | "completed" | "failed";
+      input: unknown;
+      output?: string;
+    };
 
 export async function generateWebsite(input: {
   transport: AiTransport;
@@ -18,106 +31,131 @@ export async function generateWebsite(input: {
   author: BrowserAuthor;
   instruction: string;
   signal: AbortSignal;
-  onThinking: (text: string) => void;
+  onStep: (step: BrowserStep) => void;
 }): Promise<Pick<WebsiteWork, "title" | "source" | "turns">> {
-  const { transport, connection, work, author, instruction, signal } = input;
-  const stream = transport.createStream(
-    connection,
-    { app: "browser", operation: "网页创作" },
-    { outputFormat: "json-object" },
-  );
+  const { transport, connection, work, author, instruction, signal, onStep } = input;
+  const workspace = websiteWorkspace(work, signal);
+  const stream = transport.createStream(connection, { app: "browser", operation: "网页创作" });
+  let truncated = false;
   const agent = new Agent({
-    initialState: { model: createCompletionModel(connection.model), systemPrompt, tools: [] },
-    streamFn: (model, context, options) =>
-      stream(model, context, { signal: options?.signal, maxTokens: 32768 }),
+    toolExecution: "sequential",
+    initialState: {
+      model: createCompletionModel(connection.model),
+      systemPrompt,
+      tools: workspace.tools,
+    },
+    streamFn(model, context, options) {
+      // Pi can retry after a truncated tool call; never issue that retry upstream.
+      if (truncated) {
+        throw new Error("网页创作达到输出上限，请缩小本次修改范围");
+      }
+      signal.throwIfAborted();
+      return stream(model, context, { signal: options?.signal, maxTokens: 32768 });
+    },
   });
   const prompt = JSON.stringify({
     author: { name: author.name, profileText: author.profileText },
     title: work.title,
-    source: work.source,
+    files: ["index.html", "style.css", "script.js"],
     turns: work.turns,
     instruction,
   });
-  let lastThinkingAt = -Infinity;
-  const { reply, timedOut } = await runAgent(agent, prompt, {
+  const record = websiteSteps(signal, onStep);
+  const { reply } = await runAgent(agent, prompt, {
     signal,
-    timeoutMs: 300_000,
     onEvent(event) {
-      if (signal.aborted || event.type !== "message_update" || event.message.role !== "assistant") {
-        return;
-      }
-      const update = event.assistantMessageEvent;
-      const now = performance.now();
       if (
-        update.type === "thinking_end" ||
-        (update.type === "thinking_delta" && now - lastThinkingAt >= 80)
+        event.type === "message_end" &&
+        event.message.role === "assistant" &&
+        event.message.stopReason === "length"
       ) {
-        lastThinkingAt = now;
-        input.onThinking(
-          event.message.content
-            .flatMap((block) => (block.type === "thinking" ? [block.thinking] : []))
-            .join("\n"),
-        );
+        truncated = true;
       }
+      record(event);
     },
   });
   signal.throwIfAborted();
-  // A transport may deliver its complete reasoning only in the terminal message.
-  if (reply?.role === "assistant") {
-    input.onThinking(
-      reply.content
-        .flatMap((block) => (block.type === "thinking" ? [block.thinking] : []))
-        .join("\n"),
-    );
-  }
-  if (timedOut) {
-    throw new Error("网页创作超时");
+  if (truncated) {
+    throw new Error("网页创作达到输出上限，请缩小本次修改范围");
   }
   if (reply?.role !== "assistant") {
     throw new Error("网页创作未收到模型回复");
   }
-  if (reply.stopReason === "length") {
-    throw new Error("网页创作达到输出上限，请缩小本次修改范围");
-  }
   if (reply.stopReason !== "stop" || reply.content.some((block) => block.type === "toolCall")) {
     throw new Error(reply.errorMessage || "网页创作未正常完成", { cause: reply.diagnostics });
   }
-  const text = reply.content
+  const message = reply.content
     .flatMap((block) => (block.type === "text" ? [block.text] : []))
-    .join("");
-  const { title, message, source } = websiteReply(text);
-  return {
-    title,
-    source,
-    turns: [...work.turns, { instruction, reply: message }],
-  };
+    .join("")
+    .trim();
+  if (!message) {
+    throw new Error("网页创作未收到最终回复");
+  }
+  return { ...workspace.result(), turns: [...work.turns, { instruction, reply: message }] };
 }
 
-function websiteReply(text: string): {
-  title: string;
-  message: string;
-  source: WebsiteWork["source"];
-} {
-  let output: unknown;
-  try {
-    output = JSON.parse(text);
-  } catch {
-    throw new Error("模型未返回有效的网页 JSON");
-  }
-  if (!output || typeof output !== "object") {
-    throw new Error("模型返回的网页格式无效");
-  }
-  const { title, reply: message, html, css, js } = output as Record<string, unknown>;
-  if (
-    typeof title !== "string" ||
-    !title.trim() ||
-    typeof message !== "string" ||
-    !message.trim() ||
-    typeof html !== "string" ||
-    typeof css !== "string" ||
-    typeof js !== "string"
-  ) {
-    throw new Error("模型需返回标题、回复和完整的 HTML、CSS、JavaScript");
-  }
-  return { title: title.trim(), message: message.trim(), source: { html, css, js } };
+function websiteSteps(signal: AbortSignal, onStep: (step: BrowserStep) => void) {
+  let round = 0;
+  let lastThinkingAt = -Infinity;
+  const tools = new Map<string, Extract<BrowserStep, { kind: "tool" }>>();
+  return (event: AgentEvent) => {
+    if (signal.aborted) {
+      return;
+    }
+    if (event.type === "tool_execution_start") {
+      const step = {
+        kind: "tool",
+        id: `tool-${event.toolCallId}`,
+        label: event.toolName,
+        input: event.args,
+        status: "running",
+      } as const;
+      tools.set(event.toolCallId, step);
+      onStep(step);
+    }
+    if (event.type === "tool_execution_end") {
+      const step = tools.get(event.toolCallId)!;
+      const output = event.result.content
+        .flatMap((block: { type: string; text?: string }) =>
+          block.type === "text" ? [block.text] : [],
+        )
+        .join("\n");
+      onStep({ ...step, status: event.isError ? "failed" : "completed", output });
+    }
+    if (!("message" in event) || event.message.role !== "assistant") {
+      return;
+    }
+    if (event.type === "message_start") {
+      round++;
+      lastThinkingAt = -Infinity;
+    }
+    const now = performance.now();
+    const finished = event.type === "message_end";
+    if (
+      !finished &&
+      !(
+        event.type === "message_update" &&
+        event.assistantMessageEvent.type === "thinking_delta" &&
+        now - lastThinkingAt >= 80
+      )
+    ) {
+      return;
+    }
+    const text = event.message.content
+      .flatMap((block) => (block.type === "thinking" ? [block.thinking] : []))
+      .join("\n");
+    if (text) {
+      lastThinkingAt = now;
+      onStep({ kind: "thinking", id: `thinking-${round}`, text, running: !finished });
+    }
+    if (finished && event.message.content.some((block) => block.type === "toolCall")) {
+      const narration = event.message.content
+        .flatMap((block) => (block.type === "text" ? [block.text] : []))
+        .join("")
+        .trim();
+      if (narration) {
+        onStep({ kind: "text", id: `text-${round}`, text: narration });
+      }
+    }
+  };
 }

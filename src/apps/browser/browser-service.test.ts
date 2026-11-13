@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createAssistantMessageEventStream, type AssistantMessage } from "@earendil-works/pi-ai";
+import {
+  createAssistantMessageEventStream,
+  type ToolCall,
+  type AssistantMessage,
+} from "@earendil-works/pi-ai";
 import type { AiTransport } from "../../core/ai/public.ts";
 import type { ChatContext, PhoneChat } from "../../core/chat/public.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
@@ -10,7 +14,7 @@ import { readBrowserData, type BrowserData, type BrowserStorage } from "./browse
 
 const author = { sourceId: "memory", scopeId: "stable", id: "red", name: "小红" };
 const source = { html: "<h1>手改</h1>", css: "h1{color:blue}", js: 'console.log("</script>")' };
-const output = JSON.stringify({ ...source, title: "新版", reply: "已修改" });
+const output = "已修改";
 
 function setup() {
   let chat: PhoneChat = { id: "a", name: "A" };
@@ -55,6 +59,8 @@ function setup() {
     key: string;
     model: string;
     prompt: string;
+    results: { text: string; isError: boolean }[];
+    tools: (calls: ToolCall[], truncated?: boolean, narration?: string) => void;
     think: (text: string) => void;
     finish: (stopReason?: "stop" | "length" | "error", text?: string) => void;
   }[] = [];
@@ -62,7 +68,7 @@ function setup() {
     createStream(connection) {
       return (requestModel, context) => {
         const stream = createAssistantMessageEventStream();
-        const user = context.messages.at(-1)!;
+        const user = context.messages.find((message) => message.role === "user")!;
         assert.equal(user.role, "user");
         const prompt =
           typeof user.content === "string"
@@ -73,6 +79,42 @@ function setup() {
           key: connection.apiKey,
           model: requestModel.id,
           prompt,
+          results: context.messages.flatMap((message) =>
+            message.role === "toolResult"
+              ? [
+                  {
+                    isError: message.isError,
+                    text: message.content
+                      .flatMap((part) => (part.type === "text" ? [part.text] : []))
+                      .join(""),
+                  },
+                ]
+              : [],
+          ),
+          tools(calls, truncated, narration) {
+            const stopReason = truncated ? "length" : "toolUse";
+            stream.push({
+              type: "done",
+              reason: stopReason,
+              message: {
+                role: "assistant",
+                api: requestModel.api,
+                provider: requestModel.provider,
+                model: requestModel.id,
+                timestamp: Date.now(),
+                stopReason,
+                content: narration ? [{ type: "text", text: narration }, ...calls] : calls,
+                usage: {
+                  input: 0,
+                  output: 0,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                  totalTokens: 0,
+                  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+                },
+              },
+            });
+          },
           think(text) {
             thinking = text;
             const partial: AssistantMessage = {
@@ -152,7 +194,7 @@ function setup() {
 
 const nextTick = () => new Promise<void>((resolve) => setImmediate(resolve));
 
-test("生成固定连接快照并发送手改源码，仅显式保存确认一个版本", async () => {
+test("生成固定连接快照且无工具也可回复，仅显式保存确认一个版本", async () => {
   const { service, create, changeModel, requests, saved } = setup();
   const id = create();
   service.edit(id, { source });
@@ -162,7 +204,7 @@ test("生成固定连接快照并发送手改源码，仅显式保存确认一�
   await nextTick();
   assert.equal(requests[0]!.key, "before");
   assert.equal(requests[0]!.model, "initial");
-  assert.deepEqual(JSON.parse(requests[0]!.prompt).source, source);
+  assert.equal(JSON.parse(requests[0]!.prompt).source, undefined);
   requests[0]!.finish();
   assert.equal(await task, true);
   assert.equal(saved.size, 0);
@@ -251,9 +293,9 @@ test("模型失败、非法回复和显式停止都保留本次指令与手改�
   assert.equal(service.getSnapshot().error, "模拟请求失败");
   const invalid = service.generate(id, "browser");
   await nextTick();
-  requests[1]!.finish("stop", JSON.stringify({ title: "少了字段" }));
+  requests[1]!.finish("stop", "");
   assert.equal(await invalid, false);
-  assert.match(service.getSnapshot().error!, /完整的 HTML/);
+  assert.match(service.getSnapshot().error!, /最终回复/);
   const stopped = service.generate(id, "browser");
   await nextTick();
   service.stop();
@@ -278,15 +320,19 @@ test("创作过程属于发起的作品，停止后的模型内容不会进入�
   await nextTick();
   assert.deepEqual(service.getSnapshot().activities.get(first), {
     runId: firstRun.runId,
+    turnIndex: 0,
+    instruction: "生成网页",
     status: "running",
-    thinking: "模型返回的过程",
+    steps: [{ kind: "thinking", id: "thinking-1", text: "模型返回的过程", running: true }],
   });
   requests[0]!.finish();
   assert.equal(await task, true);
   assert.deepEqual(service.getSnapshot().activities.get(first), {
     runId: firstRun.runId,
+    turnIndex: 0,
+    instruction: "生成网页",
     status: "done",
-    thinking: "模型返回的过程",
+    steps: [{ kind: "thinking", id: "thinking-1", text: "模型返回的过程", running: false }],
   });
   service.setInstruction(second, "另做一个网页");
   const stopped = service.generate(second, "browser");
@@ -298,13 +344,109 @@ test("创作过程属于发起的作品，停止后的模型内容不会进入�
   assert.equal(await stopped, false);
   assert.deepEqual(service.getSnapshot().activities.get(second), {
     runId: secondRun.runId,
+    turnIndex: 0,
+    instruction: "另做一个网页",
     status: "stopped",
-    thinking: "",
+    steps: [],
   });
-  assert.equal(service.getSnapshot().activities.get(first)?.thinking, "模型返回的过程");
+  assert.equal(service.getSnapshot().activities.get(first)?.steps.length, 1);
   const retry = service.generate(second, "browser");
   await nextTick();
   assert.notEqual(service.getSnapshot().activities.get(second)?.runId, secondRun.runId);
   requests[2]!.finish();
   assert.equal(await retry, true);
+});
+
+const call = (id: string, name: string, args: Record<string, unknown>): ToolCall => ({
+  type: "toolCall",
+  id,
+  name,
+  arguments: args,
+});
+
+test("三文件工具串行读取手改内容、报告精确匹配错误并应用修正后的完整副本", async () => {
+  const { service, create, requests, changeModel } = setup();
+  const id = create();
+  const initial = { ...source, html: "第一行\r\n重复\r重复" };
+  service.edit(id, { source: initial });
+  service.setInstruction(id, "修改网页");
+  const task = service.generate(id, "browser");
+  changeModel();
+  await nextTick();
+  requests[0]!.tools(
+    [
+      call("read", "read_file", { path: "index.html", start_line: 1, end_line: 2 }),
+      call("path", "read_file", { path: "../index.html" }),
+      call("range", "read_file", { path: "index.html", end_line: 4 }),
+      call("multiple", "edit_file", { path: "index.html", old_text: "重复", new_text: "误改" }),
+      call("zero", "edit_file", { path: "index.html", old_text: "不存在", new_text: "误改" }),
+      call("fix", "edit_file", {
+        path: "index.html",
+        old_text: "第一行\r\n重复",
+        new_text: "修正",
+      }),
+      call("write", "write_file", {
+        path: "style.css",
+        content: "main{color:red}",
+        title: "新标题",
+      }),
+      call("updated", "read_file", { path: "index.html" }),
+    ],
+    false,
+    "先读源码",
+  );
+  await nextTick();
+  assert.equal(requests[1]!.model, "initial");
+  assert.equal(requests[1]!.results[0]!.text, "第一行\r\n重复");
+  assert.deepEqual(
+    requests[1]!.results.map((result) => result.isError),
+    [false, true, true, true, true, false, false, false],
+  );
+  assert.equal(requests[1]!.results.at(-1)!.text, "修正\r重复");
+  assert.equal(service.getSnapshot().drafts.get(id)?.source, initial);
+  const steps = service.getSnapshot().activities.get(id)!.steps;
+  assert.deepEqual(
+    steps.filter((step) => step.kind === "tool").map((step) => step.id),
+    ["read", "path", "range", "multiple", "zero", "fix", "write", "updated"].map(
+      (id) => `tool-${id}`,
+    ),
+  );
+  assert.deepEqual(steps[0], { kind: "text", id: "text-1", text: "先读源码" });
+  assert.equal(steps[4]?.kind === "tool" && steps[4].status, "failed");
+  requests[1]!.finish("stop", "修改完成");
+  assert.equal(await task, true);
+  const draft = service.getSnapshot().drafts.get(id)!;
+  assert.equal(draft.title, "新标题");
+  assert.deepEqual(draft.source, { html: "修正\r重复", css: "main{color:red}", js: initial.js });
+});
+
+test("已经写过副本后遇到截断的工具调用，整轮失败且不继续请求", async () => {
+  const { service, create, requests } = setup();
+  const id = create();
+  service.edit(id, { source });
+  service.setInstruction(id, "改写网页");
+  const task = service.generate(id, "browser");
+  await nextTick();
+  requests[0]!.tools([call("write", "write_file", { path: "index.html", content: "不应应用" })]);
+  await nextTick();
+  requests[1]!.tools([call("truncated", "write_file", { path: "script.js" })], true);
+  assert.equal(await task, false);
+  assert.match(service.getSnapshot().error!, /输出上限/);
+  assert.equal(requests.length, 2);
+  assert.equal(service.getSnapshot().drafts.get(id)?.source, source);
+});
+
+test("取消后晚到的写入工具不会修改作品或发起后续模型请求", async () => {
+  const { service, create, requests } = setup();
+  const id = create();
+  service.edit(id, { source });
+  service.setInstruction(id, "更新");
+  const pending = service.generate(id, "browser");
+  await nextTick();
+  service.stop();
+  requests[0]!.tools([call("late", "write_file", { path: "index.html", content: "迟到写入" })]);
+  assert.equal(await pending, false);
+  assert.equal(requests.length, 1);
+  assert.equal(service.getSnapshot().drafts.get(id)?.source, source);
+  assert.deepEqual(service.getSnapshot().activities.get(id)?.steps, []);
 });

@@ -100,21 +100,26 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
             });
             contentIndex++;
           }
-          if (typeof mapReply === "object") {
+          const browserReply =
+            app === "browser" && mode !== "length"
+              ? previewWebsiteReply(context.messages, mode)
+              : undefined;
+          const toolReply = typeof browserReply === "object" ? browserReply : mapReply;
+          if (typeof toolReply === "object") {
             const toolIndex = output.content.length;
-            output.content.push({ ...mapReply, arguments: {} });
+            output.content.push({ ...toolReply, arguments: {} });
             stream.push({ type: "toolcall_start", contentIndex: toolIndex, partial: output });
-            output.content[toolIndex] = mapReply;
+            output.content[toolIndex] = toolReply;
             stream.push({
               type: "toolcall_delta",
               contentIndex: toolIndex,
-              delta: JSON.stringify(mapReply.arguments),
+              delta: JSON.stringify(toolReply.arguments),
               partial: output,
             });
             stream.push({
               type: "toolcall_end",
               contentIndex: toolIndex,
-              toolCall: mapReply,
+              toolCall: toolReply,
               partial: output,
             });
             output.stopReason = "toolUse";
@@ -133,21 +138,10 @@ export function createPreviewAiTransport(mode: string | null, logs: PhoneLog): A
                   mode,
                 )
               : undefined;
-          const browserReply =
-            app === "browser" && campusMessage?.role === "user"
-              ? previewWebsiteReply(
-                  typeof campusMessage.content === "string"
-                    ? campusMessage.content
-                    : campusMessage.content
-                        .flatMap((part) => (part.type === "text" ? [part.text] : []))
-                        .join(""),
-                  mode,
-                )
-              : undefined;
           const text =
-            browserReply ??
+            (typeof browserReply === "string" ? browserReply : undefined) ??
             campusReply ??
-            mapReply ??
+            (typeof mapReply === "string" ? mapReply : undefined) ??
             (app === "notes"
               ? "周末出门前\n\n带上水杯、雨伞和要归还的书。给自己留一点散步的时间。"
               : undefined) ??

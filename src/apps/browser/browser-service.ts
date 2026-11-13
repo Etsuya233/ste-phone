@@ -3,7 +3,7 @@ import type { ChatContext } from "../../core/chat/public.ts";
 import type { DataAppPublic } from "../data-source/public.ts";
 import type { ModelConnectionsReader } from "../settings/public.ts";
 import { readBrowserAuthors, sameWebsiteAuthor } from "./browser-authors.ts";
-import { generateWebsite } from "./browser-generation.ts";
+import { generateWebsite, type BrowserStep } from "./browser-generation.ts";
 import { emptyBrowserData, newWebsite } from "./browser.ts";
 import type {
   BrowserData,
@@ -15,7 +15,9 @@ import type {
 
 export interface BrowserActivity {
   readonly runId: number;
-  readonly thinking: string;
+  readonly turnIndex: number;
+  readonly instruction: string;
+  readonly steps: readonly BrowserStep[];
   readonly status: "running" | "done" | "failed" | "stopped";
 }
 
@@ -152,7 +154,13 @@ export class BrowserService {
     const task = { chatId, workId, controller: new AbortController() };
     this.#generation = task;
     const activities = new Map(this.#snapshot.activities);
-    activities.set(workId, { runId: ++this.#nextRunId, thinking: "", status: "running" });
+    activities.set(workId, {
+      runId: ++this.#nextRunId,
+      turnIndex: work.turns.length,
+      instruction,
+      steps: [],
+      status: "running",
+    });
     this.#update(chatId, { activities, error: null });
     try {
       const authors = await this.readAuthors();
@@ -170,12 +178,14 @@ export class BrowserService {
         author,
         instruction,
         signal: task.controller.signal,
-        onThinking: (thinking) => {
-          if (
-            this.#generation === task &&
-            this.#snapshot.activities.get(workId)?.thinking !== thinking
-          ) {
-            this.#activity(task, { thinking });
+        onStep: (step) => {
+          if (this.#generation === task) {
+            const { steps } = this.#snapshot.activities.get(workId)!;
+            this.#activity(task, {
+              steps: steps.some(({ id }) => id === step.id)
+                ? steps.map((item) => (item.id === step.id ? step : item))
+                : [...steps, step],
+            });
           }
         },
       });

@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { AgentRun, AgentStepText, AgentThinking } from "../../../frontend/agent/agent-activity.tsx";
+import {
+  AgentRun,
+  AgentStepText,
+  AgentThinking,
+  AgentToolCall,
+} from "../../../frontend/agent/agent-activity.tsx";
 import { Button, NavBar, Page } from "../../../frontend/foundation/foundation.tsx";
 import type { BrowserActivity, BrowserService, BrowserSnapshot } from "../browser-service.ts";
 import type { WebsiteWork } from "../browser.ts";
@@ -108,6 +113,9 @@ export function BrowserConversation({
             {work.turns.map((turn, index) => (
               <div className="browser-turn" key={index}>
                 <p className="browser-bubble browser-bubble--user">{turn.instruction}</p>
+                {activity?.status === "done" && activity.turnIndex === index ? (
+                  <BrowserCreationActivity key={activity.runId} activity={activity} />
+                ) : null}
                 <div className="browser-author-turn">
                   <span className="browser-chat-avatar" aria-hidden="true">
                     {work.author.name.trim().slice(0, 1) || "?"}
@@ -129,7 +137,12 @@ export function BrowserConversation({
             <p>描述页面内容、风格或交互，也可以直接说要改哪里。</p>
           </div>
         ) : null}
-        {activity ? <BrowserCreationActivity key={activity.runId} activity={activity} /> : null}
+        {activity && activity.status !== "done" ? (
+          <div className="browser-turn">
+            <p className="browser-bubble browser-bubble--user">{activity.instruction}</p>
+            <BrowserCreationActivity key={activity.runId} activity={activity} />
+          </div>
+        ) : null}
       </section>
     </Page>
   );
@@ -147,10 +160,24 @@ function BrowserCreationActivity({ activity }: { activity: BrowserActivity }) {
     <AgentRun
       running={running}
       failed={activity.status === "failed"}
-      stepCount={activity.thinking ? 2 : 1}
+      stepCount={activity.steps.length + 1}
       label={status}
     >
-      {activity.thinking ? <AgentThinking text={activity.thinking} running={running} /> : null}
+      {activity.steps.map((step) =>
+        step.kind === "thinking" ? (
+          <AgentThinking key={step.id} text={step.text} running={running && step.running} />
+        ) : step.kind === "text" ? (
+          <AgentStepText key={step.id} text={step.text} />
+        ) : (
+          <AgentToolCall
+            key={step.id}
+            tool={{
+              ...step,
+              status: !running && step.status === "running" ? "failed" : step.status,
+            }}
+          />
+        ),
+      )}
       <AgentStepText text={status} />
     </AgentRun>
   );

@@ -1,3 +1,4 @@
+import type { Message, ToolCall } from "@earendil-works/pi-ai";
 import {
   emptyBrowserData,
   readBrowserData,
@@ -51,18 +52,51 @@ const demo: BrowserData = {
   ],
 };
 
-export function previewWebsiteReply(prompt: string, mode: string | null): string {
+export function previewWebsiteReply(
+  messages: readonly Message[],
+  mode: string | null,
+): string | ToolCall {
   if (mode === "invalid") {
-    return "模拟非法 JSON";
+    return "";
   }
-  const input = JSON.parse(prompt) as { title: string; source: typeof source; instruction: string };
-  if (input.source.html || input.source.css || input.source.js) {
-    return JSON.stringify({
-      ...input.source,
-      title: input.title,
-      reply: "已在当前源码基础上更新页面标题栏，保留原有 CSS 和 JavaScript。",
-      html: input.source.html.replace("</body>", "") + "<footer>模拟更新完成</footer>",
-    });
+  const results = messages.filter((message) => message.role === "toolResult");
+  const call = (name: string, args: Record<string, unknown>): ToolCall => ({
+    type: "toolCall",
+    id: `preview-browser-${results.length}`,
+    name,
+    arguments: args,
+  });
+  if (!results.length) {
+    return call("read_file", { path: "index.html" });
   }
-  return JSON.stringify({ ...source, title, reply: `已完成「${input.instruction}」的模拟网页。` });
+  const html = results[0]!.content
+    .flatMap((part) => (part.type === "text" ? [part.text] : []))
+    .join("");
+  if (html) {
+    if (results.length === 1) {
+      return call("edit_file", {
+        path: "index.html",
+        old_text: "<!-- preview-update -->",
+        new_text: "<footer>模拟更新完成</footer>",
+      });
+    }
+    if (results.length === 2 && results[1]!.isError) {
+      const withFooter = html.replace(/<\/body>/i, "<footer>模拟更新完成</footer></body>");
+      return call("write_file", {
+        path: "index.html",
+        content: withFooter === html ? html + "<footer>模拟更新完成</footer>" : withFooter,
+      });
+    }
+    return "已基于当前 HTML 更新页面，保留 CSS 和 JavaScript。";
+  }
+  switch (results.length) {
+    case 1:
+      return call("write_file", { path: "index.html", content: source.html, title });
+    case 2:
+      return call("write_file", { path: "style.css", content: source.css });
+    case 3:
+      return call("write_file", { path: "script.js", content: source.js });
+    default:
+      return "已完成模拟网页，可以点击页面记录浇水次数。";
+  }
 }
