@@ -1,4 +1,6 @@
 :host .wechat-composer {
+  --wechat-composer-input-height: 40px;
+  --wechat-composer-icon-size: 36px;
   display: flex;
   align-items: flex-end;
   gap: 5px;
@@ -11,8 +13,8 @@
 :host .wechat-composer textarea {
   flex: 1 1 auto;
   min-width: 0;
-  height: 40px;
-  min-height: 40px;
+  height: var(--wechat-composer-input-height);
+  min-height: var(--wechat-composer-input-height);
   max-height: 100px;
   padding: 9px 10px;
   resize: none;
@@ -40,8 +42,9 @@
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 36px;
-  height: 40px;
+  width: var(--wechat-composer-icon-size);
+  height: var(--wechat-composer-icon-size);
+  margin-bottom: calc((var(--wechat-composer-input-height) - var(--wechat-composer-icon-size)) / 2);
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -145,12 +148,9 @@
 
 @container (max-width: 340px) {
   :host .wechat-chat .wechat-composer {
+    --wechat-composer-icon-size: 33px;
     gap: 3px;
     padding-inline: 8px;
-  }
-
-  :host .wechat-chat .wechat-composer-icon {
-    width: 33px;
   }
 
   :host .wechat-chat .wechat-composer-icon svg {

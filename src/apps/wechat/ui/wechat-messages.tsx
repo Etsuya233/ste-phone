@@ -126,7 +126,12 @@ export function WechatMessages({
                         title={sticker.description}
                       />
                     ) : (
-                      <p>{content.text}</p>
+                      <>
+                        <p>{content.text}</p>
+                        <span className="wechat-message-width" aria-hidden="true">
+                          {content.text}
+                        </span>
+                      </>
                     )}
                   </WechatMessageBubble>
                 </div>

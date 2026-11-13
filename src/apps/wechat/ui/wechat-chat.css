@@ -68,17 +68,36 @@
   flex-direction: row-reverse;
 }
 
+/* iOS WebKit 可能低估可折行颜文字的宽度，用同一段不折行的文本撑开气泡。 */
+:host .wechat-message-bubble--text {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+:host .wechat-message-bubble--text > :is(p, .wechat-message-width) {
+  grid-area: 1 / 1;
+  padding-inline: 12px;
+  font-size: 16px;
+}
+
+:host .wechat-message-width {
+  height: 0;
+  min-width: 0;
+  overflow: hidden;
+  visibility: hidden;
+  white-space: pre;
+}
+
 /* 文本气泡保留微信的小尾巴，表情和卡片只保留内容本身。 */
 :host .wechat-message-bubble--text > p {
   position: relative;
   max-width: 100%;
   min-height: 20px;
   margin: 0;
-  padding: 9px 12px;
+  padding-block: 9px;
   border-radius: 6px;
   background: var(--wechat-bubble);
   color: #191919;
-  font-size: 16px;
   line-height: 1.45;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
