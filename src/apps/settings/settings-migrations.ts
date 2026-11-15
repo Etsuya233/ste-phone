@@ -3,6 +3,8 @@ import type { MigrationPlan } from "../../core/storage/migrations.ts";
 import type { PhoneSettings } from "./ports/settings-storage.ts";
 import { validateSpeechConnection } from "../../core/speech/public.ts";
 
+export const defaultPerformance = { systemAnimations: false, appLimit: null } as const;
+
 // 历史步骤固定输出 v6；未来默认布局变化不能改写旧版本迁移的结果。
 const v6Defaults = {
   version: 6 as const,
@@ -30,7 +32,7 @@ const v6Defaults = {
 };
 
 export const phoneSettingsMigrationPlan: MigrationPlan<PhoneSettings> = {
-  currentVersion: 8,
+  currentVersion: 9,
   steps: [
     ...[1, 2, 3, 4, 5].map((from) => ({
       from,
@@ -54,6 +56,12 @@ export const phoneSettingsMigrationPlan: MigrationPlan<PhoneSettings> = {
       to: 8,
       name: "settings-v7-to-v8",
       migrate: (value) => ({ ...settingsRecord(value), mapModelConnectionId: null }),
+    },
+    {
+      from: 8,
+      to: 9,
+      name: "settings-v8-to-v9",
+      migrate: (value) => ({ ...settingsRecord(value), performance: defaultPerformance }),
     },
   ],
   validate: validatePhoneSettings,
@@ -84,10 +92,10 @@ function migrateLegacySettings(value: unknown): unknown {
 
 function validatePhoneSettings(value: unknown): asserts value is PhoneSettings {
   const settings = settingsRecord(value);
-  if (settings.version !== 8) {
+  if (settings.version !== 9) {
     throw new Error("不支持的手机设置版本");
   }
-  validateSettingsFields(settings, 8);
+  validateSettingsFields(settings, 9);
   if (settings.speechConnection !== undefined) {
     validateSpeechConnection(settings.speechConnection);
   }
@@ -112,6 +120,11 @@ function validatePhoneSettings(value: unknown): asserts value is PhoneSettings {
   if (!isSystemStyle(appearance.systemStyle)) {
     throw new Error("不支持的系统风格");
   }
+  const performance = settingsRecord(settings.performance);
+  if (typeof performance.systemAnimations !== "boolean") {
+    throw new Error("系统动画设置无效");
+  }
+  validateAppLimit(performance.appLimit);
 }
 
 /** 校验各历史阶段已经存在的字段；后续新增字段由迁移步骤显式补齐。 */
@@ -194,5 +207,11 @@ function settingsRecord(value: unknown): Record<string, unknown> {
 export function validateWechatHistoryLimit(limit: number): void {
   if (!Number.isSafeInteger(limit) || limit <= 0) {
     throw new Error("历史消息条数须为正安全整数");
+  }
+}
+
+export function validateAppLimit(limit: unknown): void {
+  if (limit !== null && (typeof limit !== "number" || !Number.isSafeInteger(limit) || limit < 1)) {
+    throw new Error("应用数量上限须为大于或等于 1 的整数");
   }
 }

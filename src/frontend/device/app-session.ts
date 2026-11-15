@@ -9,7 +9,15 @@ export interface AppSession {
   recent: AppId[];
 }
 export type SessionAction =
-  { type: "open"; app: AppId } | { type: "home" | "expose" } | { type: "quit"; app: AppId };
+  | { type: "open"; app: AppId }
+  | { type: "home" | "expose" }
+  | { type: "quit"; app: AppId }
+  | { type: "evict"; apps: readonly AppId[] };
+
+export function appsBeyondLimit({ recent }: AppSession, limit: number | null): AppId[] {
+  // The most recently opened app, including the foreground app, takes the first slot.
+  return limit === null ? [] : recent.slice(limit);
+}
 export function appSession(state: AppSession, action: SessionAction): AppSession {
   if (action.type === "open") {
     return {
@@ -22,6 +30,9 @@ export function appSession(state: AppSession, action: SessionAction): AppSession
       foreground: state.foreground === action.app ? "expose" : state.foreground,
       recent: state.recent.filter((app) => app !== action.app),
     };
+  }
+  if (action.type === "evict") {
+    return { ...state, recent: state.recent.filter((app) => !action.apps.includes(app)) };
   }
   return { ...state, foreground: action.type };
 }

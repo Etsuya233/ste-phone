@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useSystemMotion } from "../system/system-motion.tsx";
 
 export interface Navigation<T> {
   push: (route: T) => void;
@@ -17,6 +18,7 @@ export function NavigationStack<T>({
   active: boolean;
   children: (route: T, navigation: Navigation<T>) => ReactNode;
 }) {
+  const motionEnabled = useSystemMotion();
   const [entries, setEntries] = useState(() =>
     initialRoutes.map((route, id) => ({ route, id, focus: null as HTMLElement | null })),
   );
@@ -34,18 +36,10 @@ export function NavigationStack<T>({
     setMotion(null);
   };
   useEffect(() => {
-    if (!active && motion) {
+    if (motion && (!active || !motionEnabled)) {
       finish();
     }
-    const preference = matchMedia("(prefers-reduced-motion: reduce)");
-    const change = () => {
-      if (preference.matches && motion) {
-        finish();
-      }
-    };
-    preference.addEventListener("change", change);
-    return () => preference.removeEventListener("change", change);
-  }, [active, motion, entries]);
+  }, [active, motionEnabled, motion, entries]);
   useLayoutEffect(() => {
     if (!active || motion) {
       return;
@@ -64,7 +58,7 @@ export function NavigationStack<T>({
     if (locked.current || !active) {
       return;
     }
-    locked.current = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    locked.current = motionEnabled;
     const focus = element.current!.getRootNode() as ShadowRoot;
     setEntries((previous) => [
       ...previous,
@@ -76,7 +70,7 @@ export function NavigationStack<T>({
     if (locked.current || !active || entries.length === 1) {
       return;
     }
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!motionEnabled) {
       pendingFocus.current = entries.at(-1)!.focus;
       setEntries((previous) => previous.slice(0, -1));
     } else {

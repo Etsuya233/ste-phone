@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
+import { useSystemMotion } from "../system/system-motion.tsx";
 
 export type ScreenLock = "unlocked" | "asleep" | "locked" | "unlocking";
 
 /** Locking hides the existing session; it never quits or recreates an app. */
 export function useScreenLock(screen: RefObject<HTMLDivElement | null>, visible: boolean) {
+  const motionEnabled = useSystemMotion();
   const [state, setState] = useState<ScreenLock>("unlocked");
   const previousFocus = useRef<HTMLElement | null>(null);
   const power = useCallback(() => {
@@ -18,13 +20,9 @@ export function useScreenLock(screen: RefObject<HTMLDivElement | null>, visible:
   }, [screen, state]);
   const unlock = useCallback(() => {
     setState((current) =>
-      current === "locked"
-        ? matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "unlocked"
-          : "unlocking"
-        : current,
+      current === "locked" ? (motionEnabled ? "unlocking" : "unlocked") : current,
     );
-  }, []);
+  }, [motionEnabled]);
   // A late transition event cannot wake a screen that the user has already put back to sleep.
   const finishUnlock = useCallback(
     () => setState((current) => (current === "unlocking" ? "unlocked" : current)),
@@ -32,23 +30,10 @@ export function useScreenLock(screen: RefObject<HTMLDivElement | null>, visible:
   );
   const wake = useCallback(() => setState("locked"), []);
   useEffect(() => {
-    if (state !== "unlocking") {
-      return;
-    }
-    if (!visible) {
+    if (state === "unlocking" && (!visible || !motionEnabled)) {
       finishUnlock();
-      return;
     }
-    const motion = matchMedia("(prefers-reduced-motion: reduce)");
-    const settle = () => {
-      if (motion.matches) {
-        finishUnlock();
-      }
-    };
-    settle();
-    motion.addEventListener("change", settle);
-    return () => motion.removeEventListener("change", settle);
-  }, [state, visible, finishUnlock]);
+  }, [state, visible, motionEnabled, finishUnlock]);
   useLayoutEffect(() => {
     if (visible && state === "unlocked" && previousFocus.current) {
       previousFocus.current.focus({ preventScroll: true });

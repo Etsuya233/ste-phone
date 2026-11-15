@@ -14,12 +14,14 @@ import type { TestModelConnection } from "../model-connection-test.ts";
 import { ModelConnections, ModelConnectionEditor } from "./model-connections.tsx";
 
 import { AppearancePage } from "./appearance-page.tsx";
+import { PerformancePage } from "./performance-page.tsx";
 import { SpeechSettingsPage } from "../../voice-playground/public.ts";
 import type { SpeechTransport } from "../../../core/speech/public.ts";
 
 type SettingsRoute =
   | { page: "root" }
   | { page: "appearance" }
+  | { page: "performance" }
   | { page: "wallpapers" }
   | { page: "preview"; wallpaper: Wallpaper }
   | { page: "connections" }
@@ -51,6 +53,7 @@ export function SettingsApp({
           >
             <GroupedList>
               <ListCell title="外观" onClick={() => navigation.push({ page: "appearance" })} />
+              <ListCell title="性能" onClick={() => navigation.push({ page: "performance" })} />
               <ListCell title="壁纸" onClick={() => navigation.push({ page: "wallpapers" })} />
               <ListCell title="模型连接" onClick={() => navigation.push({ page: "connections" })} />
               <ListCell title="语音连接" onClick={() => navigation.push({ page: "speech" })} />
@@ -64,6 +67,8 @@ export function SettingsApp({
           renderPhoneContext({ active: active && navigation.current, onBack: navigation.pop })
         ) : route.page === "appearance" ? (
           <AppearancePage appearance={settings.appearance} onBack={navigation.pop} />
+        ) : route.page === "performance" ? (
+          <PerformancePage performance={settings.performance} onBack={navigation.pop} />
         ) : route.page === "speech" ? (
           <SpeechSettingsPage
             settings={settings}

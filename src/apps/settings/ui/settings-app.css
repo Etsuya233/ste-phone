@@ -86,3 +86,7 @@
   color: var(--ios-red);
   font-size: 13px;
 }
+:host .performance-error {
+  margin: var(--ios-space-large);
+  color: var(--ios-red);
+}

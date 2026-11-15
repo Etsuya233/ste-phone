@@ -1,0 +1,37 @@
+/* Shared chrome and controls only. Each app owns its content animations. */
+:host
+  .phone-panel[data-system-animations="off"]
+  :is(
+    .home-layer,
+    .home-layer .ios-page-content,
+    .home-layer .home-dock,
+    .home-layer .ios-safe-area,
+    .home-layer .ios-footer,
+    .app-layer,
+    .expose-item,
+    .expose-shade,
+    .lock-screen,
+    .lock-screen-content,
+    .ios-icon--app,
+    .ios-switch-track
+  ),
+:host .phone-panel[data-system-animations="off"] .ios-switch-track::after {
+  transition: none;
+}
+:host
+  .phone-panel[data-system-animations="off"]
+  :is(
+    .app-layer,
+    .expose--leaving,
+    .home-screen--editing .home-slot,
+    .navigation-entry,
+    .ios-action-sheet,
+    .ios-alert-spinner,
+    .lock-screen-shimmer
+  ) {
+  animation: none;
+}
+:host .phone-panel[data-system-animations="off"] .lock-screen-shimmer {
+  background-image: none;
+  -webkit-text-fill-color: currentColor;
+}

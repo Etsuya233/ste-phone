@@ -11,7 +11,9 @@ import {
 import type { CSSProperties, MouseEvent, HTMLAttributes } from "react";
 import { Home } from "../apps/home/home.tsx";
 import { StatusBar } from "../system/status-bar.tsx";
-import { appSession } from "./app-session.ts";
+import { useSystemMotion } from "../system/system-motion.tsx";
+import { appSession, appsBeyondLimit } from "./app-session.ts";
+import type { AppSession } from "./app-session.ts";
 import type { AppId } from "./app-session.ts";
 import type { AppDefinition } from "./app-lifecycle.ts";
 import type {
@@ -56,6 +58,7 @@ export function PhoneDevice({
   deviceModel,
   systemStyle,
   apps,
+  appLimit,
   visible,
   scale,
   draggable,
@@ -74,8 +77,10 @@ export function PhoneDevice({
   deviceModel: DeviceModel;
   systemStyle: SystemStyle;
   apps: Record<AppId, AppDefinition>;
+  appLimit: number | null;
 }) {
   const screen = useRef<HTMLDivElement>(null);
+  const motionEnabled = useSystemMotion();
   const lock = useScreenLock(screen, visible);
   const interactive = visible && lock.state === "unlocked";
   const [editingHome, setEditingHome] = useState(false);
@@ -97,6 +102,24 @@ export function PhoneDevice({
   }));
   const selectedSettings = useSyncExternalStore(wallpaper.subscribe, wallpaper.getSnapshot);
   const lastApp = useRef<AppId | null>(initialApp === "home" ? null : initialApp);
+  const evictOverLimit = useCallback(
+    (next: AppSession) => {
+      const evicted = appsBeyondLimit(next, appLimit);
+      if (evicted.length === 0) {
+        return;
+      }
+      // Automatic eviction follows the configured cap and skips the manual quit prompt.
+      for (const app of evicted.reverse()) {
+        apps[app].onQuit?.();
+      }
+      dispatch({ type: "evict", apps: evicted });
+      setExposeIndex((index) => Math.min(index, next.recent.length - evicted.length - 1));
+    },
+    [appLimit, apps],
+  );
+  useLayoutEffect(() => {
+    evictOverLimit(session);
+  }, [evictOverLimit, session]);
   useLayoutEffect(() => {
     if (!visible) {
       return;
@@ -134,11 +157,13 @@ export function PhoneDevice({
     setExposeDrag(emptyDrag);
   };
   useEffect(() => {
-    // Hiding or locking settles visible operations so the preserved session cannot strand a transition.
-    if (interactive) {
+    // These changes can suppress the end event for a transition already in progress.
+    if (interactive && motionEnabled) {
       return;
     }
-    setExposeDrag(emptyDrag);
+    if (!interactive) {
+      setExposeDrag(emptyDrag);
+    }
     if (quittingApp) {
       completeQuit();
     }
@@ -148,7 +173,7 @@ export function PhoneDevice({
     if (transition) {
       setTransition(null);
     }
-  }, [interactive, transition, quittingApp]);
+  }, [interactive, motionEnabled, transition, quittingApp]);
   useEffect(() => {
     if (!interactive || transition || page === "expose") {
       return;
@@ -163,23 +188,6 @@ export function PhoneDevice({
           );
     target?.focus({ preventScroll: true });
   }, [visible, page, transition]);
-  useEffect(() => {
-    const preference = matchMedia("(prefers-reduced-motion: reduce)");
-    const finish = () => {
-      if (!preference.matches) {
-        return;
-      }
-      if (quittingApp) {
-        completeQuit();
-      }
-      if (transition === "leaving" || transition === "expose-home") {
-        dispatch({ type: "home" });
-      }
-      setTransition(null);
-    };
-    preference.addEventListener("change", finish);
-    return () => preference.removeEventListener("change", finish);
-  }, [transition, quittingApp]);
   const open = useCallback(
     (event: MouseEvent<HTMLButtonElement> | undefined, app: AppId) => {
       if (transition || quittingApp) {
@@ -190,7 +198,7 @@ export function PhoneDevice({
         throw new Error("应用未安装");
       }
       setEditingHome(false);
-      if (event) {
+      if (event && motionEnabled) {
         const icon = event.currentTarget.getBoundingClientRect();
         const bounds = screen.current!.getBoundingClientRect();
         setOrigin(
@@ -198,17 +206,15 @@ export function PhoneDevice({
         );
       }
       lastApp.current = app;
-      dispatch({ type: "open", app });
+      const action = { type: "open", app } as const;
+      dispatch(action);
+      evictOverLimit(appSession(session, action));
       setExposeDrag(emptyDrag);
-      setTransition(
-        matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? null
-          : page === "expose"
-            ? "resuming"
-            : "entering",
-      );
+      if (motionEnabled) {
+        setTransition(page === "expose" ? "resuming" : "entering");
+      }
     },
-    [transition, quittingApp, homeScreen, scale, page],
+    [transition, quittingApp, homeScreen, scale, page, motionEnabled, evictOverLimit, session],
   );
   const openApp = useCallback((app: AppId) => open(undefined, app), [open]);
   const home = useCallback(() => {
@@ -222,7 +228,7 @@ export function PhoneDevice({
       setExposeIndex((index) => Math.max(0, Math.min(index, session.recent.length - 2)));
     }
     setExposeDrag(emptyDrag);
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!motionEnabled) {
       dispatch({ type: "home" });
       setTransition(null);
     } else {
@@ -239,7 +245,7 @@ export function PhoneDevice({
       }
       setTransition(page === "expose" ? "expose-home" : "leaving");
     }
-  }, [page, quittingApp, session.recent.length, apps]);
+  }, [page, quittingApp, session.recent.length, apps, motionEnabled]);
   const expose = () => {
     if (quittingApp) {
       completeQuit();
@@ -257,7 +263,7 @@ export function PhoneDevice({
       openApp(app);
       return;
     }
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!motionEnabled) {
       const removed = session.recent.indexOf(app);
       apps[app].onQuit?.();
       dispatch({ type: "quit", app });

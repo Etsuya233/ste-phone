@@ -2,6 +2,7 @@ import type {
   WallpaperReader,
   HomeScreenSettings,
   AppearanceSettings,
+  PerformanceSettings,
 } from "../apps/settings/public.ts";
 import type { AppDefinition } from "./device/app-lifecycle.ts";
 import type { AppId } from "./device/app-session.ts";
@@ -12,6 +13,7 @@ import { StEntry } from "./host/st-entry.tsx";
 import type { StMenuEntry } from "./host/st-entry.tsx";
 import { usePhoneInputVisibility, usePhoneViewport } from "./device/use-phone-viewport.ts";
 import { deviceModels } from "./device/device-models.ts";
+import { SystemMotionProvider, useSystemMotionEnabled } from "./system/system-motion.tsx";
 
 const VIEWPORT_GAP = 12;
 
@@ -19,6 +21,7 @@ export function PhoneApp({
   wallpaper,
   homeScreen,
   appearance,
+  performance,
   apps,
   responsive = false,
   draggable = false,
@@ -31,6 +34,7 @@ export function PhoneApp({
   wallpaper: WallpaperReader;
   homeScreen: HomeScreenSettings;
   appearance: AppearanceSettings;
+  performance: PerformanceSettings;
   apps: Record<AppId, AppDefinition>;
   menuEntry?: StMenuEntry;
 }) {
@@ -48,6 +52,11 @@ export function PhoneApp({
   const { layout, visible: viewport } = usePhoneViewport(panel, open);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const selectedAppearance = useSyncExternalStore(appearance.subscribe, appearance.getSnapshot);
+  const { systemAnimations, appLimit } = useSyncExternalStore(
+    performance.subscribe,
+    performance.getSnapshot,
+  );
+  const systemMotionEnabled = useSystemMotionEnabled(systemAnimations);
   const device = deviceModels[selectedAppearance.deviceModel];
   const fullscreen = responsive && layout.width <= 480;
   const scale = fullscreen
@@ -100,7 +109,7 @@ export function PhoneApp({
     panel.current!.showModal();
   };
   return (
-    <>
+    <SystemMotionProvider enabled={systemMotionEnabled}>
       {menuEntry ? (
         <StEntry {...menuEntry} open={open} onOpen={openPhone} />
       ) : (
@@ -123,6 +132,7 @@ export function PhoneApp({
         className={`phone-panel ${fullscreen ? "phone-panel--responsive" : ""}`}
         data-device={selectedAppearance.deviceModel}
         data-system-style={selectedAppearance.systemStyle}
+        data-system-animations={systemMotionEnabled ? "on" : "off"}
         aria-label="小手机"
         style={
           {
@@ -168,6 +178,7 @@ export function PhoneApp({
               deviceModel={selectedAppearance.deviceModel}
               systemStyle={selectedAppearance.systemStyle}
               apps={apps}
+              appLimit={appLimit}
               initialApp={initialApp}
               scale={scale}
               draggable={draggable && !fullscreen}
@@ -183,6 +194,6 @@ export function PhoneApp({
           </div>
         ) : null}
       </dialog>
-    </>
+    </SystemMotionProvider>
   );
 }

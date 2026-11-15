@@ -285,7 +285,7 @@ test("v4 settings migrate to delayed sending and the preference survives unrelat
   service.setWallpaper({ kind: "gradient" }, true);
   service.saveModelConnection(connection);
   assert.equal(new PhoneSettingsService(storage).wechatPreferences.getSnapshot(), "immediate");
-  assert.equal(service.getState().version, 8);
+  assert.equal(service.getState().version, 9);
 });
 
 test("history limit defaults to 100, migrates v5 and retains valid shared settings", () => {
@@ -426,6 +426,44 @@ test("v6 settings preserve their content and migrate to the classic phone appear
   assert.equal(service.getState().blur, true);
 });
 
+test("v8 settings default to disabled animations and unlimited apps, then persist both changes", () => {
+  const { performance: _performance, ...previous } = defaultSettings;
+  void _performance;
+  let stored: ReturnType<SettingsStorage["read"]> = { ...previous, version: 8, blur: true };
+  const storage: SettingsStorage = {
+    ...library,
+    read: () => stored,
+    save: (value) => {
+      stored = value;
+    },
+  };
+  const service = new PhoneSettingsService(storage);
+  const { performance } = service;
+  const initial = performance.getSnapshot();
+  assert.deepEqual(initial, { systemAnimations: false, appLimit: null });
+  assert.equal(storage.read()?.version, 9);
+  assert.equal(service.getState().blur, true);
+
+  service.setWallpaper({ kind: "gradient" }, false);
+  assert.equal(performance.getSnapshot(), initial);
+  performance.setSystemAnimations(true);
+  performance.setAppLimit(1);
+  assert.deepEqual(new PhoneSettingsService(storage).performance.getSnapshot(), {
+    systemAnimations: true,
+    appLimit: 1,
+  });
+
+  for (const invalid of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => performance.setAppLimit(invalid), /大于或等于 1 的整数/);
+  }
+  assert.equal(performance.getSnapshot().appLimit, 1);
+  performance.setAppLimit(null);
+  assert.deepEqual(new PhoneSettingsService(storage).performance.getSnapshot(), {
+    systemAnimations: true,
+    appLimit: null,
+  });
+});
+
 test("map model migration and selection are independent of the default model", () => {
   const { mapModelConnectionId, ...prior } = defaultSettings;
   assert.equal(mapModelConnectionId, null);
@@ -443,7 +481,7 @@ test("map model migration and selection are independent of the default model", (
     },
   };
   const service = new PhoneSettingsService(storage);
-  assert.equal(stored.version, 8);
+  assert.equal(stored.version, 9);
   assert.equal(service.mapModelPreference.getSnapshot(), null);
   service.mapModelPreference.select("map-only");
   assert.equal(service.defaultModelConnection().id, connection.id);

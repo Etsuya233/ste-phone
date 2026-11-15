@@ -3,6 +3,7 @@ import { validateSpeechConnection, type SpeechConnection } from "../../core/spee
 import type {
   AppearanceSettings,
   AppearanceSnapshot,
+  PerformanceSettings,
   WallpaperReader,
   WallpaperSnapshot,
   ModelConnectionsReader,
@@ -17,7 +18,12 @@ import type { HomeLayout } from "../../core/launcher/catalog.ts";
 import { validateModelConnection } from "./model-connections.ts";
 import type { ModelConnection } from "./model-connections.ts";
 import { migrateData } from "../../core/storage/migrations.ts";
-import { phoneSettingsMigrationPlan, validateWechatHistoryLimit } from "./settings-migrations.ts";
+import {
+  defaultPerformance,
+  phoneSettingsMigrationPlan,
+  validateAppLimit,
+  validateWechatHistoryLimit,
+} from "./settings-migrations.ts";
 
 import type {
   PhoneSettings,
@@ -33,14 +39,16 @@ export type {
   PhoneSettingsV5,
   PhoneSettingsV6,
   PhoneSettingsV7,
+  PhoneSettingsV8,
   LegacyPhoneSettings,
   SettingsStorage,
   Wallpaper,
   WallpaperImage,
 } from "./ports/settings-storage.ts";
 export const defaultSettings: PhoneSettings = {
-  version: 8,
+  version: 9,
   appearance: { deviceModel: "iphone-6s", systemStyle: "classic" },
+  performance: defaultPerformance,
   wechatSendMode: "delayed",
   wechatHistoryMessageLimit: 100,
   wallpaper: { kind: "gradient" },
@@ -77,6 +85,17 @@ export class PhoneSettingsService {
         throw new Error("不支持的系统风格");
       }
       this.save({ ...this.state, appearance: { ...this.state.appearance, systemStyle } });
+    },
+  };
+  readonly performance: PerformanceSettings = {
+    getSnapshot: () => this.state.performance,
+    subscribe: (listener) => this.subscribe(listener),
+    setSystemAnimations: (systemAnimations) => {
+      this.save({ ...this.state, performance: { ...this.state.performance, systemAnimations } });
+    },
+    setAppLimit: (appLimit) => {
+      validateAppLimit(appLimit);
+      this.save({ ...this.state, performance: { ...this.state.performance, appLimit } });
     },
   };
   readonly homeScreen: HomeScreenSettings = {

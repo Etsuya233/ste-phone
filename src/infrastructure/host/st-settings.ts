@@ -2,25 +2,11 @@ import type { StChatSaveContext } from "./chat-metadata-storage.ts";
 import type { WechatStickerPack } from "../../apps/wechat/wechat-stickers.ts";
 import type { StPhoneMacroContext } from "./phone-context-macro.ts";
 
-import type {
-  PhoneSettings,
-  PhoneSettingsV2,
-  PhoneSettingsV3,
-  PhoneSettingsV4,
-  PhoneSettingsV5,
-  LegacyPhoneSettings,
-  SettingsStorage,
-} from "../../apps/settings/ports/settings-storage.ts";
+import type { SettingsStorage } from "../../apps/settings/ports/settings-storage.ts";
 interface StContext extends StChatSaveContext, StPhoneMacroContext {
   extensionSettings: {
     ste_phone_wechat_stickers?: { version: number; packs: readonly WechatStickerPack[] };
-    ste_phone?:
-      | PhoneSettings
-      | PhoneSettingsV5
-      | PhoneSettingsV4
-      | PhoneSettingsV3
-      | PhoneSettingsV2
-      | LegacyPhoneSettings;
+    ste_phone?: ReturnType<SettingsStorage["read"]>;
   };
   saveSettingsDebounced: () => void;
   getRequestHeaders: () => Record<string, string>;

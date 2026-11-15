@@ -160,6 +160,7 @@ mountPhone({
   wallpaper: phone.wallpaper,
   homeScreen: phone.homeScreen,
   appearance: phone.appearance,
+  performance: phone.performance,
   initialApp:
     shortcut ??
     (options.get("voice-playground") === "1"

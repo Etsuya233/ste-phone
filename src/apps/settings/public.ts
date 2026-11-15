@@ -74,4 +74,17 @@ export interface AppearanceSettings {
   setDeviceModel(value: DeviceModel): void;
   setSystemStyle(value: SystemStyle): void;
 }
+
+export interface PerformanceSnapshot {
+  readonly systemAnimations: boolean;
+  readonly appLimit: number | null;
+}
+
+export interface PerformanceSettings {
+  getSnapshot(): PerformanceSnapshot;
+  subscribe(listener: () => void): () => void;
+  setSystemAnimations(enabled: boolean): void;
+  setAppLimit(limit: number | null): void;
+}
+
 export type { PhoneSettingsService } from "./settings-service.ts";
